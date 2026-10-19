@@ -1,0 +1,18 @@
+target/
+node_modules/
+dist/
+app/frontend/dist/
+app/gen/
+.DS_Store
+*.tmp
+*.exe
+
+# 内部资料与产物：按铁律不入库
+docs/
+.codex/
+AGENTS.md
+logs/
+shadow/
+.scratch/
+任务清单.md
+架构规划.md

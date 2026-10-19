@@ -1,0 +1,45 @@
+import { invoke } from "@tauri-apps/api/core";
+import type {
+  Action,
+  AppInfo,
+  ContentPack,
+  ContentPreview,
+  CropDef,
+  DispatchReply,
+  ImportReply,
+  SeedReview,
+  Snapshot,
+} from "./types";
+
+export const getSnapshot = () => invoke<Snapshot>("get_snapshot");
+export const getContent = () => invoke<ContentPack>("get_content");
+export const getAppInfo = () => invoke<AppInfo>("app_info");
+export const dispatch = (action: Action) =>
+  invoke<DispatchReply>("dispatch", { action });
+export const sync = () => invoke<DispatchReply>("sync");
+export const advanceTime = (hours: number) =>
+  invoke<DispatchReply>("advance_time", { hours });
+export const saveNow = () => invoke<void>("save_now");
+export const exportSave = (path: string) => invoke<void>("export_save", { path });
+export const importSave = (path: string) =>
+  invoke<ImportReply>("import_save", { path });
+export const exportContent = (path: string) =>
+  invoke<void>("export_content", { path });
+export const importContent = (path: string) =>
+  invoke<ImportReply>("import_content", { path });
+export const applyContent = (pack: ContentPack) =>
+  invoke<ImportReply>("apply_content", { pack });
+export const previewContent = (pack: ContentPack) =>
+  invoke<ContentPreview>("preview_content", { pack });
+export const generateSeeds = (count: number, seed: number) =>
+  invoke<CropDef[]>("generate_content_seeds", { count, seed });
+export const reviewSeeds = (count: number, seed: number) =>
+  invoke<SeedReview[]>("review_content_seeds", { count, seed });
+
+export function errorText(error: unknown): string {
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object" && "message" in error) {
+    return String((error as { message: unknown }).message);
+  }
+  return String(error);
+}
