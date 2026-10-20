@@ -637,6 +637,14 @@ try {
     !!frameBox && Math.abs(frameBox.w / frameBox.h - 1) < 0.06,
     JSON.stringify(frameBox),
   );
+  await clickText("2 坏杆 + 追鱼", false);
+  const feelNormalText = await evaluate("document.querySelector('.fg-feel')?.textContent || ''");
+  check(
+    "手感2正常杆提示",
+    feelNormalText.includes("正常杆：短按跟手，长按小漂移"),
+    feelNormalText,
+  );
+  await clickText("1 当前", false);
   const frameBadgeGone = await evaluate("!document.querySelector('.fg-frame-pct')");
   check("百分比徽标已去掉", frameBadgeGone === true);
   const statusText = await evaluate("document.querySelector('.fg-status')?.textContent || ''");

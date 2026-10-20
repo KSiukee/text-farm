@@ -114,6 +114,8 @@ const progressGhostStyle = computed(() => ({
 const isLosing = computed(
   () => phase.value === "playing" && !inZone.value && graceLeft.value <= 0,
 );
+// 坏杆在参数里是 62% 框速；正常杆是 100%。
+const isWornRod = computed(() => (props.session?.params.frameSpeedPct ?? 100) < 100);
 const stickKnobStyle = computed(() => ({
   transform: `translate(${stickKnobX.value}px, ${stickKnobY.value}px)`,
 }));
@@ -305,15 +307,18 @@ function applyBadFeel(
   input: { x: number; y: number },
   dt: number,
   speedPct: number,
+  worn: boolean,
 ) {
   const moving = input.x !== 0 || input.y !== 0;
   const dirX = Math.sign(input.x);
   const dirY = Math.sign(input.y);
+  const reversalAfter = worn ? 350 : 260;
   if (moving) {
     const reversedX = badDirX !== 0 && dirX !== 0 && dirX !== badDirX;
     const reversedY = badDirY !== 0 && dirY !== 0 && dirY !== badDirY;
-    if ((reversedX || reversedY) && badHoldMs > 350) {
-      badReversalMs = 450;
+    if ((reversedX || reversedY) && badHoldMs > reversalAfter) {
+      // 坏杆漂移更大；正常杆只留一小段。
+      badReversalMs = worn ? 450 : 220;
     }
     if (dirX !== 0) badDirX = dirX;
     if (dirY !== 0) badDirY = dirY;
@@ -322,13 +327,28 @@ function applyBadFeel(
     badHoldMs = Math.max(0, badHoldMs - dt * 2000);
   }
 
-  // 长按追鱼加成最多 +40%；速度直接追目标值，不做线性加速。
-  const boost = 1 + Math.min(0.4, (badHoldMs / 1000) * 0.35);
+  // 长按追鱼加成：坏杆最多 +40%，正常杆 +35%；短按基本吃不到。
+  const boost = 1 + Math.min(worn ? 0.4 : 0.35, (badHoldMs / 1000) * (worn ? 0.35 : 0.3));
   const speed = 90 * (speedPct / 100) * boost;
   const targetX = input.x * speed;
   const targetY = input.y * speed;
-  // 换向时响应更慢，先漂一段再回头；松开后慢慢滑停。
-  const response = moving ? (badReversalMs > 0 ? 1.1 : 2.6) : 1.6;
+
+  let response: number;
+  if (worn) {
+    // 坏杆＝原来那套滑雪手感：换向 1.1、常驻 2.6、松手 1.6。
+    response = moving ? (badReversalMs > 0 ? 1.1 : 2.6) : 1.6;
+  } else if (!moving) {
+    // 正常杆短按松手就停，不滑出去。
+    response = 8;
+  } else if (badReversalMs > 0) {
+    // 长按换向只漂一小段，幅度小于坏杆。
+    response = 3.4;
+  } else {
+    const hold = badHoldMs / 1000;
+    // 前 0.25s 跟手（短按没惯性），之后才慢慢变“重”。
+    response = hold < 0.25 ? 14 : 14 - Math.min(9, (hold - 0.25) * 9);
+  }
+
   const alpha = 1 - Math.exp(-response * dt);
   frameVX.value += (targetX - frameVX.value) * alpha;
   frameVY.value += (targetY - frameVY.value) * alpha;
@@ -355,7 +375,7 @@ function tick(now: number) {
 
   const input = axis();
   if (feel.value === "bad") {
-    applyBadFeel(input, dt, session.params.frameSpeedPct);
+    applyBadFeel(input, dt, session.params.frameSpeedPct, isWornRod.value);
   } else {
     applyCurrentFeel(input, dt, session.params.frameSpeedPct);
   }
@@ -657,9 +677,11 @@ onUnmounted(() => {
       >
         [2 坏杆 + 追鱼]
       </button>
-      <span class="muted">
-        {{ feel === "bad" ? "测试中：长按加速，换向有惯性漂移" : "默认手感（保留）" }}
+      <span v-if="feel === 'current'" class="muted">默认手感（保留）</span>
+      <span v-else-if="session" class="muted">
+        {{ isWornRod ? "坏杆：长按加速，换向大漂移" : "正常杆：短按跟手，长按小漂移" }}
       </span>
+      <span v-else class="muted">正常杆短按跟手；坏杆长按大漂移</span>
     </div>
 
     <div
