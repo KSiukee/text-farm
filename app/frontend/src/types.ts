@@ -570,6 +570,7 @@ export interface RodView {
   autoMinutes: number;
   wear: number;
   maxWear: number;
+  profitLabel: string;
   maintenanceCost: number;
   needsMaintenance: boolean;
 }

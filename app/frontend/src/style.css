@@ -1245,6 +1245,11 @@ footer {
   min-width: 340px;
 }
 
+.rod-profit {
+  flex-basis: 100%;
+  font-size: 12px;
+}
+
 .ranch-craft-active {
   display: flex;
   flex-wrap: wrap;

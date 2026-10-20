@@ -539,14 +539,55 @@ fn owned_rods_switch_and_maintenance_waits_for_session_end() {
 fn golden_session_gets_king_window() {
     let id = (1u64..1_000_000)
         .find(|id| {
-            farm_core::golden_session(*id, FishingSpot::Creek)
-                && !farm_core::golden_session(*id, FishingSpot::River)
+            farm_core::golden_session(*id, FishingSpot::Creek, RodKind::Wood)
+                && !farm_core::golden_session(*id, FishingSpot::River, RodKind::Wood)
         })
         .expect("golden session seed");
-    assert!(farm_core::golden_session(id, FishingSpot::Creek));
-    assert!(!farm_core::golden_session(id, FishingSpot::River));
+    assert!(farm_core::golden_session(
+        id,
+        FishingSpot::Creek,
+        RodKind::Wood
+    ));
+    assert!(!farm_core::golden_session(
+        id,
+        FishingSpot::River,
+        RodKind::Wood
+    ));
     assert_eq!(farm_core::FISHING_GOLDEN_CATCH_MS, 20_000);
     assert_eq!(farm_core::FISHING_KING_CATCH_MS, 20_000);
+}
+
+#[test]
+fn rod_economy_tiers_match_m3_a2_g1() {
+    let rods = [
+        RodKind::Wood,
+        RodKind::Bamboo,
+        RodKind::Fiberglass,
+        RodKind::Carbon,
+    ];
+    assert_eq!(rods.map(|r| r.frame_pct()), [20, 18, 15, 13]);
+    assert_eq!(rods.map(|r| r.durability()), [30, 40, 60, 90]);
+    assert_eq!(
+        rods.map(|r| r.maintenance_cost()),
+        [300, 600, 1_200, 1_800]
+    );
+    assert_eq!(rods.map(|r| r.sell_bonus_pct()), [0, 10, 25, 40]);
+    assert_eq!(rods.map(|r| r.bait_save_pct()), [0, 0, 10, 20]);
+    assert_eq!(
+        rods.map(|r| r.golden_bonus_permille()),
+        [0, 5, 10, 20]
+    );
+    assert_eq!(farm_core::king_base_price(FishingSpot::River), 800);
+    assert_eq!(farm_core::golden_floor_price(FishingSpot::River), 400);
+    assert_eq!(farm_core::sell_price(100, RodKind::Carbon), 140);
+
+    let mut game = game(1_000);
+    for _ in 0..39 {
+        game.state_mut().fishing.add_rod_wear(RodKind::Bamboo);
+    }
+    assert!(!game.state().fishing.needs_maintenance(RodKind::Bamboo));
+    game.state_mut().fishing.add_rod_wear(RodKind::Bamboo);
+    assert!(game.state().fishing.needs_maintenance(RodKind::Bamboo));
 }
 
 #[test]

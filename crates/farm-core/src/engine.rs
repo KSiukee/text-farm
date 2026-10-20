@@ -1184,7 +1184,10 @@ impl Game {
         self.state.fishing.stats.casts += 1;
         self.state.fishing.session_seq += 1;
         let seq = self.state.fishing.session_seq;
-        let saver = fishing::bait_saver_pct(self.state.skills.fishing.skill_level("bait_saver"));
+        let rod = self.state.fishing.rod;
+        let saver = fishing::bait_saver_pct(self.state.skills.fishing.skill_level("bait_saver"))
+            .saturating_add(rod.bait_save_pct())
+            .min(100);
         let saved = saver > 0
             && roll_pest((now.max(0) as u64) ^ seq, spot as u8, "bait-saver") % 100
                 < u64::from(saver);
@@ -1261,7 +1264,12 @@ impl Game {
             "market",
         );
         let market = fishing::market_pct(market_roll);
-        let price = fishing::price_for(def, weight_tenths, quality, market);
+        let golden = fishing::golden_session(session.id, session.spot, rod);
+        let mut price = fishing::price_for(def, weight_tenths, quality, market);
+        price = fishing::sell_price(price, rod);
+        if golden {
+            price = price.max(fishing::golden_floor_price(session.spot));
+        }
         let key = format!("fish:{}", def.id);
         *self.state.inventory.entry(key).or_insert(0) += 1;
         self.state
@@ -1277,7 +1285,6 @@ impl Game {
             self.state
                 .fishing
                 .record_catch(def, weight_tenths, quality, price, false, now);
-        let golden = fishing::golden_session(session.id, session.spot);
         if golden {
             *self
                 .state
@@ -1540,10 +1547,18 @@ impl Game {
                 bait_bought = bait_bought.saturating_add(10);
                 coins_spent = coins_spent.saturating_add(cost);
             }
-            if !self.state.fishing.take_bait_of(bait_type, bait_quality) {
+            let saver = fishing::bait_saver_pct(self.state.skills.fishing.skill_level("bait_saver"))
+                .saturating_add(rod.bait_save_pct())
+                .min(100);
+            let saved = saver > 0
+                && roll_pest((at.max(0) as u64) ^ 0x51a7, spot as u8, "auto-bait-saver") % 100
+                    < u64::from(saver);
+            if !saved && !self.state.fishing.take_bait_of(bait_type, bait_quality) {
                 break;
             }
-            bait_used = bait_used.saturating_add(1);
+            if !saved {
+                bait_used = bait_used.saturating_add(1);
+            }
 
             let key = format!("fish:{}", def.id);
             *self.state.inventory.entry(key).or_insert(0) += 1;
@@ -1558,7 +1573,13 @@ impl Game {
                 spot as u8,
                 "auto-market",
             ));
-            let price = fishing::price_for(def, weight_tenths, quality, market);
+            let golden = roll_pest((at.max(0) as u64) ^ 0x60d1, spot as u8, "auto-golden") % 1000
+                < 15 + rod.golden_bonus_permille();
+            let mut price = fishing::price_for(def, weight_tenths, quality, market);
+            price = fishing::sell_price(price, rod);
+            if golden {
+                price = price.max(fishing::golden_floor_price(spot));
+            }
             self.state
                 .fishing
                 .fish_batches
@@ -1568,8 +1589,6 @@ impl Game {
             self.state
                 .fishing
                 .record_catch(def, weight_tenths, quality, price, true, at);
-            let golden =
-                roll_pest((at.max(0) as u64) ^ 0x60d1, spot as u8, "auto-golden") % 1000 < 15;
             if golden {
                 *self
                     .state

@@ -2863,7 +2863,7 @@ onUnmounted(() => {
                 [快速保养 {{ fishing.maintenanceCost }}]
               </button>
             </summary>
-            <div class="ranch-recipe-group">鱼竿</div>
+            <div class="ranch-recipe-group">鱼竿（框越小越难；金色变异按半条鱼王价收购）</div>
           <div class="ranch-recipes">
             <div v-for="rod in fishing.rods" :key="rod.kind" class="ranch-recipe">
               <span class="ranch-recipe-text">
@@ -2904,6 +2904,7 @@ onUnmounted(() => {
               <span v-if="!rod.owned && (snapshot?.level ?? 0) < rod.level" class="muted">
                 需要 {{ rod.level }} 级
               </span>
+              <span class="muted rod-profit">{{ rod.profitLabel }}</span>
             </div>
           </div>
           </details>

@@ -413,9 +413,62 @@ impl RodKind {
     pub fn maintenance_cost(self) -> u64 {
         match self {
             RodKind::Wood => 300,
-            RodKind::Bamboo => 900,
-            RodKind::Fiberglass => 3_000,
-            RodKind::Carbon => 9_000,
+            RodKind::Bamboo => 600,
+            RodKind::Fiberglass => 1_200,
+            RodKind::Carbon => 1_800,
+        }
+    }
+
+    /// 保养间隔（条鱼）：高级竿更耐用。
+    pub fn durability(self) -> u32 {
+        match self {
+            RodKind::Wood => 30,
+            RodKind::Bamboo => 40,
+            RodKind::Fiberglass => 60,
+            RodKind::Carbon => 90,
+        }
+    }
+
+    /// A2 战后售价加成。
+    pub fn sell_bonus_pct(self) -> u32 {
+        match self {
+            RodKind::Wood => 0,
+            RodKind::Bamboo => 10,
+            RodKind::Fiberglass => 25,
+            RodKind::Carbon => 40,
+        }
+    }
+
+    /// A2 省饵概率（百分点）。
+    pub fn bait_save_pct(self) -> u32 {
+        match self {
+            RodKind::Wood => 0,
+            RodKind::Bamboo => 0,
+            RodKind::Fiberglass => 10,
+            RodKind::Carbon => 20,
+        }
+    }
+
+    /// G1 金色概率加成（千分点）。
+    pub fn golden_bonus_permille(self) -> u64 {
+        match self {
+            RodKind::Wood => 0,
+            RodKind::Bamboo => 5,
+            RodKind::Fiberglass => 10,
+            RodKind::Carbon => 20,
+        }
+    }
+
+    pub fn profit_label(self) -> String {
+        match self {
+            RodKind::Wood => "收益：基准（保养 300/30 条）".into(),
+            RodKind::Bamboo => "收益：售价 +10% · 金色 +0.5% · 保养 600/40 条".into(),
+            RodKind::Fiberglass => {
+                "收益：售价 +25% · 省饵 10% · 金色 +1% · 保养 1,200/60 条".into()
+            }
+            RodKind::Carbon => {
+                "收益：售价 +40% · 省饵 20% · 金色 +2% · 保养 1,800/90 条".into()
+            }
         }
     }
 
@@ -1331,11 +1384,11 @@ impl FishingState {
 
     pub fn add_rod_wear(&mut self, rod: RodKind) {
         let wear = self.rod_wear.entry(rod).or_insert(0);
-        *wear = (*wear + 1).min(FISHING_ROD_MAINTENANCE_CATCHES);
+        *wear = (*wear + 1).min(rod.durability());
     }
 
     pub fn needs_maintenance(&self, rod: RodKind) -> bool {
-        self.rod_wear(rod) >= FISHING_ROD_MAINTENANCE_CATCHES
+        self.rod_wear(rod) >= rod.durability()
     }
 
     pub fn maintain_rod(&mut self, rod: RodKind) {
@@ -1401,8 +1454,27 @@ pub fn rod_unlocked(level: u32, rod: RodKind) -> bool {
     level >= rod.unlock_level()
 }
 
-/// 金色变异在抛竿时就按会话种子定好；结算/图鉴/时长同一个口径。
-pub fn golden_session(id: u64, spot: FishingSpot) -> bool {
+/// 各钓点鱼王基础价。
+pub fn king_base_price(spot: FishingSpot) -> u64 {
+    match spot {
+        FishingSpot::Creek => 400,
+        FishingSpot::River => 800,
+        FishingSpot::Jiang => 1_400,
+        FishingSpot::Sea => 2_200,
+    }
+}
+
+/// G1：金色变异按半条鱼王基础价收购。
+pub fn golden_floor_price(spot: FishingSpot) -> u64 {
+    king_base_price(spot) / 2
+}
+
+pub fn sell_price(price: u64, rod: RodKind) -> u64 {
+    price * u64::from(100 + rod.sell_bonus_pct()) / 100
+}
+
+/// 金色变异在抛竿时就按会话种子 + 竿加成定好；结算/图鉴/时长同一个口径。
+pub fn golden_session(id: u64, spot: FishingSpot, rod: RodKind) -> bool {
     let mut hash = 1_469_598_103_934_665_603u64 ^ (id ^ 0x60d1);
     for byte in b"golden" {
         hash ^= u64::from(*byte);
@@ -1411,7 +1483,7 @@ pub fn golden_session(id: u64, spot: FishingSpot) -> bool {
     hash ^= u64::from(spot as u8);
     hash = hash.wrapping_mul(1_099_511_628_211);
     let roll = hash ^ (hash >> 33);
-    roll % 1000 < 15
+    roll % 1000 < 15 + rod.golden_bonus_permille()
 }
 
 /// 小游戏参数：框高、鱼速度、变向频率、时限。

@@ -456,6 +456,7 @@ pub struct RodView {
     pub auto_minutes: i64,
     pub wear: u32,
     pub max_wear: u32,
+    pub profit_label: String,
     pub maintenance_cost: u64,
     pub needs_maintenance: bool,
 }
@@ -1433,14 +1434,15 @@ impl Game {
                 frame_pct: rod.frame_pct(),
                 auto_minutes: rod.auto_interval_ms() / 60_000,
                 wear: fishing_state.rod_wear(*rod),
-                max_wear: fishing::FISHING_ROD_MAINTENANCE_CATCHES,
+                max_wear: rod.durability(),
+                profit_label: rod.profit_label(),
                 maintenance_cost: rod.maintenance_cost(),
                 needs_maintenance: fishing_state.needs_maintenance(*rod),
             })
             .collect();
         let session = fishing_state.session.as_ref().map(|session| {
             let def = fishing::fish(&session.fish_id);
-            let golden = fishing::golden_session(session.id, session.spot);
+            let golden = fishing::golden_session(session.id, session.spot, fishing_state.rod);
             let mut params = fishing::params_with_reel(
                 fishing_state.rod,
                 def.unwrap_or(&fishing::FISH[0]),
@@ -1668,7 +1670,7 @@ impl Game {
             bait_types,
             bait_counts,
             rod_wear: fishing_state.rod_wear(fishing_state.rod),
-            rod_max_wear: fishing::FISHING_ROD_MAINTENANCE_CATCHES,
+            rod_max_wear: fishing_state.rod.durability(),
             maintenance_cost: fishing_state.rod.maintenance_cost(),
             needs_maintenance: fishing_state.needs_maintenance(fishing_state.rod),
             locked_fish: fishing_state.locked_fish.iter().cloned().collect(),
