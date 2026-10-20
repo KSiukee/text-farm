@@ -352,6 +352,22 @@ try {
       )) === "0.45",
   );
   check("图片不透明度 45% 生效", true);
+  await clickText("纸纹");
+  await waitFor(
+    async () => (await evaluate("document.documentElement.dataset.bgMode")) === "paper",
+  );
+  check(
+    "切纸纹后图片层隐藏",
+    (await evaluate("!document.querySelector('.app-bg-image')")) === true,
+  );
+  await clickText("图片");
+  await waitFor(
+    async () => (await evaluate("document.documentElement.dataset.bgMode")) === "image",
+  );
+  await waitFor(
+    async () => (await evaluate("!!document.querySelector('.app-bg-image')")) === true,
+  );
+  check("切回图片层恢复", true);
   await evaluate("window.__bgReloadProbe = 1");
   await send("Page.reload", { ignoreCache: true });
   await waitFor(

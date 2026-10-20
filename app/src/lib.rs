@@ -20,6 +20,16 @@ pub(crate) fn today_string_offset(offset_ms: i64) -> String {
         .to_string()
 }
 
+/// 前端把主题/背景贴好之后调用；窗口先隐藏，避免启动时先闪一下白/奶油底。
+#[tauri::command]
+fn ui_ready(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        window.show().map_err(|e| e.to_string())?;
+        let _ = window.set_focus();
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -52,7 +62,18 @@ pub fn run() {
 
             if let Some(window) = app.get_webview_window("main") {
                 window.set_title(&format!("文字农场 v{}", env!("CARGO_PKG_VERSION")))?;
-                window.show()?;
+                // 先不 show：等前端 ui_ready（主题/背景已贴好）再显示。
+                // 2.5 秒兜底，前端挂了也不会永远看不见窗口。
+                let handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(2500));
+                    let target = handle.clone();
+                    let _ = handle.run_on_main_thread(move || {
+                        if let Some(window) = target.get_webview_window("main") {
+                            let _ = window.show();
+                        }
+                    });
+                });
             }
             Ok(())
         })
@@ -78,7 +99,8 @@ pub fn run() {
             commands::import_content,
             commands::apply_content,
             commands::app_info,
-            commands::save_now
+            commands::save_now,
+            ui_ready
         ])
         .run(tauri::generate_context!())
         .expect("文字农场启动失败");

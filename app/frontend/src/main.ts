@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { createApp } from "vue";
 import App from "./App.vue";
 import "./theme.css";
@@ -20,17 +21,27 @@ applyBackgroundPrefs(
 );
 
 /// 窗口底色跟当前纸面走（Tauri 专有；浏览器里直接跳过）。
-function paintWindowBackground() {
+async function paintWindowBackground(): Promise<void> {
   if (!("__TAURI_INTERNALS__" in window)) return;
   const paper = getComputedStyle(document.documentElement).getPropertyValue("--paper").trim();
   if (!paper) return;
-  void import("@tauri-apps/api/window")
-    .then(({ getCurrentWindow }) => getCurrentWindow().setBackgroundColor(paper))
-    .catch(() => {
-      // 没有窗口权限就只靠 CSS 底色，不影响使用。
-    });
+  try {
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    await getCurrentWindow().setBackgroundColor(paper);
+  } catch {
+    // 没有窗口权限就只靠 CSS 底色，不影响使用。
+  }
 }
 
-paintWindowBackground();
-
 createApp(App).mount("#app");
+
+// 窗口由 Rust 先隐藏；主题/背景/窗口底色都贴好后再 show，首帧就是对的。
+// Rust 侧另有 2.5 秒兜底，前端没起来也不会一直看不见窗口。
+void paintWindowBackground().finally(() => {
+  if (!("__TAURI_INTERNALS__" in window)) return;
+  window.setTimeout(() => {
+    void invoke("ui_ready").catch(() => {
+      // 兜底由 Rust 计时器接管。
+    });
+  }, 40);
+});

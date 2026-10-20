@@ -1338,7 +1338,7 @@ onUnmounted(() => {
 
 <template>
   <div :class="backgroundClassList" aria-hidden="true">
-    <div class="app-bg-image" :style="bgImageStyle"></div>
+    <div v-if="hasBackgroundImage" class="app-bg-image" :style="bgImageStyle"></div>
     <div v-if="hasBackgroundImage" class="app-bg-shade"></div>
   </div>
   <div class="page" :class="seasonClass">
