@@ -23,7 +23,8 @@ if (!["none", "fix", "feat"].includes(kind)) {
 
 function read(relative) {
   try {
-    return readFileSync(resolve(root, relative), "utf8");
+    // Cargo.lock 在 Windows 检出后是 CRLF；统一成 LF 再匹配多行模式。
+    return readFileSync(resolve(root, relative), "utf8").replace(/\r\n/g, "\n");
   } catch {
     console.error(`读不到 ${relative}`);
     process.exit(2);
