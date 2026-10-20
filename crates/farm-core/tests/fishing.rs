@@ -113,6 +113,23 @@ fn spot_and_rod_levels_are_enforced() {
 }
 
 #[test]
+fn rod_and_sea_unlock_levels_are_lowered() {
+    assert_eq!(RodKind::Wood.unlock_level(), 1);
+    assert_eq!(RodKind::Bamboo.unlock_level(), 4);
+    assert_eq!(RodKind::Fiberglass.unlock_level(), 7);
+    assert_eq!(RodKind::Carbon.unlock_level(), 9);
+    assert_eq!(FishingSpot::Sea.unlock_level(), 15);
+    assert!(!farm_core::rod_unlocked(3, RodKind::Bamboo));
+    assert!(farm_core::rod_unlocked(4, RodKind::Bamboo));
+    assert!(!farm_core::rod_unlocked(6, RodKind::Fiberglass));
+    assert!(farm_core::rod_unlocked(7, RodKind::Fiberglass));
+    assert!(!farm_core::rod_unlocked(8, RodKind::Carbon));
+    assert!(farm_core::rod_unlocked(9, RodKind::Carbon));
+    assert!(!farm_core::spot_unlocked(14, FishingSpot::Sea));
+    assert!(farm_core::spot_unlocked(15, FishingSpot::Sea));
+}
+
+#[test]
 fn auto_fishing_catches_one_per_interval() {
     let mut game = game(1_000);
     game.dispatch(

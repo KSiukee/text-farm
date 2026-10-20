@@ -831,7 +831,7 @@ dependencies = [
 
 [[package]]
 name = "farm-cli"
-version = "0.55.8"
+version = "0.55.9"
 dependencies = [
  "clap",
  "farm-core",
@@ -840,7 +840,7 @@ dependencies = [
 
 [[package]]
 name = "farm-core"
-version = "0.55.8"
+version = "0.55.9"
 dependencies = [
  "serde",
  "serde_json",
@@ -3470,7 +3470,7 @@ dependencies = [
 
 [[package]]
 name = "text-farm"
-version = "0.55.8"
+version = "0.55.9"
 dependencies = [
  "chrono",
  "farm-core",

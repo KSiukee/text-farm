@@ -59,7 +59,7 @@ impl FishingSpot {
             FishingSpot::Creek => 1,
             FishingSpot::River => 5,
             FishingSpot::Jiang => 12,
-            FishingSpot::Sea => 20,
+            FishingSpot::Sea => 15,
         }
     }
 
@@ -394,9 +394,9 @@ impl RodKind {
     pub fn unlock_level(self) -> u32 {
         match self {
             RodKind::Wood => 1,
-            RodKind::Bamboo => 5,
-            RodKind::Fiberglass => 12,
-            RodKind::Carbon => 20,
+            RodKind::Bamboo => 4,
+            RodKind::Fiberglass => 7,
+            RodKind::Carbon => 9,
         }
     }
 
