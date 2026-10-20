@@ -103,9 +103,7 @@
   --pond-bubble-line: rgba(255, 255, 255, 0.7);
   --pond-bubble-fill: rgba(255, 255, 255, 0.18);
   --pond-progress-bg: rgba(20, 69, 61, 0.24);
-  --pond-progress-1: #5fc79a;
   --pond-progress-2: #b8e986;
-  --pond-progress-3: #ffe08a;
   --pond-progress-glow: rgba(184, 233, 134, 0.75);
   --pond-glow: rgba(126, 232, 174, 0.28);
   --pond-glow-on: rgba(126, 232, 174, 0.75);
@@ -240,9 +238,7 @@
   --pond-bubble-line: rgba(180, 230, 210, 0.25);
   --pond-bubble-fill: rgba(180, 230, 210, 0.05);
   --pond-progress-bg: rgba(0, 0, 0, 0.35);
-  --pond-progress-1: #4f9f7c;
   --pond-progress-2: #8fbf63;
-  --pond-progress-3: #d9b45e;
   --pond-progress-glow: rgba(143, 191, 99, 0.55);
   --pond-glow: rgba(126, 232, 174, 0.18);
   --pond-glow-on: rgba(126, 232, 174, 0.45);

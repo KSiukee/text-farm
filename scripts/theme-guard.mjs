@@ -53,6 +53,9 @@ const INLINE_TOKENS = new Set([
   "--accent-ink",
   "--accent-ink-dark",
   "--on-accent",
+  // 钓鱼小游戏按进度在 JS 里算的颜色，只挂在 .fg-pond 上。
+  "--fg-progress-color",
+  "--fg-progress-glow",
 ]);
 
 for (const token of lightTokens) {
@@ -91,7 +94,9 @@ for (const relative of [...componentFiles, "app/frontend/src/theme.css"]) {
   }
 }
 for (const [token, relative] of used) {
-  if (!lightTokens.has(token)) fail(`${relative} 用到未定义的变量：${token}`);
+  if (!lightTokens.has(token) && !INLINE_TOKENS.has(token)) {
+    fail(`${relative} 用到未定义的变量：${token}`);
+  }
 }
 
 const unused = [...lightTokens].filter((token) => !used.has(token));

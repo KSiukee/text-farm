@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import type { FishingSessionView } from "./types";
 
 const props = defineProps<{ session: FishingSessionView }>();
@@ -18,10 +18,11 @@ const fishVX = ref(0);
 const fishVY = ref(0);
 // 图标默认朝向：facesRight=true 的鱼先镜像成朝左，再按游动方向翻。
 const fishFacing = ref(-1); // -1 朝左，1 朝右
-const progress = ref(24);
+const progress = ref(35);
 const done = ref(false);
 const message = ref("浮标落水了，等鱼咬钩……");
 const inZone = ref(false);
+const graceLeft = ref(0);
 const trail = ref<{ x: number; y: number; facing: number }[]>([]);
 const touchX = ref(0);
 const touchY = ref(0);
@@ -36,6 +37,8 @@ const bubbles = Array.from({ length: 8 }, (_, index) => ({
 }));
 const keys = new Set<string>();
 const pond = ref<HTMLElement | null>(null);
+const pondAspect = ref(2.3);
+let pondObserver: ResizeObserver | null = null;
 
 let raf = 0;
 let biteTimer = 0;
@@ -48,6 +51,7 @@ let trailAt = 0;
 
 const POND_MIN = 16;
 const POND_MAX = 84;
+const GRACE_SECONDS = 0.8;
 
 /// 把目标点折回池塘内（边界像墙一样反弹），避免目标被夹在边上把鱼钉住。
 function keepInPond(value: number): number {
@@ -59,11 +63,14 @@ function keepInPond(value: number): number {
 }
 
 const frameSize = computed(() => props.session.params.framePct);
+const frameW = computed(() => frameSize.value);
+// 窗口是宽屏，框本身保持正方形：高度百分比按池塘宽高比换算。
+const frameH = computed(() => Math.min(100, frameSize.value * pondAspect.value));
 const frameStyle = computed(() => ({
   left: `${frameX.value}%`,
   top: `${frameY.value}%`,
-  width: `${frameSize.value}%`,
-  height: `${frameSize.value}%`,
+  width: `${frameW.value}%`,
+  height: `${frameH.value}%`,
   transform: "translate(-50%, -50%)",
 }));
 const fishStyle = computed(() => {
@@ -81,7 +88,26 @@ const progressStyle = computed(() => ({
 const stickKnobStyle = computed(() => ({
   transform: `translate(${stickKnobX.value}px, ${stickKnobY.value}px)`,
 }));
-const zoneText = computed(() => (inZone.value ? "圈内，收线中" : "把鱼圈住"));
+const progressHue = computed(
+  () => 8 + Math.max(0, Math.min(100, progress.value)) * 1.05,
+);
+const progressColor = computed(
+  () => `hsl(${progressHue.value.toFixed(1)}, 72%, 58%)`,
+);
+const progressGlow = computed(
+  () => `hsla(${progressHue.value.toFixed(1)}, 72%, 58%, 0.32)`,
+);
+const progressVars = computed<Record<string, string>>(() => ({
+  "--fg-progress-color": progressColor.value,
+  "--fg-progress-glow": progressGlow.value,
+}));
+const zoneText = computed(() => {
+  if (phase.value === "waiting") return "等咬钩";
+  if (phase.value === "bite") return "咬钩，按 F";
+  if (inZone.value) return "圈内，收线中";
+  if (graceLeft.value > 0) return `圈外 · 缓冲 ${graceLeft.value.toFixed(1)}s`;
+  return "圈外，收线在掉";
+});
 
 function trailStyle(point: { x: number; y: number; facing: number }, index: number) {
   const base = props.session.facesRight ? -1 : 1;
@@ -90,7 +116,7 @@ function trailStyle(point: { x: number; y: number; facing: number }, index: numb
     left: `${point.x}%`,
     top: `${point.y}%`,
     transform: `translate(-50%, -50%) scaleX(${scale})`,
-    opacity: `${0.24 - index * 0.045}`,
+    opacity: `${0.14 - index * 0.055}`,
   };
 }
 
@@ -108,6 +134,7 @@ function finish(success: boolean, text: string) {
 function startGame() {
   if (done.value || phase.value !== "bite") return;
   phase.value = "playing";
+  graceLeft.value = GRACE_SECONDS;
   message.value = "WASD / 方向键 / 下方轮盘移动框，把鱼圈住";
   last = 0;
   raf = requestAnimationFrame(tick);
@@ -119,6 +146,25 @@ function fail() {
 
 function focusGame() {
   pond.value?.focus();
+}
+
+function measurePond() {
+  const el = pond.value;
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  if (rect.width > 0 && rect.height > 0) {
+    pondAspect.value = rect.width / rect.height;
+  }
+}
+
+function watchPond() {
+  pondObserver?.disconnect();
+  pondObserver = null;
+  if (typeof ResizeObserver !== "undefined" && pond.value) {
+    pondObserver = new ResizeObserver(measurePond);
+    pondObserver.observe(pond.value);
+  }
+  measurePond();
 }
 
 function updateStick(event: PointerEvent) {
@@ -202,28 +248,29 @@ function tick(now: number) {
   frameX.value += frameVX.value * dt;
   frameY.value += frameVY.value * dt;
 
-  const half = frameSize.value / 2;
-  if (frameX.value < half) {
-    frameX.value = half;
+  const halfX = frameW.value / 2;
+  const halfY = frameH.value / 2;
+  if (frameX.value < halfX) {
+    frameX.value = halfX;
     frameVX.value = 0;
   }
-  if (frameX.value > 100 - half) {
-    frameX.value = 100 - half;
+  if (frameX.value > 100 - halfX) {
+    frameX.value = 100 - halfX;
     frameVX.value = 0;
   }
-  if (frameY.value < half) {
-    frameY.value = half;
+  if (frameY.value < halfY) {
+    frameY.value = halfY;
     frameVY.value = 0;
   }
-  if (frameY.value > 100 - half) {
-    frameY.value = 100 - half;
+  if (frameY.value > 100 - halfY) {
+    frameY.value = 100 - halfY;
     frameVY.value = 0;
   }
 
   // 鱼不再瞬移换向：目标慢慢转、速度平滑逼近，追击/逃逸更像一条线。
   targetTimer -= dt;
   const toFrameX = fishX.value - frameX.value;
-  const toFrameY = fishY.value - frameY.value;
+  const toFrameY = (fishY.value - frameY.value) / pondAspect.value;
   const frameDist = Math.hypot(toFrameX, toFrameY);
   if (targetTimer <= 0) {
     const minMs = props.session.params.targetMinMs;
@@ -316,20 +363,27 @@ function tick(now: number) {
   }
 
   const inside =
-    Math.abs(fishX.value - frameX.value) <= half &&
-    Math.abs(fishY.value - frameY.value) <= half;
+    Math.abs(fishX.value - frameX.value) <= halfX &&
+    Math.abs(fishY.value - frameY.value) <= halfY;
   inZone.value = inside;
+  if (inside) {
+    graceLeft.value = GRACE_SECONDS;
+  } else if (graceLeft.value > 0) {
+    graceLeft.value = Math.max(0, graceLeft.value - dt);
+  }
   trailAt += dt * 1000;
-  if (trailAt >= 70) {
+  if (trailAt >= 110) {
     trailAt = 0;
     trail.value = [
       { x: fishX.value, y: fishY.value, facing: fishFacing.value },
       ...trail.value,
-    ].slice(0, 4);
+    ].slice(0, 2);
   }
-  progress.value += inside
-    ? props.session.params.progressGain * dt
-    : -props.session.params.progressLoss * dt;
+  if (inside) {
+    progress.value += props.session.params.progressGain * dt;
+  } else if (graceLeft.value <= 0) {
+    progress.value -= props.session.params.progressLoss * dt;
+  }
   if (progress.value >= 100) {
     progress.value = 100;
     finish(true, "鱼收进鱼护了！");
@@ -365,6 +419,10 @@ function onKeyUp(event: KeyboardEvent) {
   keys.delete(event.key.toLowerCase());
 }
 
+watch(phase, () => {
+  void nextTick(watchPond);
+});
+
 onMounted(() => {
   window.addEventListener("keydown", onKey);
   window.addEventListener("keyup", onKeyUp);
@@ -379,6 +437,8 @@ onMounted(() => {
 onUnmounted(() => {
   cancelAnimationFrame(raf);
   clearTimeout(biteTimer);
+  pondObserver?.disconnect();
+  pondObserver = null;
   window.removeEventListener("keydown", onKey);
   window.removeEventListener("keyup", onKeyUp);
   onStickUp();
@@ -431,6 +491,7 @@ onUnmounted(() => {
       ref="pond"
       class="fg-pond"
       :class="{ 'in-zone': inZone, 'is-king': session.isKing }"
+      :style="progressVars"
       tabindex="0"
       @click="focusGame"
       @pointerdown="focusGame"
@@ -467,6 +528,7 @@ onUnmounted(() => {
         <i class="fg-corner tr"></i>
         <i class="fg-corner bl"></i>
         <i class="fg-corner br"></i>
+        <span class="fg-frame-pct">{{ Math.round(progress) }}%</span>
       </div>
       <div class="fg-fish-shadow" :style="fishStyle"></div>
       <img class="fg-fish" :src="`/fish/${session.fishId}.png`" :style="fishStyle" alt="" />
@@ -476,7 +538,7 @@ onUnmounted(() => {
     <div class="fg-status">
       <span>{{ message }}</span>
       <span class="fg-zone-tag" :class="{ active: inZone }">{{ zoneText }}</span>
-      <span class="muted">{{ Math.round(progress) }}%</span>
+      <span v-if="phase === 'playing'" class="muted">{{ Math.round(progress) }}%</span>
     </div>
     <div class="row">
       <button v-if="phase === 'bite'" class="link" type="button" :disabled="done" @click="startGame">

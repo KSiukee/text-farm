@@ -1447,12 +1447,12 @@ pub fn params_with_reel(
         personality,
         personality_label: personality.label().into(),
         catch_ms: if def.rarity == FishRarity::King {
-            17_000
+            18_000
         } else {
-            8_000 + i64::from(difficulty) * 800
+            9_000 + i64::from(difficulty) * 900
         },
         progress_gain: 22 + reel_bonus(reel_level),
-        progress_loss: 15,
+        progress_loss: 12,
     }
 }
 

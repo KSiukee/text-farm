@@ -581,6 +581,15 @@ try {
   check("F 抛竿生成会话", saveState().fishing.session !== null);
   await waitFor(async () => (await evaluate("document.querySelector('.fishing-game')?.dataset.phase")) === "waiting");
   check("等待咬钩动画", true);
+  const waitBox = await evaluate(`(() => {
+    const r = document.querySelector('.fg-wait')?.getBoundingClientRect();
+    return r ? { w: r.width, h: r.height } : null;
+  })()`);
+  check(
+    "等待窗口宽屏比例",
+    !!waitBox && Math.abs(waitBox.w / waitBox.h - 2.3) < 0.08,
+    JSON.stringify(waitBox),
+  );
   await screenshot(waitShot);
   check("等待动画截图", existsSync(waitShot), waitShot);
   await waitFor(async () => (await evaluate("document.querySelector('.fishing-game')?.dataset.phase")) === "bite", 6000);
@@ -588,6 +597,41 @@ try {
   await pressKey("f", "KeyF", 70);
   await waitFor(async () => (await evaluate("document.querySelector('.fishing-game')?.dataset.phase")) === "playing");
   check("F 开始收线", true);
+  const pondBox = await evaluate(`(() => {
+    const r = document.querySelector('.fg-pond')?.getBoundingClientRect();
+    return r ? { w: r.width, h: r.height } : null;
+  })()`);
+  check(
+    "收线窗口与等待同尺寸",
+    !!pondBox &&
+      !!waitBox &&
+      Math.abs(pondBox.w - waitBox.w) < 2 &&
+      Math.abs(pondBox.h - waitBox.h) < 2,
+    JSON.stringify({ wait: waitBox, pond: pondBox }),
+  );
+  const frameColorStart = await evaluate(
+    "getComputedStyle(document.querySelector('.fg-frame')).borderColor",
+  );
+  const frameBox = await evaluate(`(() => {
+    const r = document.querySelector('.fg-frame')?.getBoundingClientRect();
+    return r ? { w: r.width, h: r.height } : null;
+  })()`);
+  check(
+    "框保持正方形",
+    !!frameBox && Math.abs(frameBox.w / frameBox.h - 1) < 0.06,
+    JSON.stringify(frameBox),
+  );
+  const frameBadge = await evaluate(
+    "document.querySelector('.fg-frame-pct')?.textContent.trim() || ''",
+  );
+  check("框上百分比", /^\d+%$/.test(frameBadge), frameBadge);
+  await new Promise((r) => setTimeout(r, 1200));
+  const trailCount = await evaluate("document.querySelectorAll('.fg-trail img').length");
+  check("拖影最多 2 段", trailCount <= 2, `trail=${trailCount}`);
+  const frameColorNow = await evaluate(
+    "getComputedStyle(document.querySelector('.fg-frame')).borderColor",
+  );
+  check("框颜色随进度变化", frameColorStart !== frameColorNow, `${frameColorStart} -> ${frameColorNow}`);
   await send("Emulation.setDeviceMetricsOverride", {
     width: 390,
     height: 844,

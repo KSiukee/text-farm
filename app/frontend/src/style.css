@@ -1660,8 +1660,8 @@ footer {
 
 .fg-pond {
   position: relative;
-  width: min(100%, 480px);
-  aspect-ratio: 1 / 1;
+  width: min(100%, 760px);
+  aspect-ratio: 23 / 10;
   margin: 0 auto;
   overflow: hidden;
   border: 1px solid var(--pond-border);
@@ -1736,9 +1736,9 @@ footer {
 .fg-progress span {
   display: block;
   width: 100%;
-  background: linear-gradient(90deg, var(--pond-progress-1), var(--pond-progress-2) 55%, var(--pond-progress-3));
-  box-shadow: 0 0 12px var(--pond-progress-glow);
-  transition: height 0.12s linear;
+  background: var(--fg-progress-color, var(--pond-progress-2));
+  box-shadow: 0 0 12px var(--fg-progress-glow, var(--pond-progress-glow));
+  transition: height 0.12s linear, background 0.16s linear;
 }
 
 .fg-trail {
@@ -1750,11 +1750,10 @@ footer {
 
 .fg-trail img {
   position: absolute;
-  width: 48px;
-  height: 48px;
+  width: 38px;
+  height: 38px;
   object-fit: contain;
   image-rendering: pixelated;
-  filter: blur(0.4px);
   pointer-events: none;
 }
 
@@ -1763,7 +1762,7 @@ footer {
   border-radius: 10px;
   box-shadow:
     0 0 0 1px var(--pond-ring),
-    0 0 26px var(--pond-glow);
+    0 0 26px var(--fg-progress-glow, var(--pond-glow));
   opacity: 0.55;
   pointer-events: none;
   transition: opacity 0.16s ease, box-shadow 0.16s ease;
@@ -1773,18 +1772,19 @@ footer {
   opacity: 1;
   box-shadow:
     0 0 0 1px var(--pond-ring-on),
-    0 0 30px var(--pond-glow-on);
+    0 0 30px var(--fg-progress-glow, var(--pond-glow-on));
 }
 
 .fg-frame {
   position: absolute;
-  border: 2px solid var(--pond-frame);
+  border: 2px solid var(--fg-progress-color, var(--pond-frame));
   border-radius: 9px;
   background:
-    radial-gradient(circle at 50% 50%, var(--pond-frame-fill), transparent 68%),
+    radial-gradient(circle at 50% 50%, var(--fg-progress-glow, var(--pond-frame-fill)), transparent 68%),
     var(--pond-frame-bg);
   box-shadow:
     0 0 0 1px var(--pond-frame-ring) inset,
+    0 0 18px var(--fg-progress-glow, var(--pond-glow)),
     0 4px 14px var(--pond-frame-shadow);
   pointer-events: none;
   z-index: 3;
@@ -1792,18 +1792,33 @@ footer {
 }
 
 .fg-pond.in-zone .fg-frame {
-  border-color: var(--pond-frame-on);
+  border-color: var(--fg-progress-color, var(--pond-frame-on));
   background: var(--pond-frame-bg-on);
   box-shadow:
     0 0 0 1px var(--pond-ring) inset,
-    0 0 22px var(--pond-glow-on);
+    0 0 24px var(--fg-progress-glow, var(--pond-glow-on));
+}
+
+.fg-frame-pct {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  padding: 0 6px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: var(--fg-progress-color, var(--pond-frame-on));
+  color: var(--on-accent);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  white-space: nowrap;
 }
 
 .fg-corner {
   position: absolute;
   width: 12px;
   height: 12px;
-  border-color: var(--pond-corner);
+  border-color: var(--fg-progress-color, var(--pond-corner));
   border-style: solid;
 }
 
@@ -1970,8 +1985,8 @@ footer {
 }
 .fg-wait {
   position: relative;
-  width: min(100%, 480px);
-  height: 260px;
+  width: min(100%, 760px);
+  aspect-ratio: 23 / 10;
   margin: 0 auto;
   overflow: hidden;
   border: 1px solid var(--pond-border);
@@ -2222,8 +2237,11 @@ footer {
 
 @media (hover: none), (max-width: 720px) {
   .fg-stick-wrap { display: flex; }
-  .fg-wait { height: 220px; }
-  .fg-pond { width: min(100%, 420px); }
+  .fg-wait,
+  .fg-pond {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+  }
 }
 
 @keyframes fg-bob {

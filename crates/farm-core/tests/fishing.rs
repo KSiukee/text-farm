@@ -590,21 +590,22 @@ fn king_is_faster_than_a_same_difficulty_fierce_fish() {
 }
 
 #[test]
-fn catch_window_gains_two_seconds() {
+fn catch_window_is_generous() {
     let normal = farm_core::params(
         RodKind::Wood,
         fish("crucian").unwrap(),
         false,
         FishPersonality::Normal,
     );
-    assert_eq!(normal.catch_ms, 8_800);
+    assert_eq!(normal.catch_ms, 9_900);
+    assert_eq!(normal.progress_loss, 12);
     let king = farm_core::params(
         RodKind::Wood,
         fish("creek_king").unwrap(),
         false,
         FishPersonality::Fierce,
     );
-    assert_eq!(king.catch_ms, 17_000);
+    assert_eq!(king.catch_ms, 18_000);
 }
 
 #[test]
