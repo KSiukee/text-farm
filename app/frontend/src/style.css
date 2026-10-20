@@ -1,5 +1,5 @@
 :root {
-  font-family: "SimSun", "宋体", "Songti SC", serif;
+  font-family: var(--font-ui);
   color: var(--ink);
   background: var(--paper);
   font-synthesis: none;
@@ -71,6 +71,12 @@ body {
 button {
   font: inherit;
   color: inherit;
+}
+
+input,
+select,
+textarea {
+  font-family: var(--font-ui);
 }
 
 .season-banner {
@@ -594,7 +600,7 @@ button {
 .plot-line {
   min-height: 30px;
   padding: 2px 0;
-  font-family: "SimSun", "宋体", monospace;
+  font-family: var(--font-ui);
   font-size: 16px;
   line-height: 1.9;
   overflow-wrap: anywhere;
@@ -762,7 +768,7 @@ button {
 .path {
   margin-top: 8px;
   color: var(--ink-2);
-  font-family: Consolas, "Courier New", monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   overflow-wrap: anywhere;
 }
@@ -1006,7 +1012,7 @@ button {
 
 .npc-plot {
   padding: 2px 0;
-  font-family: "SimSun", "宋体", monospace;
+  font-family: var(--font-ui);
   font-size: 15px;
   line-height: 1.9;
 }
@@ -2616,13 +2622,15 @@ footer {
   content: "▾ ";
 }
 
-.bg-file {
+.bg-file,
+.font-file {
   max-width: 210px;
   color: var(--muted);
   font-size: 12px;
 }
 
-.bg-file::file-selector-button {
+.bg-file::file-selector-button,
+.font-file::file-selector-button {
   margin-right: 6px;
   padding: 2px 8px;
   border: 1px solid var(--line-strong);

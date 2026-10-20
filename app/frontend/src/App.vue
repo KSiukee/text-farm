@@ -73,6 +73,25 @@ import {
   saveBackgroundImage,
 } from "./background-store";
 import {
+  applyFontPrefs,
+  CUSTOM_FONT_FAMILY,
+  DEFAULT_FONT_PRESET,
+  FONT_PRESETS,
+  readFontPrefs,
+  writeFontPrefs,
+  type FontChoiceId,
+  type FontPrefs,
+  type FontPresetId,
+} from "./font";
+import {
+  createCustomFontFace,
+  deleteCustomFont,
+  FONT_FILE_ACCEPT,
+  loadCustomFont,
+  saveCustomFont,
+  type StoredFont,
+} from "./font-store";
+import {
   applyStylePack,
   readStylePack,
   STYLE_PACKS,
@@ -123,6 +142,12 @@ const panelAlpha = ref(initialBackground.panelAlpha);
 const backgroundImage = ref<string | null>(null);
 const bgImageBusy = ref(false);
 const bgImageError = ref("");
+const initialFont = readFontPrefs(window.localStorage);
+const fontId = ref<FontChoiceId>(initialFont.id);
+const fontName = ref(initialFont.name);
+const fontBusy = ref(false);
+const fontError = ref("");
+let customFontFace: FontFace | null = null;
 let themeMedia: MediaQueryList | null = null;
 
 let clockOffset = 0;
@@ -1222,6 +1247,102 @@ function resetBackground() {
   saveBackground();
 }
 
+function currentFontPrefs(): FontPrefs {
+  return { id: fontId.value, name: fontName.value };
+}
+
+function syncFont() {
+  applyFontPrefs(
+    document.documentElement,
+    currentFontPrefs(),
+    customFontFace ? CUSTOM_FONT_FAMILY : undefined,
+  );
+}
+
+function saveFont() {
+  writeFontPrefs(window.localStorage, currentFontPrefs());
+  syncFont();
+}
+
+function setFontPreset(id: FontPresetId) {
+  fontId.value = id;
+  fontError.value = "";
+  saveFont();
+}
+
+async function activateCustomFont(stored: StoredFont) {
+  // 先建新的，再删旧的；新字体坏了旧字体还在。
+  const face = await createCustomFontFace(stored.data, CUSTOM_FONT_FAMILY);
+  if (customFontFace) document.fonts.delete(customFontFace);
+  customFontFace = face;
+  fontName.value = stored.name;
+  fontId.value = "custom";
+  saveFont();
+}
+
+async function useCustomFont() {
+  if (fontBusy.value) return;
+  if (customFontFace) {
+    fontId.value = "custom";
+    fontError.value = "";
+    saveFont();
+    return;
+  }
+  fontBusy.value = true;
+  fontError.value = "";
+  try {
+    const stored = await loadCustomFont();
+    if (!stored) {
+      fontError.value = "本机没有已存的字体文件，先上传一个。";
+      return;
+    }
+    await activateCustomFont(stored);
+  } catch (error) {
+    fontError.value = error instanceof Error ? error.message : "字体加载失败。";
+  } finally {
+    fontBusy.value = false;
+  }
+}
+
+async function onPickFont(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  fontBusy.value = true;
+  fontError.value = "";
+  let saved = false;
+  try {
+    const stored = await saveCustomFont(file);
+    await activateCustomFont(stored);
+    saved = true;
+    notice.value = `字体已加载：${stored.name}`;
+  } catch (error) {
+    fontError.value = error instanceof Error ? error.message : "字体处理失败。";
+    notice.value = `字体没加载上：${fontError.value}`;
+  } finally {
+    fontBusy.value = false;
+    if (!saved) input.value = "";
+  }
+}
+
+async function removeCustomFont() {
+  if (customFontFace) {
+    document.fonts.delete(customFontFace);
+    customFontFace = null;
+  }
+  try {
+    await deleteCustomFont();
+  } catch {
+    // 删除失败最多是旧字体留在库里，不拦界面。
+  }
+  const hadCustom = fontId.value === "custom";
+  fontName.value = "";
+  fontId.value = DEFAULT_FONT_PRESET;
+  fontError.value = "";
+  saveFont();
+  if (hadCustom) notice.value = "自定义字体已移除，回到宋体。";
+}
+
 function onSystemThemeChange() {
   // 只有「跟随系统」会真的换色；浅色/深色重新应用一次也无副作用。
   syncTheme();
@@ -1310,9 +1431,33 @@ onMounted(() => {
   syncTheme();
   syncStylePack();
   syncBackground();
+  syncFont();
   void loadBackgroundImage().then((dataUrl) => {
     if (dataUrl) backgroundImage.value = dataUrl;
   });
+  if (fontId.value === "custom") {
+    fontBusy.value = true;
+    void loadCustomFont()
+      .then(async (stored) => {
+        if (fontId.value !== "custom") return;
+        if (!stored) {
+          fontError.value = "自定义字体文件不在了，已回宋体。";
+          fontName.value = "";
+          fontId.value = DEFAULT_FONT_PRESET;
+          saveFont();
+          return;
+        }
+        await activateCustomFont(stored);
+      })
+      .catch((error) => {
+        fontError.value = error instanceof Error ? error.message : "字体加载失败。";
+        fontId.value = DEFAULT_FONT_PRESET;
+        syncFont();
+      })
+      .finally(() => {
+        fontBusy.value = false;
+      });
+  }
   themeMedia?.addEventListener("change", onSystemThemeChange);
   void load();
   timer = window.setInterval(() => {
@@ -1712,6 +1857,47 @@ onUnmounted(() => {
             {{ pack.name }}
           </button>
           <span class="muted">只改钓鱼页；小游戏不变</span>
+        </div>
+        <div class="row">
+          <span>字体</span>
+          <button
+            v-for="preset in FONT_PRESETS"
+            :key="preset.id"
+            class="rate-btn font-preset"
+            :class="{ active: fontId === preset.id }"
+            type="button"
+            @click="setFontPreset(preset.id)"
+          >
+            {{ preset.name }}
+          </button>
+          <button
+            class="rate-btn font-custom"
+            :class="{ active: fontId === 'custom' }"
+            type="button"
+            :disabled="!fontName || fontBusy"
+            @click="useCustomFont"
+          >
+            自定义
+          </button>
+        </div>
+        <div class="row">
+          <span>上传字体</span>
+          <input
+            class="font-file"
+            type="file"
+            :accept="FONT_FILE_ACCEPT"
+            :disabled="fontBusy"
+            @change="onPickFont"
+          />
+          <span v-if="fontBusy" class="muted">正在加载字体…</span>
+          <span v-else-if="fontName" class="muted">已存：{{ fontName }}</span>
+          <button v-if="fontName" class="link" type="button" @click="removeCustomFont">
+            [移除自定义字体]
+          </button>
+        </div>
+        <div v-if="fontError" class="row bg-warning">{{ fontError }}</div>
+        <div class="row muted">
+          字体只存本机；请只上传你有权使用的字体（.ttf / .otf / .woff / .woff2，≤30MB）。
         </div>
         <details class="appearance-sub">
           <summary>背景与透明度</summary>

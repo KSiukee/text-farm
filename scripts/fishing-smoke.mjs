@@ -144,7 +144,7 @@ async function startApp({ fresh = true } = {}) {
   // 不随 shadow 目录清掉。每跑先清零再重载，否则下一跑会把「该弹的报告」误判成已读。
   try {
     await evaluate(
-      "localStorage.removeItem('farm.autoReportShownAt'); localStorage.removeItem('farm.ui.themeMode'); localStorage.removeItem('farm.ui.palette'); localStorage.removeItem('farm.ui.stylePack'); localStorage.removeItem('farm.ui.bgMode'); localStorage.removeItem('farm.ui.bgPaper'); localStorage.removeItem('farm.ui.bgFit'); localStorage.removeItem('farm.ui.bgImageAlpha'); localStorage.removeItem('farm.ui.bgPanelAlpha')",
+      "localStorage.removeItem('farm.autoReportShownAt'); localStorage.removeItem('farm.ui.themeMode'); localStorage.removeItem('farm.ui.palette'); localStorage.removeItem('farm.ui.stylePack'); localStorage.removeItem('farm.ui.bgMode'); localStorage.removeItem('farm.ui.bgPaper'); localStorage.removeItem('farm.ui.bgFit'); localStorage.removeItem('farm.ui.bgImageAlpha'); localStorage.removeItem('farm.ui.bgPanelAlpha'); localStorage.removeItem('farm.ui.fontId'); localStorage.removeItem('farm.ui.fontName')",
     );
     await evaluate(`new Promise((resolve) => {
       const request = indexedDB.open('text-farm-ui', 1);
@@ -161,6 +161,7 @@ async function startApp({ fresh = true } = {}) {
         }
         const tx = database.transaction('kv', 'readwrite');
         tx.objectStore('kv').delete('background-image');
+        tx.objectStore('kv').delete('font-file');
         tx.oncomplete = () => {
           database.close();
           resolve(true);
@@ -408,6 +409,109 @@ try {
       )) === "0.92",
   );
   check("恢复背景默认（面板 92%）", true);
+
+  // #79 字体：预设 → 上传真实 TTF → 刷新后从 IndexedDB 恢复 → 切回/移除
+  check(
+    "6 个字体预设 + 自定义",
+    (await evaluate("document.querySelectorAll('.font-preset').length")) === 6 &&
+      (await evaluate("!!document.querySelector('.font-custom')")),
+  );
+  await clickText("黑体");
+  await waitFor(
+    async () => (await evaluate("document.documentElement.dataset.font")) === "hei",
+  );
+  const heiFont = await evaluate(`({
+    css: getComputedStyle(document.documentElement).getPropertyValue('--font-ui').trim(),
+    body: getComputedStyle(document.body).fontFamily,
+    stored: localStorage.getItem('farm.ui.fontId')
+  })`);
+  check(
+    "黑体预设生效",
+    heiFont.css.includes("Microsoft YaHei") &&
+      heiFont.body.includes("Microsoft YaHei") &&
+      heiFont.stored === "hei",
+    JSON.stringify(heiFont),
+  );
+  await clickText("宋体");
+  await waitFor(
+    async () => (await evaluate("document.documentElement.dataset.font")) === "song",
+  );
+  check(
+    "回宋体",
+    (await evaluate("getComputedStyle(document.body).fontFamily")).includes("SimSun"),
+  );
+  const testFont = "C:\\Windows\\Fonts\\consola.ttf";
+  check("测试字体文件存在", existsSync(testFont), testFont);
+  await evaluate("document.querySelector('.font-file')?.scrollIntoView({ block: 'center' })");
+  await send("DOM.enable");
+  const fontTree = await send("DOM.getDocument", { depth: -1 });
+  const fontNode = await send("DOM.querySelector", {
+    nodeId: fontTree.result.root.nodeId,
+    selector: "input.font-file",
+  });
+  check("字体文件框存在", !!fontNode.result.nodeId);
+  await send("DOM.setFileInputFiles", { nodeId: fontNode.result.nodeId, files: [testFont] });
+  await waitFor(
+    async () =>
+      (await evaluate("localStorage.getItem('farm.ui.fontId')")) === "custom" &&
+      (await evaluate("document.fonts.check('16px FarmCustom')")) === true,
+    20000,
+  );
+  const customFont = await evaluate(`({
+    css: getComputedStyle(document.documentElement).getPropertyValue('--font-ui').trim(),
+    body: getComputedStyle(document.body).fontFamily,
+    name: localStorage.getItem('farm.ui.fontName'),
+    stored: localStorage.getItem('farm.ui.fontId')
+  })`);
+  check(
+    "自定义字体已加载",
+    customFont.css.includes("FarmCustom") &&
+      customFont.body.includes("FarmCustom") &&
+      customFont.name === "consola" &&
+      customFont.stored === "custom",
+    JSON.stringify(customFont),
+  );
+  await evaluate("window.__fontReloadProbe = 1");
+  await send("Page.reload", { ignoreCache: true });
+  await waitFor(
+    async () => (await evaluate("typeof window.__fontReloadProbe")) === "undefined",
+  );
+  await waitFor(async () => (await bodyText()).includes("我的农场"));
+  await waitFor(
+    async () =>
+      (await evaluate("document.documentElement.dataset.font")) === "custom" &&
+      (await evaluate("document.fonts.check('16px FarmCustom')")) === true,
+    20000,
+  );
+  check(
+    "刷新后自定义字体仍在（IndexedDB）",
+    (await evaluate("getComputedStyle(document.body).fontFamily")).includes("FarmCustom"),
+  );
+  await clickText("宋体");
+  await waitFor(
+    async () => (await evaluate("document.documentElement.dataset.font")) === "song",
+  );
+  check(
+    "切回宋体后自定义字体文件还在",
+    (await evaluate("localStorage.getItem('farm.ui.fontName')")) === "consola",
+  );
+  await clickText("自定义");
+  await waitFor(
+    async () => (await evaluate("document.documentElement.dataset.font")) === "custom",
+  );
+  check(
+    "点自定义可复用已存字体",
+    (await evaluate("document.fonts.check('16px FarmCustom')")) === true,
+  );
+  await clickText("[移除自定义字体]");
+  await waitFor(
+    async () => (await evaluate("localStorage.getItem('farm.ui.fontName')")) === "",
+  );
+  check(
+    "移除自定义字体回宋体",
+    (await evaluate("document.documentElement.dataset.font")) === "song" &&
+      (await evaluate("document.querySelector('.font-custom')?.disabled")) === true,
+  );
 
   await clickText("钓鱼", false);
   await waitFor(async () => (await bodyText()).includes("鱼类图鉴"));

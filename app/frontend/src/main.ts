@@ -4,6 +4,7 @@ import App from "./App.vue";
 import "./theme.css";
 import "./style.css";
 import { applyBackgroundPrefs, readBackgroundPrefs } from "./background";
+import { applyFontPrefs, readFontPrefs } from "./font";
 import { applyStylePack, readStylePack } from "./style-pack";
 import { applyTheme, readThemePrefs } from "./theme";
 
@@ -19,6 +20,8 @@ applyBackgroundPrefs(
   document.documentElement,
   readBackgroundPrefs(window.localStorage),
 );
+// 自定义字体是异步从 IndexedDB 读的；这里先落 fallback / 预设，App 挂载后再换。
+applyFontPrefs(document.documentElement, readFontPrefs(window.localStorage));
 
 /// 窗口底色跟当前纸面走（Tauri 专有；浏览器里直接跳过）。
 async function paintWindowBackground(): Promise<void> {

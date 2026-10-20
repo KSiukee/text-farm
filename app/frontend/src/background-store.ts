@@ -2,10 +2,8 @@
  * 背景图存储（#76）：浏览器里压到最长边 1920，再存 IndexedDB。
  * 不写存档、不碰文件路径；App 只拿 data URL。
  */
+import { uiDatabase, UI_STORE_NAME } from "./ui-store";
 
-const DB_NAME = "text-farm-ui";
-const DB_VERSION = 1;
-const STORE_NAME = "kv";
 const IMAGE_KEY = "background-image";
 
 export const MAX_BACKGROUND_EDGE = 1920;
@@ -98,41 +96,19 @@ export async function compressImage(
   return dataUrl;
 }
 
-let dbPromise: Promise<IDBDatabase> | null = null;
-
-function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    if (typeof indexedDB === "undefined") {
-      reject(new BackgroundImageError("这台机器不支持 IndexedDB，背景图存不了。"));
-      return;
-    }
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = () => {
-      const database = request.result;
-      if (!database.objectStoreNames.contains(STORE_NAME)) {
-        database.createObjectStore(STORE_NAME);
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(new BackgroundImageError("本地图片库打不开。"));
-    request.onblocked = () =>
-      reject(new BackgroundImageError("本地图片库被占用，关掉旧窗口再试。"));
-  });
-}
-
-function database(): Promise<IDBDatabase> {
-  dbPromise ??= openDb().catch((error: unknown) => {
-    dbPromise = null;
-    throw error;
-  });
-  return dbPromise;
+async function database(): Promise<IDBDatabase> {
+  try {
+    return await uiDatabase();
+  } catch {
+    throw new BackgroundImageError("本地图片库打不开。");
+  }
 }
 
 export async function saveBackgroundImage(dataUrl: string): Promise<void> {
   const db = await database();
   await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    tx.objectStore(STORE_NAME).put(dataUrl, IMAGE_KEY);
+    const tx = db.transaction(UI_STORE_NAME, "readwrite");
+    tx.objectStore(UI_STORE_NAME).put(dataUrl, IMAGE_KEY);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(new BackgroundImageError("背景图保存失败。"));
     tx.onabort = () => reject(new BackgroundImageError("背景图保存被中止。"));
@@ -144,8 +120,8 @@ export async function loadBackgroundImage(): Promise<string | null> {
   try {
     const db = await database();
     return await new Promise<string | null>((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, "readonly");
-      const request = tx.objectStore(STORE_NAME).get(IMAGE_KEY);
+      const tx = db.transaction(UI_STORE_NAME, "readonly");
+      const request = tx.objectStore(UI_STORE_NAME).get(IMAGE_KEY);
       request.onsuccess = () =>
         resolve(typeof request.result === "string" ? request.result : null);
       request.onerror = () => reject(new BackgroundImageError("背景图读取失败。"));
@@ -158,8 +134,8 @@ export async function loadBackgroundImage(): Promise<string | null> {
 export async function deleteBackgroundImage(): Promise<void> {
   const db = await database();
   await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    tx.objectStore(STORE_NAME).delete(IMAGE_KEY);
+    const tx = db.transaction(UI_STORE_NAME, "readwrite");
+    tx.objectStore(UI_STORE_NAME).delete(IMAGE_KEY);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(new BackgroundImageError("背景图删除失败。"));
     tx.onabort = () => reject(new BackgroundImageError("背景图删除被中止。"));

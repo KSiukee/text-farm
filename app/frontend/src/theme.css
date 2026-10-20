@@ -9,6 +9,10 @@
 :root {
   color-scheme: light;
 
+  /* 字体（预设/自定义由 font.ts 内联覆盖 --font-ui；--font-mono 给路径/代码） */
+  --font-ui: "SimSun", "宋体", "Songti SC", serif;
+  --font-mono: "Consolas", "Courier New", monospace;
+
   /* 纸面：panel 系列带 alpha，让背景层透出来；raised 保持不透明给控件 */
   --paper: #f6f3ec;
   --panel-rgb: 251 249 243;
@@ -159,6 +163,9 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
+
+  --font-ui: "SimSun", "宋体", "Songti SC", serif;
+  --font-mono: "Consolas", "Courier New", monospace;
 
   --paper: #20251d;
   --panel-rgb: 40 46 35;
