@@ -143,15 +143,26 @@ def price_for(fish: Fish, weight: int, quality: int, market: int) -> int:
     return max(1, fish.price * weight * factor * market // 100_000)
 
 
-def success_rate(rod: Rod, worn: bool, fish: Fish, personality: str) -> float:
+def success_rate(rod: Rod, worn: bool, fish: Fish, personality: str, grace_s: float = 0.8) -> float:
     control = (rod.frame / 20.0) ** 1.2 * (0.85 if worn else 1.0)
     diff = 1.0 - 0.08 * (fish.difficulty - 1)
     pers = {"Lazy": 1.0, "Normal": 0.92, "Active": 0.78, "Fierce": 0.60}[personality]
     king = 0.60 if fish.rarity == "King" else 1.0
-    return max(0.03, min(0.95, 0.95 * control * diff * pers * king))
+    # 离框容错：框越小收益越大；只是粗糙模型，用来判断会不会“中和”。
+    grace = 1.0 + 0.35 * max(0.0, grace_s - 0.8) / 0.8 * (1.0 - control)
+    return max(0.03, min(0.95, 0.95 * control * diff * pers * king * grace))
 
 
-def run(pool: list[Fish], rod: Rod, maintain: bool, plan: dict[str, tuple[int, int]]) -> dict:
+def run(
+    pool: list[Fish],
+    rod: Rod,
+    maintain: bool,
+    plan: dict[str, tuple[int, int]],
+    golden_floor: int = 0,
+    golden_bonus: float = 0.0,
+    golden_mult: float = 1.0,
+    grace_s: float = 0.8,
+) -> dict:
     sell_bonus, bait_save = plan[rod.key]
     totals = {
         "casts": 0,
@@ -173,7 +184,7 @@ def run(pool: list[Fish], rod: Rod, maintain: bool, plan: dict[str, tuple[int, i
                 ["Lazy", "Normal", "Active", "Fierce"], weights=[25, 40, 25, 10]
             )[0]
             worn = not maintain and wear >= rod.durability
-            if rng.random() >= success_rate(rod, worn, fish, personality):
+            if rng.random() >= success_rate(rod, worn, fish, personality, grace_s):
                 continue
             quality = quality_for(rod, rng.randrange(100)) + 1
             quality = min(3, quality)
@@ -182,9 +193,15 @@ def run(pool: list[Fish], rod: Rod, maintain: bool, plan: dict[str, tuple[int, i
             market = market_pct(rng.randrange(100))
             price = price_for(fish, weight, quality, market)
             price = price * (100 + sell_bonus) // 100
+            golden = rng.random() < 0.015 + golden_bonus
+            if golden:
+                totals["golden"] += 1
+                if golden_mult > 1.0:
+                    price = int(price * golden_mult)
+                if golden_floor > 0:
+                    price = max(price, golden_floor)
             totals["catches"] += 1
             totals["gross"] += price
-            totals["golden"] += 1 if rng.random() < 0.015 else 0
             wear += 1
             if wear >= rod.durability:
                 if maintain:
@@ -271,6 +288,78 @@ def main() -> None:
             f"{fmt_int(vals[2])} | {fmt_int(vals[3])} |"
         )
     lines.append("")
+
+    # A2 + M3 + 金色 / 离框容错
+    m3 = {
+        key: replace(
+            RODS[key],
+            maintenance=MAINT_PLANS["M3 降费+耐久"][key][0],
+            durability=MAINT_PLANS["M3 降费+耐久"][key][1],
+        )
+        for key in RODS
+    }
+    king_price = next(f.price for f in pool if f.rarity == "King")
+    golden_bonus = {"bamboo": 0.005, "glass": 0.01, "carbon": 0.02}
+    golden_plans = [
+        ("G0 当前：只进图鉴", 0, 0.0, 1.0),
+        ("G1 半鱼王价（河王 800→400）", king_price // 2, 1.0, 1.0),
+        ("G2 四分之一鱼王价（200）", king_price // 4, 1.0, 1.0),
+        ("G3 普通鱼价×2", 0, 1.0, 2.0),
+    ]
+    lines += [
+        "## A2 + M3：金色售价方案",
+        "",
+        "金色概率 = 1.5% + A2 竿加成（竹 +0.5%、玻 +1%、碳 +2%）；G1 把金色鱼售价设成半条河王价 400。",
+        "",
+        "| 金色方案 | 竹不保养 | 玻璃钢保养 | 碳素保养 |",
+        "|---|---:|---:|---:|",
+    ]
+    for gname, floor, use_bonus, mult in golden_plans:
+        vals = []
+        for key, maintain in (("bamboo", False), ("glass", True), ("carbon", True)):
+            bonus = golden_bonus[key] if use_bonus else 0.0
+            r = run(
+                pool,
+                m3[key],
+                maintain,
+                A_PLANS["A2 中强"],
+                golden_floor=floor,
+                golden_bonus=bonus,
+                golden_mult=mult,
+            )
+            vals.append(r["net"])
+        lines.append(f"| {gname} | {fmt_int(vals[0])} | {fmt_int(vals[1])} | {fmt_int(vals[2])} |")
+    lines += [
+        "",
+        "## A2 + M3 + G1：离框容错（grace）",
+        "",
+        "grace 0.8 → 1.2 → 1.6s；粗糙模型：框越小，延长容错带来的成功率提升越大。",
+        "",
+        "| grace | 竿 | 上鱼率 | 净收入 |",
+        "|---:|---|---:|---:|",
+    ]
+    for grace in (0.8, 1.2, 1.6):
+        for key, maintain in (("bamboo", False), ("glass", True), ("carbon", True)):
+            r = run(
+                pool,
+                m3[key],
+                maintain,
+                A_PLANS["A2 中强"],
+                golden_floor=king_price // 2,
+                golden_bonus=golden_bonus[key],
+                grace_s=grace,
+            )
+            lines.append(
+                f"| {grace:.1f}s | {m3[key].name}{'不保养' if not maintain else '保养'} | "
+                f"{r['catch_pct']:.1f}% | {fmt_int(r['net'])} |"
+            )
+    lines += [
+        "",
+        "- 金色：半条河王价（400）是当前最直观的方案；它只在 1.5%~3.5% 的渔获上生效，不会冲垮普通鱼价。",
+        "- 离框容错：延长 grace 会让小框的上鱼率明显回升，但它是“少扣进度”，会让打架更轻松、更短；"
+        "它能把高竿从“难到不想用”拉回“可用”，不是让打架更有趣/更长。要更长仍得动鱼的进度/行为（#89）。",
+        "",
+    ]
 
     # 简易结论
     a1 = {label: r for plan, label, r in rows if plan == "A1 温和"}
