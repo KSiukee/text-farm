@@ -1,0 +1,273 @@
+/* ==========================================================================
+   主题 token —— 全站唯一的颜色出口（#75）
+   · 组件样式只写 var(--token)，不再出现裸 #hex / rgb() / rgba()
+   · 明暗两套逐名对齐；accent 系列由 theme.ts 按色板内联覆盖
+   · 语义色（成功/警告/危险/金/信息）跟明暗走，不跟色板走
+   · 钓鱼水面是插画，暗色单独调，不做简单反色
+   ========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* 纸面 */
+  --paper: #f6f3ec;
+  --panel: #fbf9f3;
+  --panel-raised: #fffefa;
+  --panel-soft: #f3efe6;
+  --panel-warm: #fbf7ee;
+  --inset: #ebe5d8;
+
+  /* 文字 */
+  --ink: #3e4638;
+  --ink-2: #55604c;
+  --muted: #6b7360;
+  --faint: #9aa18f;
+  --disabled: #a9ae9e;
+
+  /* 线 */
+  --line: rgba(156, 175, 136, 0.32);
+  --line-strong: rgba(123, 143, 103, 0.55);
+  --line-soft: rgba(156, 175, 136, 0.18);
+
+  /* 主色：默认 sage，theme.ts 会内联覆盖这 6 个 */
+  --accent: #9caf88;
+  --accent-hover: #b7c9a4;
+  --accent-soft: rgba(156, 175, 136, 0.16);
+  --accent-line: rgba(156, 175, 136, 0.34);
+  --accent-ink: #5f7050;
+  --accent-ink-dark: #d6e2c6;
+  --accent-text: var(--accent-ink);
+  --link: var(--accent-text);
+  --on-accent: #2b3325;
+
+  /* 语义色 */
+  --success: #4f7a43;
+  --success-bg: #eaf2e2;
+  --success-line: #b9cfa9;
+  --danger: #a85545;
+  --danger-bg: #f8eae5;
+  --danger-line: #d9b3a8;
+  --danger-strong: #8e3a2e;
+  --warn: #8a6434;
+  --warn-bg: #f8efdc;
+  --warn-line: #dcc69a;
+  --gold: #a87916;
+  --gold-strong: #8a6410;
+  --gold-soft: #e7cf8d;
+  --gold-bg: #fdf6e4;
+  --gold-line: #d9b45c;
+  --info: #557086;
+  --info-bg: #eef2f4;
+  --info-line: #c3d0d8;
+
+  /* 叠层、阴影、玻璃 */
+  --overlay: rgba(28, 45, 36, 0.38);
+  --shadow-soft: rgba(20, 45, 32, 0.28);
+  --shadow-fish: rgba(30, 60, 40, 0.18);
+  --panel-glass: rgba(255, 254, 250, 0.68);
+  --surface-sheen: rgba(255, 255, 255, 0.8);
+  --gold-glow: rgba(244, 206, 112, 0.45);
+  --gold-shadow: rgba(120, 86, 18, 0.35);
+
+  /* 钓鱼水面 · 浅色 */
+  --pond-border: #8fb7aa;
+  --pond-focus: #4d8f70;
+  --pond-sky-1: #e3f5f7;
+  --pond-sky-2: #bde3e2;
+  --pond-sky-3: #8ccbc0;
+  --pond-sky-4: #5da99b;
+  --pond-water-sheen: rgba(255, 255, 255, 0.7);
+  --pond-water-tint: rgba(228, 251, 245, 0.4);
+  --pond-inset: rgba(25, 84, 75, 0.28);
+  --pond-inset-light: rgba(255, 255, 255, 0.35);
+  --pond-vignette: rgba(9, 44, 38, 0.22);
+  --pond-fish-shadow: rgba(9, 48, 42, 0.28);
+  --pond-fish-filter: rgba(0, 20, 16, 0.3);
+  --pond-king-glow: rgba(255, 214, 105, 0.8);
+  --pond-caustic: rgba(255, 255, 255, 0.45);
+  --pond-bubble-line: rgba(255, 255, 255, 0.7);
+  --pond-bubble-fill: rgba(255, 255, 255, 0.18);
+  --pond-progress-bg: rgba(20, 69, 61, 0.24);
+  --pond-progress-1: #5fc79a;
+  --pond-progress-2: #b8e986;
+  --pond-progress-3: #ffe08a;
+  --pond-progress-glow: rgba(184, 233, 134, 0.75);
+  --pond-glow: rgba(126, 232, 174, 0.28);
+  --pond-glow-on: rgba(126, 232, 174, 0.75);
+  --pond-ring: rgba(255, 255, 255, 0.45);
+  --pond-ring-on: rgba(220, 255, 230, 0.85);
+  --pond-frame: rgba(31, 96, 74, 0.82);
+  --pond-frame-on: #b9f5c9;
+  --pond-frame-fill: rgba(128, 222, 176, 0.12);
+  --pond-frame-bg: rgba(86, 168, 128, 0.2);
+  --pond-frame-bg-on: rgba(111, 222, 158, 0.2);
+  --pond-frame-ring: rgba(255, 255, 255, 0.4);
+  --pond-frame-shadow: rgba(13, 55, 47, 0.2);
+  --pond-corner: rgba(235, 255, 240, 0.9);
+  --pond-copy-border: rgba(143, 183, 170, 0.65);
+  --pond-copy-bg: rgba(248, 252, 249, 0.86);
+  --pond-copy-shadow: rgba(27, 70, 57, 0.1);
+  --pond-copy-highlight: rgba(255, 255, 255, 0.6);
+  --pond-kicker: #4d6f60;
+  --pond-copy-strong: #1f4034;
+  --pond-bite-border: #a83a2c;
+  --pond-bite-bg: #e85745;
+  --pond-bite-text: #fff8ec;
+  --pond-bite-ripple: rgba(226, 101, 78, 0.62);
+  --pond-wait-sky-1: #eaf7f2;
+  --pond-wait-sky-2: #cfe9e7;
+  --pond-wait-text: #274a3e;
+  --pond-wait-shadow: rgba(30, 91, 78, 0.18);
+  --pond-sky-glow: rgba(255, 255, 255, 0.85);
+  --pond-water-1: #c7e7e5;
+  --pond-water-2: #8dc8bf;
+  --pond-water-3: #69afa2;
+  --pond-water-line: rgba(255, 255, 255, 0.12);
+  --pond-reed-1: #3f7d57;
+  --pond-reed-2: #24513b;
+  --pond-line-1: rgba(53, 78, 66, 0.8);
+  --pond-line-2: rgba(53, 78, 66, 0.12);
+  --pond-bobber-shadow: rgba(22, 60, 48, 0.28);
+  --pond-antenna: #3a4b43;
+  --pond-bobber-border: #8f3228;
+  --pond-bobber-top: #ef6252;
+  --pond-bobber-white: #fff7e9;
+  --pond-bobber-inner: rgba(80, 34, 26, 0.18);
+  --pond-ripple: rgba(47, 111, 85, 0.5);
+  --pond-stick-1: #dcefe8;
+  --pond-stick-2: #b9d9d1;
+  --pond-stick-ring: rgba(255, 255, 255, 0.35);
+  --pond-stick-ring-on: rgba(255, 255, 255, 0.45);
+  --pond-stick-shadow: rgba(24, 64, 52, 0.18);
+  --pond-stick-active: rgba(126, 232, 174, 0.35);
+  --pond-knob-1: #fffefa;
+  --pond-knob-2: #9fd3b8;
+  --pond-knob-3: #5a9d78;
+  --pond-knob-shadow: rgba(19, 58, 45, 0.25);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --paper: #20251d;
+  --panel: #282e23;
+  --panel-raised: #2f362a;
+  --panel-soft: #242a20;
+  --panel-warm: #2a3025;
+  --inset: #171c15;
+
+  --ink: #e9eddf;
+  --ink-2: #d3dac4;
+  --muted: #c2cbb2;
+  --faint: #9aa58d;
+  --disabled: #6f7865;
+
+  --line: rgba(183, 201, 164, 0.2);
+  --line-strong: rgba(183, 201, 164, 0.38);
+  --line-soft: rgba(183, 201, 164, 0.1);
+
+  --accent-text: var(--accent-ink-dark);
+  --link: var(--accent-text);
+
+  --success: #a9c48f;
+  --success-bg: #26301e;
+  --success-line: #4d5f3c;
+  --danger: #d49a87;
+  --danger-bg: #3a2622;
+  --danger-line: #6b4238;
+  --danger-strong: #e8b3a4;
+  --warn: #d8b98a;
+  --warn-bg: #332b1c;
+  --warn-line: #5c4a2c;
+  --gold: #d8b25e;
+  --gold-strong: #e7c885;
+  --gold-soft: #8a6a2e;
+  --gold-bg: #322a1a;
+  --gold-line: #6f5729;
+  --info: #a9c0cf;
+  --info-bg: #232b31;
+  --info-line: #3c4a55;
+
+  --overlay: rgba(8, 12, 8, 0.55);
+  --shadow-soft: rgba(0, 0, 0, 0.35);
+  --shadow-fish: rgba(0, 0, 0, 0.35);
+  --panel-glass: rgba(47, 54, 42, 0.75);
+  --surface-sheen: rgba(210, 240, 225, 0.1);
+  --gold-glow: rgba(244, 206, 112, 0.2);
+  --gold-shadow: rgba(0, 0, 0, 0.45);
+
+  --pond-border: #4d6b62;
+  --pond-focus: #8fbfa4;
+  --pond-sky-1: #23423f;
+  --pond-sky-2: #1d3937;
+  --pond-sky-3: #183230;
+  --pond-sky-4: #142b29;
+  --pond-water-sheen: rgba(180, 230, 210, 0.12);
+  --pond-water-tint: rgba(120, 200, 185, 0.08);
+  --pond-inset: rgba(0, 0, 0, 0.35);
+  --pond-inset-light: rgba(200, 255, 240, 0.08);
+  --pond-vignette: rgba(0, 0, 0, 0.35);
+  --pond-fish-shadow: rgba(0, 0, 0, 0.4);
+  --pond-fish-filter: rgba(0, 0, 0, 0.45);
+  --pond-king-glow: rgba(255, 214, 105, 0.85);
+  --pond-caustic: rgba(180, 230, 210, 0.1);
+  --pond-bubble-line: rgba(180, 230, 210, 0.25);
+  --pond-bubble-fill: rgba(180, 230, 210, 0.05);
+  --pond-progress-bg: rgba(0, 0, 0, 0.35);
+  --pond-progress-1: #4f9f7c;
+  --pond-progress-2: #8fbf63;
+  --pond-progress-3: #d9b45e;
+  --pond-progress-glow: rgba(143, 191, 99, 0.55);
+  --pond-glow: rgba(126, 232, 174, 0.18);
+  --pond-glow-on: rgba(126, 232, 174, 0.45);
+  --pond-ring: rgba(200, 255, 240, 0.18);
+  --pond-ring-on: rgba(200, 255, 240, 0.45);
+  --pond-frame: rgba(150, 220, 185, 0.65);
+  --pond-frame-on: #b9f5c9;
+  --pond-frame-fill: rgba(128, 222, 176, 0.08);
+  --pond-frame-bg: rgba(86, 168, 128, 0.12);
+  --pond-frame-bg-on: rgba(111, 222, 158, 0.16);
+  --pond-frame-ring: rgba(200, 255, 240, 0.18);
+  --pond-frame-shadow: rgba(0, 0, 0, 0.35);
+  --pond-corner: rgba(200, 255, 240, 0.55);
+  --pond-copy-border: rgba(120, 160, 145, 0.5);
+  --pond-copy-bg: rgba(24, 38, 32, 0.86);
+  --pond-copy-shadow: rgba(0, 0, 0, 0.3);
+  --pond-copy-highlight: rgba(255, 255, 255, 0.12);
+  --pond-kicker: #9fb5a6;
+  --pond-copy-strong: #e6f0e6;
+  --pond-bite-border: #a83a2c;
+  --pond-bite-bg: #cf4b38;
+  --pond-bite-text: #fff8ec;
+  --pond-bite-ripple: rgba(226, 101, 78, 0.55);
+  --pond-wait-sky-1: #17282a;
+  --pond-wait-sky-2: #142326;
+  --pond-wait-text: #cfe0d6;
+  --pond-wait-shadow: rgba(0, 0, 0, 0.35);
+  --pond-sky-glow: rgba(200, 255, 240, 0.12);
+  --pond-water-1: #23423f;
+  --pond-water-2: #1d3937;
+  --pond-water-3: #183230;
+  --pond-water-line: rgba(200, 255, 240, 0.08);
+  --pond-reed-1: #4f7d5f;
+  --pond-reed-2: #2c4a39;
+  --pond-line-1: rgba(180, 220, 200, 0.55);
+  --pond-line-2: rgba(180, 220, 200, 0.1);
+  --pond-bobber-shadow: rgba(0, 0, 0, 0.4);
+  --pond-antenna: #8fa398;
+  --pond-bobber-border: #8f3228;
+  --pond-bobber-top: #ef6252;
+  --pond-bobber-white: #fff7e9;
+  --pond-bobber-inner: rgba(80, 34, 26, 0.25);
+  --pond-ripple: rgba(126, 200, 170, 0.45);
+  --pond-stick-1: #2b4540;
+  --pond-stick-2: #243b37;
+  --pond-stick-ring: rgba(200, 255, 240, 0.12);
+  --pond-stick-ring-on: rgba(200, 255, 240, 0.18);
+  --pond-stick-shadow: rgba(0, 0, 0, 0.35);
+  --pond-stick-active: rgba(126, 232, 174, 0.25);
+  --pond-knob-1: #e8f4ec;
+  --pond-knob-2: #6f9f86;
+  --pond-knob-3: #47735f;
+  --pond-knob-shadow: rgba(0, 0, 0, 0.4);
+}

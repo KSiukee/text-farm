@@ -3,5 +3,9 @@
   "identifier": "default",
   "description": "文字农场主窗口最小权限",
   "windows": ["main"],
-  "permissions": ["core:default", "dialog:default"]
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-background-color",
+    "dialog:default"
+  ]
 }

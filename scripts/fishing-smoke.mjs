@@ -143,7 +143,9 @@ async function startApp({ fresh = true } = {}) {
   // 上一跑收尾的「启动时弹报告」会把已读时间写到未来 60 秒；这值存在 WebView profile 里、
   // 不随 shadow 目录清掉。每跑先清零再重载，否则下一跑会把「该弹的报告」误判成已读。
   try {
-    await evaluate("localStorage.removeItem('farm.autoReportShownAt')");
+    await evaluate(
+      "localStorage.removeItem('farm.autoReportShownAt'); localStorage.removeItem('farm.ui.themeMode'); localStorage.removeItem('farm.ui.palette')",
+    );
     await send("Page.reload", { ignoreCache: true });
     await waitFor(async () => (await evaluate("document.readyState")) === "complete");
     await waitFor(async () => (await bodyText()).includes("我的农场"));
@@ -152,6 +154,83 @@ async function startApp({ fresh = true } = {}) {
 
 try {
   await startApp();
+  const themeDefaultShot = join(root, "docs", "theme-default-v051.png");
+  const themeDarkShot = join(root, "docs", "theme-dark-v051.png");
+  const themePageText = await bodyText();
+  check(
+    "外观设置已显示",
+    themePageText.includes("外观") && themePageText.includes("明暗") && themePageText.includes("配色"),
+  );
+  check("5 个色板按钮", (await evaluate("document.querySelectorAll('.swatch').length")) === 5);
+  const themeInitial = await evaluate(`({
+    theme: document.documentElement.dataset.theme,
+    palette: document.documentElement.dataset.palette,
+    systemDark: matchMedia('(prefers-color-scheme: dark)').matches
+  })`);
+  check(
+    "默认跟随系统 + sage",
+    themeInitial.palette === "sage" &&
+      themeInitial.theme === (themeInitial.systemDark ? "dark" : "light"),
+    JSON.stringify(themeInitial),
+  );
+  await clickText("深色");
+  await waitFor(
+    async () => (await evaluate("document.documentElement.dataset.theme")) === "dark",
+  );
+  const darkBg = await evaluate("getComputedStyle(document.body).backgroundColor");
+  check("切深色立即生效", darkBg === "rgb(32, 37, 29)", darkBg);
+  await clickText("薄荷绿");
+  await waitFor(
+    async () => (await evaluate("document.documentElement.dataset.palette")) === "mint",
+  );
+  const mintAccent = await evaluate(
+    "getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()",
+  );
+  check("切色板立即生效", mintAccent === "#a8d8c9", mintAccent);
+  await screenshot(themeDarkShot);
+  check("暗色截图", existsSync(themeDarkShot), themeDarkShot);
+  await evaluate("window.__themeReloadProbe = 1");
+  await send("Page.reload", { ignoreCache: true });
+  await waitFor(
+    async () => (await evaluate("typeof window.__themeReloadProbe")) === "undefined",
+  );
+  await waitFor(async () => (await bodyText()).includes("我的农场"));
+  const themeReload = await evaluate(`({
+    theme: document.documentElement.dataset.theme,
+    palette: document.documentElement.dataset.palette,
+    accent: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()
+  })`);
+  check(
+    "刷新保持主题与色板",
+    themeReload.theme === "dark" && themeReload.palette === "mint" && themeReload.accent === "#a8d8c9",
+    JSON.stringify(themeReload),
+  );
+  await clickText("恢复默认");
+  await waitFor(
+    async () => (await evaluate("document.documentElement.dataset.palette")) === "sage",
+  );
+  const themeReset = await evaluate(`({
+    theme: document.documentElement.dataset.theme,
+    palette: document.documentElement.dataset.palette,
+    systemDark: matchMedia('(prefers-color-scheme: dark)').matches
+  })`);
+  check(
+    "恢复默认（跟随系统 + sage）",
+    themeReset.palette === "sage" &&
+      themeReset.theme === (themeReset.systemDark ? "dark" : "light"),
+    JSON.stringify(themeReset),
+  );
+  await screenshot(themeDefaultShot);
+  check("默认主题截图", existsSync(themeDefaultShot), themeDefaultShot);
+  await clickText("浅色");
+  await waitFor(async () => (await evaluate("document.documentElement.dataset.theme")) === "light");
+  const themeLightBg = await evaluate("getComputedStyle(document.body).backgroundColor");
+  check("切浅色立即生效", themeLightBg === "rgb(246, 243, 236)", themeLightBg);
+  const themeLightShot = join(root, "docs", "theme-light-v051.png");
+  await screenshot(themeLightShot);
+  check("浅色截图", existsSync(themeLightShot), themeLightShot);
+  await clickText("跟随系统");
+
   await clickText("钓鱼", false);
   await waitFor(async () => (await bodyText()).includes("鱼类图鉴"));
   const state = saveState();

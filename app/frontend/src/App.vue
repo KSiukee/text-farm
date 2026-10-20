@@ -50,6 +50,16 @@ import type {
   SpecimenView,
 } from "./types";
 import FishingGame from "./FishingGame.vue";
+import {
+  applyTheme,
+  DEFAULT_PREFS,
+  PALETTES,
+  readThemePrefs,
+  THEME_MODES,
+  writeThemePrefs,
+  type PaletteId,
+  type ThemeMode,
+} from "./theme";
 
 const snapshot = ref<Snapshot | null>(null);
 const content = ref<ContentPack | null>(null);
@@ -68,6 +78,10 @@ const seedValue = ref(20261018);
 const seedReviewNotes = ref<string[]>([]);
 const activeTab = ref("我的农场");
 const debugTime = ref(window.localStorage.getItem("farm.debugTime") === "1");
+const initialTheme = readThemePrefs(window.localStorage);
+const themeMode = ref<ThemeMode>(initialTheme.mode);
+const paletteId = ref<PaletteId>(initialTheme.palette);
+let themeMedia: MediaQueryList | null = null;
 
 let clockOffset = 0;
 let timer: number | undefined;
@@ -993,6 +1007,48 @@ function toggleDebugTime() {
   window.localStorage.setItem("farm.debugTime", debugTime.value ? "1" : "0");
 }
 
+function systemPrefersDark(): boolean {
+  if (themeMedia) return themeMedia.matches;
+  return typeof window.matchMedia === "function"
+    ? window.matchMedia("(prefers-color-scheme: dark)").matches
+    : false;
+}
+
+/// 主题只在 <html> 上落 data-theme / data-palette + accent 变量；Rust 与存档都不参与。
+function syncTheme() {
+  applyTheme(
+    document.documentElement,
+    { mode: themeMode.value, palette: paletteId.value },
+    systemPrefersDark(),
+  );
+}
+
+function saveTheme() {
+  writeThemePrefs(window.localStorage, { mode: themeMode.value, palette: paletteId.value });
+  syncTheme();
+}
+
+function setThemeMode(mode: ThemeMode) {
+  themeMode.value = mode;
+  saveTheme();
+}
+
+function setPalette(id: PaletteId) {
+  paletteId.value = id;
+  saveTheme();
+}
+
+function resetAppearance() {
+  themeMode.value = DEFAULT_PREFS.mode;
+  paletteId.value = DEFAULT_PREFS.palette;
+  saveTheme();
+}
+
+function onSystemThemeChange() {
+  // 只有「跟随系统」会真的换色；浅色/深色重新应用一次也无副作用。
+  syncTheme();
+}
+
 async function advanceFarm(hours: number) {
   if (acting.value) return;
   acting.value = true;
@@ -1069,6 +1125,12 @@ async function doSave() {
 
 onMounted(() => {
   window.addEventListener("keydown", onFishingShortcut);
+  themeMedia =
+    typeof window.matchMedia === "function"
+      ? window.matchMedia("(prefers-color-scheme: dark)")
+      : null;
+  syncTheme();
+  themeMedia?.addEventListener("change", onSystemThemeChange);
   void load();
   timer = window.setInterval(() => {
     tick.value = Date.now() + clockOffset;
@@ -1083,6 +1145,8 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener("keydown", onFishingShortcut);
+  themeMedia?.removeEventListener("change", onSystemThemeChange);
+  themeMedia = null;
   if (timer !== undefined) window.clearInterval(timer);
   if (refreshTimer !== undefined) window.clearInterval(refreshTimer);
   if (syncTimer !== undefined) window.clearInterval(syncTimer);
@@ -1414,6 +1478,42 @@ onUnmounted(() => {
             +7 天
           </button>
           <span class="muted">会改当前存档（自动备份），用来观察生长和 NPC。</span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">外观</div>
+        <div class="row">
+          <span>明暗</span>
+          <button
+            v-for="mode in THEME_MODES"
+            :key="mode.id"
+            class="rate-btn"
+            :class="{ active: themeMode === mode.id }"
+            type="button"
+            @click="setThemeMode(mode.id)"
+          >
+            {{ mode.name }}
+          </button>
+        </div>
+        <div class="row">
+          <span>配色</span>
+          <button
+            v-for="palette in PALETTES"
+            :key="palette.id"
+            class="swatch"
+            :class="{ active: paletteId === palette.id }"
+            type="button"
+            :style="`--swatch-color: ${palette.accent}`"
+            @click="setPalette(palette.id)"
+          >
+            <i class="swatch-dot" aria-hidden="true"></i>
+            {{ palette.name }}
+          </button>
+          <button class="link" type="button" @click="resetAppearance">恢复默认</button>
+        </div>
+        <div class="row muted appearance-hint">
+          只存在这台电脑上（localStorage），不写存档；默认跟随系统，改完立即生效。
         </div>
       </section>
 
