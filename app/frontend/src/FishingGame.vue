@@ -114,8 +114,8 @@ const progressGhostStyle = computed(() => ({
 const isLosing = computed(
   () => phase.value === "playing" && !inZone.value && graceLeft.value <= 0,
 );
-// 坏杆在参数里是 62% 框速；正常杆是 100%。
-const isWornRod = computed(() => (props.session?.params.frameSpeedPct ?? 100) < 100);
+// 磨损只降加速度：frame_accel_pct=62，基础速度仍是 100%。
+const isWornRod = computed(() => (props.session?.params.frameAccelPct ?? 100) < 100);
 const stickKnobStyle = computed(() => ({
   transform: `translate(${stickKnobX.value}px, ${stickKnobY.value}px)`,
 }));
@@ -291,8 +291,9 @@ function applyCurrentFeel(
   input: { x: number; y: number },
   dt: number,
   speedPct: number,
+  accelPct: number,
 ) {
-  const accel = 650 * (speedPct / 100);
+  const accel = 650 * (accelPct / 100);
   frameVX.value += input.x * accel * dt;
   frameVY.value += input.y * accel * dt;
   const drag = Math.pow(0.88, dt * 60);
@@ -377,7 +378,12 @@ function tick(now: number) {
   if (feel.value === "bad") {
     applyBadFeel(input, dt, session.params.frameSpeedPct, isWornRod.value);
   } else {
-    applyCurrentFeel(input, dt, session.params.frameSpeedPct);
+    applyCurrentFeel(
+      input,
+      dt,
+      session.params.frameSpeedPct,
+      session.params.frameAccelPct,
+    );
   }
   frameX.value += frameVX.value * dt;
   frameY.value += frameVY.value * dt;
@@ -557,6 +563,20 @@ function onKeyUp(event: KeyboardEvent) {
   keys.delete(event.key.toLowerCase());
 }
 
+function onContextMenu(event: MouseEvent) {
+  if (!props.active || !props.session) return;
+  event.preventDefault();
+  keys.clear();
+  focusGame();
+}
+
+function onWindowFocus() {
+  keys.clear();
+  if (props.active && phase.value === "playing") {
+    focusGame();
+  }
+}
+
 function resetRound() {
   cancelAnimationFrame(raf);
   clearTimeout(biteTimer);
@@ -632,6 +652,8 @@ watch(
 onMounted(() => {
   window.addEventListener("keydown", onKey);
   window.addEventListener("keyup", onKeyUp);
+  window.addEventListener("contextmenu", onContextMenu, true);
+  window.addEventListener("focus", onWindowFocus);
   pond.value?.focus();
   if (props.session) beginSession();
   else goIdle();
@@ -644,6 +666,8 @@ onUnmounted(() => {
   pondObserver = null;
   window.removeEventListener("keydown", onKey);
   window.removeEventListener("keyup", onKeyUp);
+  window.removeEventListener("contextmenu", onContextMenu, true);
+  window.removeEventListener("focus", onWindowFocus);
   onStickUp();
 });
 </script>

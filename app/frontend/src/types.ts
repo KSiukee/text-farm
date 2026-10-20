@@ -534,6 +534,7 @@ export type FishPersonality = "lazy" | "normal" | "active" | "fierce";
 export interface FishingParams {
   framePct: number;
   frameSpeedPct: number;
+  frameAccelPct: number;
   fishSpeedPct: number;
   fishJerkPct: number;
   fishEscapePct: number;

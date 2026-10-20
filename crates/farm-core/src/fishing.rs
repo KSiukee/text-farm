@@ -1420,6 +1420,8 @@ pub fn golden_session(id: u64, spot: FishingSpot) -> bool {
 pub struct FishingParams {
     pub frame_pct: u32,
     pub frame_speed_pct: u32,
+    /// 磨损只损加速度，不损基础速度。
+    pub frame_accel_pct: u32,
     pub fish_speed_pct: u32,
     pub fish_jerk_pct: u32,
     pub fish_escape_pct: u32,
@@ -1467,7 +1469,8 @@ pub fn params_with_reel(
     };
     FishingParams {
         frame_pct: rod.frame_pct(),
-        frame_speed_pct: if worn { 62 } else { 100 },
+        frame_speed_pct: 100,
+        frame_accel_pct: if worn { 62 } else { 100 },
         fish_speed_pct: base_speed * personality.speed_pct() / 100 * king_boost / 100,
         fish_jerk_pct: 40 + difficulty * 10 + personality.jerk_add(),
         fish_escape_pct: base_escape * personality.escape_pct() / 100,

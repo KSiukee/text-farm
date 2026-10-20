@@ -481,7 +481,8 @@ fn rod_maintenance_clears_wear_and_restores_frame_speed() {
         true,
         FishPersonality::Normal,
     );
-    assert_eq!(worn.frame_speed_pct, 62);
+    assert_eq!(worn.frame_speed_pct, 100);
+    assert_eq!(worn.frame_accel_pct, 62);
     game.dispatch(Action::MaintainRod { rod: RodKind::Wood }, 1_000)
         .unwrap();
     assert!(!game.state().fishing.needs_maintenance(RodKind::Wood));

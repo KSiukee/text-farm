@@ -645,6 +645,18 @@ try {
     feelNormalText,
   );
   await clickText("1 当前", false);
+  const contextGuard = await evaluate(`(() => {
+    const el = document.querySelector('.fg-pond');
+    if (!el) return null;
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    const allowed = el.dispatchEvent(event);
+    return { allowed, prevented: event.defaultPrevented };
+  })()`);
+  check(
+    "右键菜单被拦",
+    !!contextGuard && contextGuard.prevented === true && contextGuard.allowed === false,
+    JSON.stringify(contextGuard),
+  );
   const frameBadgeGone = await evaluate("!document.querySelector('.fg-frame-pct')");
   check("百分比徽标已去掉", frameBadgeGone === true);
   const statusText = await evaluate("document.querySelector('.fg-status')?.textContent || ''");
