@@ -1304,7 +1304,10 @@ impl Game {
             golden,
             is_record,
         });
-        let exp = fishing::catch_exp(def.rarity, quality, weight_tenths);
+        let exp = fishing::rod_exp(
+            fishing::catch_exp(def.rarity, quality, weight_tenths),
+            rod,
+        );
         let pct = buffs::exp_pct(&self.state.buffs, now, DisciplineKind::Fishing);
         let levels = self
             .state
@@ -1601,7 +1604,10 @@ impl Game {
             for milestone in self.fishing_milestones() {
                 self.push_log(at, milestone);
             }
-            let exp = fishing::catch_exp(def.rarity, quality, weight_tenths) * 3 / 5;
+            let exp = fishing::rod_exp(
+                fishing::catch_exp(def.rarity, quality, weight_tenths) * 3 / 5,
+                rod,
+            );
             let pct = buffs::exp_pct(&self.state.buffs, at, DisciplineKind::Fishing);
             let levels = self
                 .state

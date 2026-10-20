@@ -44,7 +44,7 @@ pub use fishing::{
     big_fish_bonus_tenths, catch_exp, faces_right, fish, fish_list, fishing_exp_need, golden_floor_price,
     golden_session, king_base_price, market_pct, params, pick_auto_fish, pick_auto_fish_with_bait,
     pick_fish, pick_fish_with_bait, pick_personality, price_for, quality_for, quality_label,
-    reel_bonus, rod_unlocked,
+    reel_bonus, rod_exp, rod_unlocked,
     sell_price, skill_cost, skill_def, skill_level, spot_fish, spot_fish_count, spot_unlocked,
     weight_tenths_for,
     AutoFishing, BaitQuality, BaitRecipe, BaitType, FishBatch, FishCatchResult, FishCodexEntry,

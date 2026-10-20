@@ -459,15 +459,24 @@ impl RodKind {
         }
     }
 
+    /// 高级竿钓鱼经验加成。
+    pub fn exp_bonus_pct(self) -> u32 {
+        match self {
+            RodKind::Wood | RodKind::Bamboo => 0,
+            RodKind::Fiberglass => 40,
+            RodKind::Carbon => 80,
+        }
+    }
+
     pub fn profit_label(self) -> String {
         match self {
             RodKind::Wood => "收益：基准（保养 300/30 条）".into(),
             RodKind::Bamboo => "收益：售价 +10% · 金色 +0.5% · 保养 600/40 条".into(),
             RodKind::Fiberglass => {
-                "收益：售价 +25% · 省饵 10% · 金色 +1% · 保养 1,200/60 条".into()
+                "收益：售价 +25% · 经验 +40% · 省饵 10% · 金色 +1% · 保养 1,200/60 条".into()
             }
             RodKind::Carbon => {
-                "收益：售价 +40% · 省饵 20% · 金色 +2% · 保养 1,800/90 条".into()
+                "收益：售价 +40% · 经验 +80% · 省饵 20% · 金色 +2% · 保养 1,800/90 条".into()
             }
         }
     }
@@ -1471,6 +1480,11 @@ pub fn golden_floor_price(spot: FishingSpot) -> u64 {
 
 pub fn sell_price(price: u64, rod: RodKind) -> u64 {
     price * u64::from(100 + rod.sell_bonus_pct()) / 100
+}
+
+/// 一条鱼的经验按竿加成；自动钓鱼再乘 3/5。
+pub fn rod_exp(base: u64, rod: RodKind) -> u64 {
+    base * u64::from(100 + rod.exp_bonus_pct()) / 100
 }
 
 /// 金色变异在抛竿时就按会话种子 + 竿加成定好；结算/图鉴/时长同一个口径。

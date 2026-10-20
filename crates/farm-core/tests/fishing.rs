@@ -594,6 +594,10 @@ fn rod_economy_tiers_match_m3_a2_g1() {
         rods.map(|r| r.golden_bonus_permille()),
         [0, 5, 10, 20]
     );
+    assert_eq!(rods.map(|r| r.exp_bonus_pct()), [0, 0, 40, 80]);
+    assert_eq!(farm_core::rod_exp(10, RodKind::Wood), 10);
+    assert_eq!(farm_core::rod_exp(10, RodKind::Fiberglass), 14);
+    assert_eq!(farm_core::rod_exp(10, RodKind::Carbon), 18);
     assert_eq!(farm_core::king_base_price(FishingSpot::River), 800);
     assert_eq!(farm_core::golden_floor_price(FishingSpot::River), 400);
     assert_eq!(farm_core::sell_price(100, RodKind::Carbon), 140);
