@@ -471,6 +471,7 @@ try {
       customFont.stored === "custom",
     JSON.stringify(customFont),
   );
+  await screenshot(join(root, "docs", "font-custom-v055.png"));
   await evaluate("window.__fontReloadProbe = 1");
   await send("Page.reload", { ignoreCache: true });
   await waitFor(
