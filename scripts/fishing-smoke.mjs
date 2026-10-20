@@ -524,8 +524,24 @@ try {
   );
   await screenshot(layoutShot);
   check("钓鱼页布局截图", existsSync(layoutShot), layoutShot);
-  const feelButtons = await evaluate("document.querySelectorAll('.fg-feel button').length");
+  const feelButtons = await evaluate(
+    "document.querySelectorAll('.fg-feel')[0]?.querySelectorAll('button').length ?? 0",
+  );
   check("手感切换两个按钮", feelButtons === 2, `buttons=${feelButtons}`);
+  const fightButtons = await evaluate(
+    "document.querySelectorAll('.fg-feel')[1]?.querySelectorAll('button').length ?? 0",
+  );
+  check("打架切换两个按钮", fightButtons === 2, `buttons=${fightButtons}`);
+  await clickText("D3 长", false);
+  check(
+    "打架 D3 已保存",
+    (await evaluate("localStorage.getItem('farm.ui.fishingFight')")) === "d3",
+  );
+  await clickText("D2 中", false);
+  check(
+    "打架 D2 已保存",
+    (await evaluate("localStorage.getItem('farm.ui.fishingFight')")) === "d2",
+  );
   await clickText("2 坏杆 + 追鱼", false);
   check(
     "手感 2 已保存",

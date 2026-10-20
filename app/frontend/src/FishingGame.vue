@@ -7,12 +7,22 @@ const emit = defineEmits<{ resolve: [success: boolean]; notice: [text: string] }
 
 type FeelMode = "current" | "bad";
 const FEEL_KEY = "farm.ui.fishingFeel";
+type FightMode = "d2" | "d3";
+const FIGHT_KEY = "farm.ui.fishingFight";
 
 function readFeel(): FeelMode {
   try {
     return window.localStorage.getItem(FEEL_KEY) === "bad" ? "bad" : "current";
   } catch {
     return "current";
+  }
+}
+
+function readFight(): FightMode {
+  try {
+    return window.localStorage.getItem(FIGHT_KEY) === "d3" ? "d3" : "d2";
+  } catch {
+    return "d2";
   }
 }
 
@@ -39,6 +49,22 @@ const inZone = ref(false);
 const graceLeft = ref(0);
 const biteLeft = ref(0);
 const feel = ref<FeelMode>(readFeel());
+const fightMode = ref<FightMode>(readFight());
+// D2/D3 都只拉长打架：活泼/凶猛/鱼王；金色变异跟随鱼王。
+const fightMultiplier = computed(() => {
+  const session = props.session;
+  if (!session) return 1;
+  if (session.isKing || session.isGolden) {
+    return fightMode.value === "d3" ? 2.2 : 1.8;
+  }
+  if (session.params.personalityLabel === "活泼") {
+    return fightMode.value === "d3" ? 1.5 : 1.3;
+  }
+  if (session.params.personalityLabel === "凶猛") {
+    return fightMode.value === "d3" ? 1.8 : 1.5;
+  }
+  return 1;
+});
 const trail = ref<{ x: number; y: number; facing: number }[]>([]);
 const touchX = ref(0);
 const touchY = ref(0);
@@ -208,6 +234,15 @@ function setFeel(mode: FeelMode) {
   }
 }
 
+function setFight(mode: FightMode) {
+  fightMode.value = mode;
+  try {
+    window.localStorage.setItem(FIGHT_KEY, mode);
+  } catch {
+    // 存不了就只影响本次；默认仍是 D2。
+  }
+}
+
 function fail() {
   finish(false, "你收竿了，鱼跑了");
 }
@@ -369,7 +404,7 @@ function tick(now: number) {
     finish(false, "这一竿放太久了");
     return;
   }
-  if (elapsed >= session.params.catchMs) {
+  if (elapsed >= session.params.catchMs * fightMultiplier.value) {
     finish(false, "时间到，鱼跑了");
     return;
   }
@@ -520,12 +555,12 @@ function tick(now: number) {
     ].slice(0, 2);
   }
   if (inside) {
-    progress.value += session.params.progressGain * dt;
+    progress.value += (session.params.progressGain * dt) / fightMultiplier.value;
     if (progress.value > peakProgress.value) {
       peakProgress.value = progress.value;
     }
   } else if (graceLeft.value <= 0) {
-    progress.value -= session.params.progressLoss * dt;
+    progress.value -= (session.params.progressLoss * dt) / fightMultiplier.value;
   }
   if (progress.value >= 100) {
     progress.value = 100;
@@ -706,6 +741,30 @@ onUnmounted(() => {
         {{ isWornRod ? "坏杆：长按加速，换向大漂移" : "正常杆：短按跟手，长按小漂移" }}
       </span>
       <span v-else class="muted">正常杆短按跟手；坏杆长按大漂移</span>
+    </div>
+    <div class="fg-feel">
+      <span class="muted">打架</span>
+      <button
+        class="link"
+        :class="{ active: fightMode === 'd2' }"
+        type="button"
+        @click="setFight('d2')"
+      >
+        [D2 中]
+      </button>
+      <button
+        class="link"
+        :class="{ active: fightMode === 'd3' }"
+        type="button"
+        @click="setFight('d3')"
+      >
+        [D3 长]
+      </button>
+      <span class="muted">
+        {{ fightMode === "d3"
+          ? "活泼 1.5× · 凶猛 1.8× · 鱼王/金色 2.2×"
+          : "活泼 1.3× · 凶猛 1.5× · 鱼王/金色 1.8×" }}
+      </span>
     </div>
 
     <div
