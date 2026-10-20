@@ -111,7 +111,7 @@ npm test
 node scripts/version-guard.mjs --kind fix
 ```
 
-它会校验 `Cargo.toml` / `Cargo.lock` / `tauri.conf.json` / 前端 `package.json` / `README.md` / `.codex/state.json` / `CHANGELOG.md` 七处一致，并只允许 `fix` 升第三位、`feat` 升中位；一次性纠正旧号可加 `--allow-downgrade`。
+它会校验 `Cargo.toml` / `Cargo.lock` / `tauri.conf.json` / 前端 `package.json` / `README.md` / `.codex/state.json` / `CHANGELOG.md` 七处一致，并只允许 `fix` 升第三位、`feat` 升中位；一次性纠正旧号可加 `--allow-downgrade`。本次不改版本（纯文档/纯记录）就不要带 `--kind`，直接 `node scripts/version-guard.mjs` 只查一致。
 
 宠物页 UI 点击冒烟（影子档 + WebView2 CDP 真鼠标事件）：
 
