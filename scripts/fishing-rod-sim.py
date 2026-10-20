@@ -18,7 +18,7 @@ from __future__ import annotations
 import math
 import random
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,7 +27,6 @@ OUT = ROOT / "docs/鱼竿长期收益模拟.md"
 CASTS = 5400
 SEEDS = 20
 BAIT_PRICE = 10
-WEAR_MAX = 30
 
 
 @dataclass(frozen=True)
@@ -47,6 +46,7 @@ class Rod:
     name: str
     frame: int
     maintenance: int
+    durability: int
     weight_bonus: int
     quality_thresholds: tuple[int, int]
     sell_bonus_pct: int = 0
@@ -54,10 +54,10 @@ class Rod:
 
 
 RODS = {
-    "wood": Rod("wood", "木竿", 20, 300, 0, (60, 95)),
-    "bamboo": Rod("bamboo", "竹竿", 18, 900, 1, (45, 85)),
-    "glass": Rod("glass", "玻璃钢", 15, 3000, 2, (30, 75)),
-    "carbon": Rod("carbon", "碳素", 13, 9000, 3, (15, 60)),
+    "wood": Rod("wood", "木竿", 20, 300, 30, 0, (60, 95)),
+    "bamboo": Rod("bamboo", "竹竿", 18, 900, 30, 1, (45, 85)),
+    "glass": Rod("glass", "玻璃钢", 15, 3000, 30, 2, (30, 75)),
+    "carbon": Rod("carbon", "碳素", 13, 9000, 30, 3, (15, 60)),
 }
 
 # A 路线候选：售价加成 / 省饵；经验、金色率不进入利润。
@@ -66,6 +66,13 @@ A_PLANS = {
     "A1 温和": {"wood": (0, 0), "bamboo": (5, 0), "glass": (10, 5), "carbon": (15, 20)},
     "A2 中强": {"wood": (0, 0), "bamboo": (10, 0), "glass": (25, 10), "carbon": (40, 20)},
     "A3 强力": {"wood": (0, 0), "bamboo": (20, 0), "glass": (50, 15), "carbon": (80, 25)},
+}
+
+# 维修费方案：金额 / 耐久（多少条鱼一次保养）
+MAINT_PLANS = {
+    "M1 现行": {"wood": (300, 30), "bamboo": (900, 30), "glass": (3000, 30), "carbon": (9000, 30)},
+    "M2 只降费": {"wood": (300, 30), "bamboo": (600, 30), "glass": (1200, 30), "carbon": (1800, 30)},
+    "M3 降费+耐久": {"wood": (300, 30), "bamboo": (600, 40), "glass": (1200, 60), "carbon": (1800, 90)},
 }
 
 
@@ -165,7 +172,7 @@ def run(pool: list[Fish], rod: Rod, maintain: bool, plan: dict[str, tuple[int, i
             personality = "Fierce" if fish.rarity == "King" else rng.choices(
                 ["Lazy", "Normal", "Active", "Fierce"], weights=[25, 40, 25, 10]
             )[0]
-            worn = not maintain and wear >= WEAR_MAX
+            worn = not maintain and wear >= rod.durability
             if rng.random() >= success_rate(rod, worn, fish, personality):
                 continue
             quality = quality_for(rod, rng.randrange(100)) + 1
@@ -179,12 +186,12 @@ def run(pool: list[Fish], rod: Rod, maintain: bool, plan: dict[str, tuple[int, i
             totals["gross"] += price
             totals["golden"] += 1 if rng.random() < 0.015 else 0
             wear += 1
-            if wear >= WEAR_MAX:
+            if wear >= rod.durability:
                 if maintain:
                     totals["maint"] += rod.maintenance
                     wear = 0
                 else:
-                    wear = WEAR_MAX
+                    wear = rod.durability
     n = SEEDS
     for key in ("casts", "catches", "gross", "bait", "maint", "golden"):
         totals[key] /= n
@@ -243,6 +250,28 @@ def main() -> None:
                 f"**{fmt_int(r['net'])}** | {fmt_int(r['net'] / 90)} |"
             )
         lines.append("")
+    # 维修费方案对比（A2）
+    lines += [
+        "## 维修费方案对比（A2 中强）",
+        "",
+        "| 方案 | 竹不保养 | 竹保养 | 玻璃钢保养 | 碳素保养 |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for mname, spec in MAINT_PLANS.items():
+        rods = {
+            key: replace(RODS[key], maintenance=spec[key][0], durability=spec[key][1])
+            for key in RODS
+        }
+        vals = []
+        for key, maintain in (("bamboo", False), ("bamboo", True), ("glass", True), ("carbon", True)):
+            r = run(pool, rods[key], maintain, A_PLANS["A2 中强"])
+            vals.append(r["net"])
+        lines.append(
+            f"| {mname} | {fmt_int(vals[0])} | {fmt_int(vals[1])} | "
+            f"{fmt_int(vals[2])} | {fmt_int(vals[3])} |"
+        )
+    lines.append("")
+
     # 简易结论
     a1 = {label: r for plan, label, r in rows if plan == "A1 温和"}
     a2 = {label: r for plan, label, r in rows if plan == "A2 中强"}
@@ -273,13 +302,15 @@ def main() -> None:
         "",
         "- 也就是说：A2 下玻璃钢保养要从 3,000 降到约 700~800、碳素从 9,000 降到约 1,200，"
         "才刚打平“竹竿不保养”；A3 也需要大幅降。",
-        "- 结论：**A 路线单独上不够，必须先重做维修费**（固定大降或改成按收入 20~30% 抽成），否则高级竿保养永远是负收益。",
+        "- 结论：**A 路线单独上不够，必须先把维修费改合理；但不做抽成/税**。",
+        "- M3 方案（木 300/30、竹 600/40、玻 1200/60、碳 1800/90）在 A2 下："
+        "竹保养 235,813 ≈ 竹不保养 236,417，玻璃钢保养 249,707、碳素保养 281,915，高杆保养终于有正收益。",
         "",
         "## 下一步（未写代码）",
         "",
-        "1. 先拍板维修费方案：固定降低，还是按最近渔获收入抽成。",
-        "2. 再定 A 的售价/经验/省饵档位；当前模拟里 A1 太弱，A2 接近但被维修费吃掉。",
-        "3. 打架时长（活泼/凶猛/鱼王）另开任务，不跟竿绑定。",
+        "1. 拍板 M3 维修费：木 300/30、竹 600/40、玻璃钢 1,200/60、碳素 1,800/90；不抽成。",
+        "2. 再定 A2：竹 +10% 售价；玻璃钢 +25% 售价 +10% 省饵；碳素 +40% 售价 +20% 省饵。",
+        "3. 打架时长（活泼/凶猛/鱼王）另开 #89，不跟竿绑定。",
         "",
         "## 复跑",
         "",
