@@ -518,6 +518,10 @@ try {
   await waitFor(async () => (await bodyText()).includes("鱼类图鉴"));
   const state = saveState();
   check("钓鱼页已打开", (await bodyText()).includes("鱼类图鉴"));
+  check(
+    "小游戏 UI 常驻（未抛竿也显示）",
+    (await evaluate("document.querySelector('.fishing-game')?.dataset.phase")) === "idle",
+  );
   await screenshot(layoutShot);
   check("钓鱼页布局截图", existsSync(layoutShot), layoutShot);
   check("新档 10 份鱼饵", state.fishing.bait === 10, `bait=${state.fishing.bait}`);
@@ -621,10 +625,24 @@ try {
     !!frameBox && Math.abs(frameBox.w / frameBox.h - 1) < 0.06,
     JSON.stringify(frameBox),
   );
-  const frameBadge = await evaluate(
-    "document.querySelector('.fg-frame-pct')?.textContent.trim() || ''",
+  const frameBadgeGone = await evaluate("!document.querySelector('.fg-frame-pct')");
+  check("百分比徽标已去掉", frameBadgeGone === true);
+  const statusText = await evaluate("document.querySelector('.fg-status')?.textContent || ''");
+  check("状态栏无百分比", !/\d+%/.test(statusText), statusText);
+  const barAlign = await evaluate(`(() => {
+    const bar = document.querySelector('.fg-progress')?.getBoundingClientRect();
+    const fill = document.querySelector('.fg-progress span')?.getBoundingClientRect();
+    if (!bar || !fill) return null;
+    return {
+      centerGap: Math.abs((fill.left + fill.width / 2) - (bar.left + bar.width / 2)),
+      fillRatio: fill.width / bar.width,
+    };
+  })()`);
+  check(
+    "进度线从中心向两边",
+    !!barAlign && barAlign.centerGap < 2 && barAlign.fillRatio > 0.05 && barAlign.fillRatio < 0.95,
+    JSON.stringify(barAlign),
   );
-  check("框上百分比", /^\d+%$/.test(frameBadge), frameBadge);
   await new Promise((r) => setTimeout(r, 1200));
   const trailCount = await evaluate("document.querySelectorAll('.fg-trail img').length");
   check("拖影最多 2 段", trailCount <= 2, `trail=${trailCount}`);
@@ -681,9 +699,16 @@ try {
   check("钓获过渡卡片", catchText.includes("kg") && catchText.includes("品质"), catchText.replace(/\n/g, " / "));
   await screenshot(catchShot);
   check("钓获截图", existsSync(catchShot), catchShot);
-  await clickText("[收下]");
-  await waitFor(async () => !(await evaluate("!!document.querySelector('.catch-card')")));
-  check("收下关闭渔获卡片", true);
+  await pressKey("f", "KeyF", 70);
+  await waitFor(async () => !(await evaluate("!!document.querySelector('.catch-card')")), 3000);
+  await waitFor(
+    async () => (await evaluate("document.querySelector('.fishing-game')?.dataset.phase")) === "waiting",
+    4000,
+  );
+  check("F 先关卡片并自动续钓", true);
+  await clickText("[收竿]");
+  await waitFor(async () => saveState().fishing.session === null);
+  check("续钓后收竿清空", saveState().fishing.session === null);
 
   const activeSelects = await evaluate("document.querySelectorAll('.bait-select').length");
   check("主动鱼饵选择（种类+品质）", activeSelects === 2, `select=${activeSelects}`);

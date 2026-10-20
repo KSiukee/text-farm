@@ -2,10 +2,12 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import type { FishingSessionView } from "./types";
 
-const props = defineProps<{ session: FishingSessionView }>();
+const props = defineProps<{ session: FishingSessionView | null; active: boolean }>();
 const emit = defineEmits<{ resolve: [success: boolean] }>();
 
-const phase = ref<"waiting" | "bite" | "playing">("waiting");
+const phase = ref<"idle" | "waiting" | "bite" | "playing">(
+  props.session ? "waiting" : "idle",
+);
 const frameX = ref(50);
 const frameY = ref(50);
 const frameVX = ref(0);
@@ -20,7 +22,7 @@ const fishVY = ref(0);
 const fishFacing = ref(-1); // -1 朝左，1 朝右
 const progress = ref(35);
 const done = ref(false);
-const message = ref("浮标落水了，等鱼咬钩……");
+const message = ref(props.session ? "浮标落水了，等鱼咬钩……" : "按 F 抛竿，等浮标落水。");
 const inZone = ref(false);
 const graceLeft = ref(0);
 const trail = ref<{ x: number; y: number; facing: number }[]>([]);
@@ -62,7 +64,7 @@ function keepInPond(value: number): number {
   return POND_MIN + v;
 }
 
-const frameSize = computed(() => props.session.params.framePct);
+const frameSize = computed(() => props.session?.params.framePct ?? 20);
 const frameW = computed(() => frameSize.value);
 // 窗口是宽屏，框本身保持正方形：高度百分比按池塘宽高比换算。
 const frameH = computed(() => Math.min(100, frameSize.value * pondAspect.value));
@@ -74,7 +76,7 @@ const frameStyle = computed(() => ({
   transform: "translate(-50%, -50%)",
 }));
 const fishStyle = computed(() => {
-  const base = props.session.facesRight ? -1 : 1;
+  const base = props.session?.facesRight ? -1 : 1;
   const scale = fishFacing.value < 0 ? base : -base;
   return {
     left: `${fishX.value}%`,
@@ -83,7 +85,7 @@ const fishStyle = computed(() => {
   };
 });
 const progressStyle = computed(() => ({
-  height: `${Math.max(0, Math.min(100, progress.value))}%`,
+  width: `${Math.max(0, Math.min(100, progress.value))}%`,
 }));
 const stickKnobStyle = computed(() => ({
   transform: `translate(${stickKnobX.value}px, ${stickKnobY.value}px)`,
@@ -102,6 +104,7 @@ const progressVars = computed<Record<string, string>>(() => ({
   "--fg-progress-glow": progressGlow.value,
 }));
 const zoneText = computed(() => {
+  if (phase.value === "idle") return "等抛竿";
   if (phase.value === "waiting") return "等咬钩";
   if (phase.value === "bite") return "咬钩，按 F";
   if (inZone.value) return "圈内，收线中";
@@ -110,7 +113,7 @@ const zoneText = computed(() => {
 });
 
 function trailStyle(point: { x: number; y: number; facing: number }, index: number) {
-  const base = props.session.facesRight ? -1 : 1;
+  const base = props.session?.facesRight ? -1 : 1;
   const scale = point.facing < 0 ? base : -base;
   return {
     left: `${point.x}%`,
@@ -132,7 +135,7 @@ function finish(success: boolean, text: string) {
 }
 
 function startGame() {
-  if (done.value || phase.value !== "bite") return;
+  if (!props.session || done.value || phase.value !== "bite") return;
   phase.value = "playing";
   graceLeft.value = GRACE_SECONDS;
   message.value = "WASD / 方向键 / 下方轮盘移动框，把鱼圈住";
@@ -221,28 +224,30 @@ function axis(): { x: number; y: number } {
 
 function tick(now: number) {
   if (done.value || phase.value !== "playing") return;
+  const session = props.session;
+  if (!session) return;
   if (!last) last = now;
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   elapsed += dt * 1000;
 
-  if (Date.now() > props.session.expiresAt) {
+  if (Date.now() > session.expiresAt) {
     finish(false, "这一竿放太久了");
     return;
   }
-  if (elapsed >= props.session.params.catchMs) {
+  if (elapsed >= session.params.catchMs) {
     finish(false, "时间到，鱼跑了");
     return;
   }
 
   const input = axis();
-  const accel = 650 * (props.session.params.frameSpeedPct / 100);
+  const accel = 650 * (session.params.frameSpeedPct / 100);
   frameVX.value += input.x * accel * dt;
   frameVY.value += input.y * accel * dt;
   const drag = Math.pow(0.88, dt * 60);
   frameVX.value *= drag;
   frameVY.value *= drag;
-  const maxSpeed = 90 * (props.session.params.frameSpeedPct / 100);
+  const maxSpeed = 90 * (session.params.frameSpeedPct / 100);
   frameVX.value = Math.max(-maxSpeed, Math.min(maxSpeed, frameVX.value));
   frameVY.value = Math.max(-maxSpeed, Math.min(maxSpeed, frameVY.value));
   frameX.value += frameVX.value * dt;
@@ -273,13 +278,13 @@ function tick(now: number) {
   const toFrameY = (fishY.value - frameY.value) / pondAspect.value;
   const frameDist = Math.hypot(toFrameX, toFrameY);
   if (targetTimer <= 0) {
-    const minMs = props.session.params.targetMinMs;
-    const maxMs = props.session.params.targetMaxMs;
+    const minMs = session.params.targetMinMs;
+    const maxMs = session.params.targetMaxMs;
     targetTimer = (minMs + Math.random() * (maxMs - minMs)) / 1000;
-    const jerk = props.session.params.fishJerkPct / 100;
+    const jerk = session.params.fishJerkPct / 100;
     const range = 13 + jerk * 8;
     let angle: number;
-    if (frameDist < props.session.params.fleeRadiusPct) {
+    if (frameDist < session.params.fleeRadiusPct) {
       // 框逼近：朝远离框的方向逃，只留少量偏转。
       angle = Math.atan2(toFrameY, toFrameX) + (Math.random() - 0.5) * 0.35;
     } else {
@@ -314,13 +319,13 @@ function tick(now: number) {
   const dist = Math.hypot(dx, dy);
   const escaping = frameDist < 30;
   const speed =
-    (props.session.params.fishSpeedPct / 100) *
+    (session.params.fishSpeedPct / 100) *
     70 *
-    (escaping ? props.session.params.fishEscapePct / 100 : 1);
+    (escaping ? session.params.fishEscapePct / 100 : 1);
   if (dist > 0.01) {
     const desiredX = (dx / dist) * speed;
     const desiredY = (dy / dist) * speed;
-    const turn = Math.min(1, dt * 2.4 * (props.session.params.turnPct / 100));
+    const turn = Math.min(1, dt * 2.4 * (session.params.turnPct / 100));
     fishVX.value += (desiredX - fishVX.value) * turn;
     fishVY.value += (desiredY - fishVY.value) * turn;
   } else {
@@ -380,9 +385,9 @@ function tick(now: number) {
     ].slice(0, 2);
   }
   if (inside) {
-    progress.value += props.session.params.progressGain * dt;
+    progress.value += session.params.progressGain * dt;
   } else if (graceLeft.value <= 0) {
-    progress.value -= props.session.params.progressLoss * dt;
+    progress.value -= session.params.progressLoss * dt;
   }
   if (progress.value >= 100) {
     progress.value = 100;
@@ -397,6 +402,7 @@ function tick(now: number) {
 }
 
 function onKey(event: KeyboardEvent) {
+  if (!props.active) return;
   const key = event.key.toLowerCase();
   if (key === "f") {
     event.preventDefault();
@@ -419,20 +425,77 @@ function onKeyUp(event: KeyboardEvent) {
   keys.delete(event.key.toLowerCase());
 }
 
+function resetRound() {
+  cancelAnimationFrame(raf);
+  clearTimeout(biteTimer);
+  raf = 0;
+  biteTimer = 0;
+  keys.clear();
+  done.value = false;
+  progress.value = 35;
+  inZone.value = false;
+  graceLeft.value = 0;
+  trail.value = [];
+  frameX.value = 50;
+  frameY.value = 50;
+  frameVX.value = 0;
+  frameVY.value = 0;
+  fishX.value = 32;
+  fishY.value = 38;
+  fishTargetX.value = 32;
+  fishTargetY.value = 38;
+  fishVX.value = 0;
+  fishVY.value = 0;
+  fishFacing.value = -1;
+  elapsed = 0;
+  last = 0;
+  stuckMs = 0;
+  facingLockAt = 0;
+  targetTimer = 0;
+  trailAt = 0;
+  stickActive.value = false;
+  stickKnobX.value = 0;
+  stickKnobY.value = 0;
+}
+
+function beginSession() {
+  resetRound();
+  phase.value = "waiting";
+  message.value = "浮标落水了，等鱼咬钩……";
+  const id = props.session?.id ?? 0;
+  const delay = 1600 + (Number(id) % 3) * 700;
+  biteTimer = window.setTimeout(() => {
+    if (!props.session || done.value) return;
+    phase.value = "bite";
+    message.value = "咬钩了！按 F 开始收线";
+  }, delay);
+}
+
+function goIdle() {
+  resetRound();
+  phase.value = "idle";
+  message.value = "按 F 抛竿，等浮标落水。";
+}
+
 watch(phase, () => {
   void nextTick(watchPond);
 });
+
+watch(
+  () => props.session?.id ?? null,
+  (id, previous) => {
+    if (id === previous) return;
+    if (id === null) goIdle();
+    else beginSession();
+  },
+);
 
 onMounted(() => {
   window.addEventListener("keydown", onKey);
   window.addEventListener("keyup", onKeyUp);
   pond.value?.focus();
-  const delay = 1600 + (Number(props.session.id) % 3) * 700;
-  biteTimer = window.setTimeout(() => {
-    if (done.value) return;
-    phase.value = "bite";
-    message.value = "咬钩了！按 F 开始收线";
-  }, delay);
+  if (props.session) beginSession();
+  else goIdle();
 });
 onUnmounted(() => {
   cancelAnimationFrame(raf);
@@ -448,8 +511,12 @@ onUnmounted(() => {
 <template>
   <div class="fishing-game" :data-phase="phase">
     <div class="fg-head">
-      <strong>{{ session.fishName }}</strong>
-      <span class="muted">{{ session.spotLabel }} · {{ session.params.personalityLabel }} · {{ session.isKing ? "鱼王" : `难度 ${session.difficulty}` }}</span>
+      <strong>{{ session?.fishName ?? "还没抛竿" }}</strong>
+      <span v-if="session" class="muted">
+        {{ session.spotLabel }} · {{ session.params.personalityLabel }} ·
+        {{ session.isKing ? "鱼王" : `难度 ${session.difficulty}` }}
+      </span>
+      <span v-else class="muted">按 F 抛竿，浮标落水后会等鱼咬钩</span>
     </div>
 
     <div
@@ -482,15 +549,19 @@ onUnmounted(() => {
       </div>
       <div v-if="phase === 'bite'" class="fg-bite-badge">咬钩</div>
       <div class="fg-wait-copy">
-        <span class="fg-kicker">{{ phase === "bite" ? "浮标猛沉" : "浮标落水" }}</span>
-        <strong>{{ phase === "bite" ? "按 F 开始收线" : "等几秒，别惊了鱼……" }}</strong>
+        <span class="fg-kicker">
+          {{ phase === "bite" ? "浮标猛沉" : phase === "waiting" ? "浮标落水" : "准备抛竿" }}
+        </span>
+        <strong>
+          {{ phase === "bite" ? "按 F 开始收线" : phase === "waiting" ? "等几秒，别惊了鱼……" : "按 F 抛竿" }}
+        </strong>
       </div>
     </div>
     <div
       v-else
       ref="pond"
       class="fg-pond"
-      :class="{ 'in-zone': inZone, 'is-king': session.isKing }"
+      :class="{ 'in-zone': inZone, 'is-king': session?.isKing }"
       :style="progressVars"
       tabindex="0"
       @click="focusGame"
@@ -517,7 +588,7 @@ onUnmounted(() => {
         <img
           v-for="(point, index) in trail"
           :key="index"
-          :src="`/fish/${session.fishId}.png`"
+          :src="session ? `/fish/${session.fishId}.png` : ''"
           :style="trailStyle(point, index)"
           alt=""
         />
@@ -528,24 +599,30 @@ onUnmounted(() => {
         <i class="fg-corner tr"></i>
         <i class="fg-corner bl"></i>
         <i class="fg-corner br"></i>
-        <span class="fg-frame-pct">{{ Math.round(progress) }}%</span>
       </div>
       <div class="fg-fish-shadow" :style="fishStyle"></div>
-      <img class="fg-fish" :src="`/fish/${session.fishId}.png`" :style="fishStyle" alt="" />
+      <img
+        class="fg-fish"
+        :src="session ? `/fish/${session.fishId}.png` : ''"
+        :style="fishStyle"
+        alt=""
+      />
       <div class="fg-pond-vignette"></div>
     </div>
 
     <div class="fg-status">
       <span>{{ message }}</span>
       <span class="fg-zone-tag" :class="{ active: inZone }">{{ zoneText }}</span>
-      <span v-if="phase === 'playing'" class="muted">{{ Math.round(progress) }}%</span>
     </div>
     <div class="row">
       <button v-if="phase === 'bite'" class="link" type="button" :disabled="done" @click="startGame">
         [开始收线]
       </button>
-      <button class="link" type="button" :disabled="done" @click="fail">[收竿]</button>
-      <span v-if="phase === 'waiting'" class="muted">F 抛竿后等几秒，咬钩再按 F</span>
+      <button v-if="session" class="link" type="button" :disabled="done" @click="fail">
+        [收竿]
+      </button>
+      <span v-if="phase === 'idle'" class="muted">按 F 或下方 [抛竿]</span>
+      <span v-else-if="phase === 'waiting'" class="muted">F 抛竿后等几秒，咬钩再按 F</span>
       <span v-else-if="phase === 'bite'" class="muted">按 F 或点 [开始收线]</span>
       <span v-else class="muted">WASD / 方向键 / 下方轮盘移动框；进度满自动收鱼</span>
     </div>

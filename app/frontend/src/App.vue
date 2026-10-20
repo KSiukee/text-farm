@@ -836,9 +836,26 @@ function maintainRod(rod: RodKind) {
 function onFishingShortcut(event: KeyboardEvent) {
   if (event.key.toLowerCase() !== "f") return;
   if (activeTab.value !== "钓鱼") return;
-  if (snapshot.value?.fishing?.session) return;
   const target = event.target as HTMLElement | null;
   if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
+  if (catchResult.value) {
+    event.preventDefault();
+    dismissCatch();
+    // 卡片先关掉，再自动续钓；没饵/没解锁就只关卡片。
+    window.setTimeout(() => {
+      if (
+        activeTab.value === "钓鱼" &&
+        !snapshot.value?.fishing?.session &&
+        !acting.value &&
+        currentSpot.value?.unlocked &&
+        (activeBaitInfo.value?.count ?? 0) > 0
+      ) {
+        castLine();
+      }
+    }, 120);
+    return;
+  }
+  if (snapshot.value?.fishing?.session) return;
   event.preventDefault();
   if (
     !acting.value &&
@@ -2792,12 +2809,11 @@ onUnmounted(() => {
           </div>
 
           <FishingGame
-            v-if="fishing.session"
-            :key="fishing.session.id"
             :session="fishing.session"
+            :active="activeTab === '钓鱼'"
             @resolve="resolveFishing"
           />
-          <div v-else class="row">
+          <div v-if="!fishing.session" class="row">
             <button
               class="link"
               type="button"
@@ -3745,7 +3761,10 @@ onUnmounted(() => {
           {{ catchResult.price }} 金币
           <span class="muted">市场 {{ catchResult.marketPct }}%</span>
         </div>
-        <button class="link" type="button" @click="dismissCatch">[收下]</button>
+        <div class="catch-actions">
+          <button class="link" type="button" @click="dismissCatch">[收下]</button>
+          <span class="muted">按 F 收下并续钓</span>
+        </div>
       </div>
     </div>
   </div>
