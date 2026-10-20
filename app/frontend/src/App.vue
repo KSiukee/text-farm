@@ -51,6 +51,28 @@ import type {
 } from "./types";
 import FishingGame from "./FishingGame.vue";
 import {
+  applyBackgroundPrefs,
+  BACKGROUND_FITS,
+  BACKGROUND_MODES,
+  backgroundClasses,
+  clampPercent,
+  DEFAULT_BACKGROUND_PREFS,
+  imageFitStyle,
+  PAPER_PATTERNS,
+  readBackgroundPrefs,
+  writeBackgroundPrefs,
+  type BackgroundFit,
+  type BackgroundMode,
+  type BackgroundPrefs,
+  type PaperPattern,
+} from "./background";
+import {
+  compressImage,
+  deleteBackgroundImage,
+  loadBackgroundImage,
+  saveBackgroundImage,
+} from "./background-store";
+import {
   applyStylePack,
   readStylePack,
   STYLE_PACKS,
@@ -92,6 +114,15 @@ const initialStylePack = readStylePack(window.localStorage);
 const stylePackId = ref(initialStylePack.id);
 const stylePack = computed(() => stylePackById(stylePackId.value));
 const classicLayout = computed(() => stylePack.value.layout === "classic");
+const initialBackground = readBackgroundPrefs(window.localStorage);
+const bgMode = ref<BackgroundMode>(initialBackground.mode);
+const bgPaper = ref<PaperPattern>(initialBackground.paper);
+const bgFit = ref<BackgroundFit>(initialBackground.fit);
+const bgImageAlpha = ref(initialBackground.imageAlpha);
+const panelAlpha = ref(initialBackground.panelAlpha);
+const backgroundImage = ref<string | null>(null);
+const bgImageBusy = ref(false);
+const bgImageError = ref("");
 let themeMedia: MediaQueryList | null = null;
 
 let clockOffset = 0;
@@ -1072,6 +1103,125 @@ function guardClassicFold(event: MouseEvent) {
   if (classicLayout.value) event.preventDefault();
 }
 
+function currentBackgroundPrefs(): BackgroundPrefs {
+  return {
+    mode: bgMode.value,
+    paper: bgPaper.value,
+    fit: bgFit.value,
+    imageAlpha: bgImageAlpha.value,
+    panelAlpha: panelAlpha.value,
+  };
+}
+
+const hasBackgroundImage = computed(
+  () => bgMode.value === "image" && !!backgroundImage.value,
+);
+const backgroundClassList = computed(() => backgroundClasses(currentBackgroundPrefs()));
+const bgImageStyle = computed(() => {
+  if (!backgroundImage.value) return {};
+  return {
+    backgroundImage: `url(${backgroundImage.value})`,
+    ...imageFitStyle(bgFit.value),
+    backgroundPosition: "center",
+  };
+});
+const bgReadabilityWarning = computed(
+  () => bgMode.value === "image" && bgImageAlpha.value > 70,
+);
+
+function syncBackground() {
+  applyBackgroundPrefs(document.documentElement, currentBackgroundPrefs());
+}
+
+function saveBackground() {
+  writeBackgroundPrefs(window.localStorage, currentBackgroundPrefs());
+  syncBackground();
+}
+
+function setBgMode(mode: BackgroundMode) {
+  bgMode.value = mode;
+  bgImageError.value = "";
+  saveBackground();
+}
+
+function setBgPaper(pattern: PaperPattern) {
+  bgPaper.value = pattern;
+  saveBackground();
+}
+
+function setBgFit(fit: BackgroundFit) {
+  bgFit.value = fit;
+  saveBackground();
+}
+
+function onImageAlphaInput(event: Event) {
+  bgImageAlpha.value = clampPercent(
+    (event.target as HTMLInputElement).value,
+    0,
+    100,
+    DEFAULT_BACKGROUND_PREFS.imageAlpha,
+  );
+  saveBackground();
+}
+
+function onPanelAlphaInput(event: Event) {
+  panelAlpha.value = clampPercent(
+    (event.target as HTMLInputElement).value,
+    60,
+    100,
+    DEFAULT_BACKGROUND_PREFS.panelAlpha,
+  );
+  saveBackground();
+}
+
+async function onPickBackground(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  bgImageBusy.value = true;
+  bgImageError.value = "";
+  let saved = false;
+  try {
+    const dataUrl = await compressImage(file);
+    await saveBackgroundImage(dataUrl);
+    backgroundImage.value = dataUrl;
+    bgMode.value = "image";
+    saveBackground();
+    saved = true;
+    notice.value = "背景图已存到本机（最长边 1920）。";
+  } catch (error) {
+    bgImageError.value = error instanceof Error ? error.message : "图片处理失败。";
+    notice.value = `背景图没存上：${bgImageError.value}`;
+  } finally {
+    bgImageBusy.value = false;
+    // 失败时清掉选择，允许重试同一张；成功时保留文件名给用户看。
+    if (!saved) input.value = "";
+  }
+}
+
+async function removeBackgroundImage() {
+  try {
+    await deleteBackgroundImage();
+  } catch {
+    // 删除失败最多是旧图留在库里，不拦界面。
+  }
+  backgroundImage.value = null;
+  bgMode.value = "solid";
+  bgImageError.value = "";
+  saveBackground();
+  notice.value = "背景图已移除。";
+}
+
+function resetBackground() {
+  bgMode.value = DEFAULT_BACKGROUND_PREFS.mode;
+  bgPaper.value = DEFAULT_BACKGROUND_PREFS.paper;
+  bgFit.value = DEFAULT_BACKGROUND_PREFS.fit;
+  bgImageAlpha.value = DEFAULT_BACKGROUND_PREFS.imageAlpha;
+  panelAlpha.value = DEFAULT_BACKGROUND_PREFS.panelAlpha;
+  bgImageError.value = "";
+  saveBackground();
+}
+
 function onSystemThemeChange() {
   // 只有「跟随系统」会真的换色；浅色/深色重新应用一次也无副作用。
   syncTheme();
@@ -1159,6 +1309,10 @@ onMounted(() => {
       : null;
   syncTheme();
   syncStylePack();
+  syncBackground();
+  void loadBackgroundImage().then((dataUrl) => {
+    if (dataUrl) backgroundImage.value = dataUrl;
+  });
   themeMedia?.addEventListener("change", onSystemThemeChange);
   void load();
   timer = window.setInterval(() => {
@@ -1183,6 +1337,10 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <div :class="backgroundClassList" aria-hidden="true">
+    <div class="app-bg-image" :style="bgImageStyle"></div>
+    <div v-if="hasBackgroundImage" class="app-bg-shade"></div>
+  </div>
   <div class="page" :class="seasonClass">
     <header class="icons">
       <button
@@ -1555,6 +1713,111 @@ onUnmounted(() => {
           </button>
           <span class="muted">只改钓鱼页；小游戏不变</span>
         </div>
+        <details class="appearance-sub">
+          <summary>背景与透明度</summary>
+          <div class="row">
+            <span>背景</span>
+            <button
+              v-for="mode in BACKGROUND_MODES"
+              :key="mode.id"
+              class="rate-btn"
+              :class="{ active: bgMode === mode.id }"
+              type="button"
+              @click="setBgMode(mode.id)"
+            >
+              {{ mode.name }}
+            </button>
+          </div>
+          <div v-if="bgMode === 'paper'" class="row">
+            <span>纸纹</span>
+            <button
+              v-for="pattern in PAPER_PATTERNS"
+              :key="pattern.id"
+              class="rate-btn"
+              :class="{ active: bgPaper === pattern.id }"
+              type="button"
+              @click="setBgPaper(pattern.id)"
+            >
+              {{ pattern.name }}
+            </button>
+          </div>
+          <template v-if="bgMode === 'image'">
+            <div class="row">
+              <span>图片</span>
+              <input
+                class="bg-file"
+                type="file"
+                accept="image/*"
+                :disabled="bgImageBusy"
+                @change="onPickBackground"
+              />
+              <span v-if="bgImageBusy" class="muted">正在压缩…</span>
+              <span
+                v-else-if="backgroundImage"
+                class="bg-preview"
+                :style="{ backgroundImage: `url(${backgroundImage})` }"
+              ></span>
+              <button
+                v-if="backgroundImage"
+                class="link"
+                type="button"
+                @click="removeBackgroundImage"
+              >
+                [移除图片]
+              </button>
+            </div>
+            <div v-if="!backgroundImage" class="row muted">
+              还没选图片；选了以后会压到最长边 1920，再存本机。
+            </div>
+            <div v-if="backgroundImage" class="row">
+              <span>图片不透明度</span>
+              <input
+                class="bg-slider bg-slider--image"
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                :value="bgImageAlpha"
+                @input="onImageAlphaInput"
+              />
+              <span class="muted">{{ bgImageAlpha }}%</span>
+            </div>
+            <div v-if="backgroundImage" class="row">
+              <span>铺法</span>
+              <button
+                v-for="fit in BACKGROUND_FITS"
+                :key="fit.id"
+                class="rate-btn"
+                :class="{ active: bgFit === fit.id }"
+                type="button"
+                @click="setBgFit(fit.id)"
+              >
+                {{ fit.name }}
+              </button>
+            </div>
+            <div v-if="bgImageError" class="row bg-warning">{{ bgImageError }}</div>
+          </template>
+          <div class="row">
+            <span>面板不透明度</span>
+            <input
+              class="bg-slider bg-slider--panel"
+              type="range"
+              min="60"
+              max="100"
+              step="1"
+              :value="panelAlpha"
+              @input="onPanelAlphaInput"
+            />
+            <span class="muted">{{ panelAlpha }}%</span>
+          </div>
+          <div v-if="bgReadabilityWarning" class="row bg-warning">
+            图片不透明度超过 70%，字可能不好认；建议 30–50%。
+          </div>
+          <div class="row">
+            <button class="link" type="button" @click="resetBackground">恢复背景默认</button>
+            <span class="muted">图片存本机 IndexedDB，不写存档、不碰文件路径。</span>
+          </div>
+        </details>
         <div class="row muted appearance-hint">
           只存在这台电脑上（localStorage），不写存档；默认跟随系统 + 新版布局，改完立即生效。
         </div>

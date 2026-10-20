@@ -86,7 +86,7 @@ for (const match of themeOutsideBlocks.matchAll(rawColor)) {
 const used = new Map();
 for (const relative of [...componentFiles, "app/frontend/src/theme.css"]) {
   const source = readFileSync(join(root, relative), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
-  for (const match of source.matchAll(/var\((--[a-z0-9-]+)\)/g)) {
+  for (const match of source.matchAll(/var\((--[a-z0-9-]+)/g)) {
     if (!used.has(match[1])) used.set(match[1], relative);
   }
 }

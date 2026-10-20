@@ -9,13 +9,21 @@
 :root {
   color-scheme: light;
 
-  /* 纸面 */
+  /* 纸面：panel 系列带 alpha，让背景层透出来；raised 保持不透明给控件 */
   --paper: #f6f3ec;
-  --panel: #fbf9f3;
+  --panel-rgb: 251 249 243;
+  --panel-soft-rgb: 243 239 230;
+  --panel-warm-rgb: 251 247 238;
+  --panel-alpha: 0.92;
+  --panel: rgb(var(--panel-rgb) / var(--panel-alpha));
   --panel-raised: #fffefa;
-  --panel-soft: #f3efe6;
-  --panel-warm: #fbf7ee;
+  --panel-soft: rgb(var(--panel-soft-rgb) / var(--panel-alpha));
+  --panel-warm: rgb(var(--panel-warm-rgb) / var(--panel-alpha));
   --inset: #ebe5d8;
+
+  /* 背景层 */
+  --bg-image-alpha: 0.3;
+  --bg-shade: rgba(0, 0, 0, 0);
 
   /* 文字 */
   --ink: #3e4638;
@@ -39,6 +47,7 @@
   --accent-text: var(--accent-ink);
   --link: var(--accent-text);
   --on-accent: #2b3325;
+  --swatch-color: var(--accent);
 
   /* 语义色 */
   --success: #4f7a43;
@@ -152,11 +161,17 @@
   color-scheme: dark;
 
   --paper: #20251d;
-  --panel: #282e23;
+  --panel-rgb: 40 46 35;
+  --panel-soft-rgb: 36 42 32;
+  --panel-warm-rgb: 42 48 37;
+  --panel-alpha: 0.92;
+  --panel: rgb(var(--panel-rgb) / var(--panel-alpha));
   --panel-raised: #2f362a;
-  --panel-soft: #242a20;
-  --panel-warm: #2a3025;
+  --panel-soft: rgb(var(--panel-soft-rgb) / var(--panel-alpha));
+  --panel-warm: rgb(var(--panel-warm-rgb) / var(--panel-alpha));
   --inset: #171c15;
+  --bg-image-alpha: 0.3;
+  --bg-shade: rgba(8, 12, 8, 0.35);
 
   --ink: #e9eddf;
   --ink-2: #d3dac4;
@@ -170,6 +185,7 @@
 
   --accent-text: var(--accent-ink-dark);
   --link: var(--accent-text);
+  --swatch-color: var(--accent);
 
   --success: #a9c48f;
   --success-bg: #26301e;

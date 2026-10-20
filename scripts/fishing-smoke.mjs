@@ -144,8 +144,34 @@ async function startApp({ fresh = true } = {}) {
   // 不随 shadow 目录清掉。每跑先清零再重载，否则下一跑会把「该弹的报告」误判成已读。
   try {
     await evaluate(
-      "localStorage.removeItem('farm.autoReportShownAt'); localStorage.removeItem('farm.ui.themeMode'); localStorage.removeItem('farm.ui.palette'); localStorage.removeItem('farm.ui.stylePack')",
+      "localStorage.removeItem('farm.autoReportShownAt'); localStorage.removeItem('farm.ui.themeMode'); localStorage.removeItem('farm.ui.palette'); localStorage.removeItem('farm.ui.stylePack'); localStorage.removeItem('farm.ui.bgMode'); localStorage.removeItem('farm.ui.bgPaper'); localStorage.removeItem('farm.ui.bgFit'); localStorage.removeItem('farm.ui.bgImageAlpha'); localStorage.removeItem('farm.ui.bgPanelAlpha')",
     );
+    await evaluate(`new Promise((resolve) => {
+      const request = indexedDB.open('text-farm-ui', 1);
+      request.onupgradeneeded = () => {
+        const database = request.result;
+        if (!database.objectStoreNames.contains('kv')) database.createObjectStore('kv');
+      };
+      request.onsuccess = () => {
+        const database = request.result;
+        if (!database.objectStoreNames.contains('kv')) {
+          database.close();
+          resolve(true);
+          return;
+        }
+        const tx = database.transaction('kv', 'readwrite');
+        tx.objectStore('kv').delete('background-image');
+        tx.oncomplete = () => {
+          database.close();
+          resolve(true);
+        };
+        tx.onerror = () => {
+          database.close();
+          resolve(false);
+        };
+      };
+      request.onerror = () => resolve(false);
+    })`);
     await send("Page.reload", { ignoreCache: true });
     await waitFor(async () => (await evaluate("document.readyState")) === "complete");
     await waitFor(async () => (await bodyText()).includes("我的农场"));
@@ -234,6 +260,138 @@ try {
   await screenshot(themeLightShot);
   check("浅色截图", existsSync(themeLightShot), themeLightShot);
   await clickText("跟随系统");
+
+  // #76 背景与不透明度：纸纹 → 面板滑杆 → 图片上传 → 刷新保持 → 清理
+  await evaluate("document.querySelector('.appearance-sub > summary')?.click()");
+  await waitFor(
+    async () => (await evaluate("document.querySelector('.appearance-sub')?.open")) === true,
+  );
+  check("背景设置已展开", true);
+  await clickText("纸纹");
+  await waitFor(
+    async () => (await evaluate("document.documentElement.dataset.bgMode")) === "paper",
+  );
+  await clickText("点阵");
+  await waitFor(
+    async () => (await evaluate("document.documentElement.dataset.bgPaper")) === "dots",
+  );
+  const paperState = await evaluate(`({
+    className: document.querySelector('.app-bg')?.className || '',
+    image: getComputedStyle(document.querySelector('.app-bg')).backgroundImage
+  })`);
+  check(
+    "纸纹：点阵生效",
+    paperState.className.includes("app-bg--dots") && paperState.image !== "none",
+    JSON.stringify(paperState),
+  );
+  await evaluate(`(() => {
+    const el = document.querySelector('.bg-slider--panel');
+    el.value = '78';
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  })()`);
+  await waitFor(
+    async () =>
+      (await evaluate(
+        "getComputedStyle(document.documentElement).getPropertyValue('--panel-alpha').trim()",
+      )) === "0.78",
+  );
+  const panelState = await evaluate(`({
+    alpha: getComputedStyle(document.documentElement).getPropertyValue('--panel-alpha').trim(),
+    panelBg: getComputedStyle(document.querySelector('.panel')).backgroundColor,
+    stored: localStorage.getItem('farm.ui.bgPanelAlpha')
+  })`);
+  check(
+    "面板不透明度 78% 生效",
+    panelState.alpha === "0.78" &&
+      panelState.panelBg.endsWith("0.78)") &&
+      panelState.stored === "78",
+    JSON.stringify(panelState),
+  );
+  await screenshot(join(root, "docs", "background-paper-v053.png"));
+  await clickText("图片");
+  await waitFor(
+    async () => (await evaluate("document.documentElement.dataset.bgMode")) === "image",
+  );
+  await send("DOM.enable");
+  const documentTree = await send("DOM.getDocument", { depth: -1 });
+  const fileNode = await send("DOM.querySelector", {
+    nodeId: documentTree.result.root.nodeId,
+    selector: "input.bg-file",
+  });
+  check("图片模式出现文件框", !!fileNode.result.nodeId);
+  const bgFile = join(root, "docs", "theme-light-v051.png");
+  await send("DOM.setFileInputFiles", { nodeId: fileNode.result.nodeId, files: [bgFile] });
+  await waitFor(
+    async () =>
+      (await evaluate("localStorage.getItem('farm.ui.bgMode')")) === "image" &&
+      (await evaluate(
+        "(document.querySelector('.app-bg-image')?.style.backgroundImage || '').includes('data:image')",
+      )),
+    15000,
+  );
+  const imageState = await evaluate(`({
+    image: (document.querySelector('.app-bg-image')?.style.backgroundImage || '').slice(0, 30),
+    alpha: getComputedStyle(document.documentElement).getPropertyValue('--bg-image-alpha').trim(),
+    preview: !!document.querySelector('.bg-preview')
+  })`);
+  check(
+    "背景图已压缩并生效",
+    imageState.image.includes("data:image") && imageState.alpha === "0.3" && imageState.preview,
+    JSON.stringify(imageState),
+  );
+  await screenshot(join(root, "docs", "background-image-v053.png"));
+  await evaluate(`(() => {
+    const el = document.querySelector('.bg-slider--image');
+    el.value = '45';
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  })()`);
+  await waitFor(
+    async () =>
+      (await evaluate(
+        "getComputedStyle(document.documentElement).getPropertyValue('--bg-image-alpha').trim()",
+      )) === "0.45",
+  );
+  check("图片不透明度 45% 生效", true);
+  await evaluate("window.__bgReloadProbe = 1");
+  await send("Page.reload", { ignoreCache: true });
+  await waitFor(
+    async () => (await evaluate("typeof window.__bgReloadProbe")) === "undefined",
+  );
+  await waitFor(async () => (await bodyText()).includes("我的农场"));
+  await waitFor(
+    async () =>
+      (await evaluate(
+        "(document.querySelector('.app-bg-image')?.style.backgroundImage || '').includes('data:image')",
+      )),
+    10000,
+  );
+  const reloadBg = await evaluate(`({
+    mode: document.documentElement.dataset.bgMode,
+    alpha: getComputedStyle(document.documentElement).getPropertyValue('--bg-image-alpha').trim(),
+    panel: getComputedStyle(document.documentElement).getPropertyValue('--panel-alpha').trim()
+  })`);
+  check(
+    "刷新后背景图仍在（IndexedDB）",
+    reloadBg.mode === "image" && reloadBg.alpha === "0.45" && reloadBg.panel === "0.78",
+    JSON.stringify(reloadBg),
+  );
+  await evaluate("document.querySelector('.appearance-sub > summary')?.click()");
+  await waitFor(
+    async () => (await evaluate("document.querySelector('.appearance-sub')?.open")) === true,
+  );
+  await clickText("[移除图片]");
+  await waitFor(
+    async () => (await evaluate("document.documentElement.dataset.bgMode")) === "solid",
+  );
+  check("移除图片回纯色", true);
+  await clickText("恢复背景默认");
+  await waitFor(
+    async () =>
+      (await evaluate(
+        "getComputedStyle(document.documentElement).getPropertyValue('--panel-alpha').trim()",
+      )) === "0.92",
+  );
+  check("恢复背景默认（面板 92%）", true);
 
   await clickText("钓鱼", false);
   await waitFor(async () => (await bodyText()).includes("鱼类图鉴"));
