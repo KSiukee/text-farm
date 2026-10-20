@@ -3,7 +3,18 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import type { FishingSessionView } from "./types";
 
 const props = defineProps<{ session: FishingSessionView | null; active: boolean }>();
-const emit = defineEmits<{ resolve: [success: boolean] }>();
+const emit = defineEmits<{ resolve: [success: boolean]; notice: [text: string] }>();
+
+type FeelMode = "current" | "bad";
+const FEEL_KEY = "farm.ui.fishingFeel";
+
+function readFeel(): FeelMode {
+  try {
+    return window.localStorage.getItem(FEEL_KEY) === "bad" ? "bad" : "current";
+  } catch {
+    return "current";
+  }
+}
 
 const phase = ref<"idle" | "waiting" | "bite" | "playing">(
   props.session ? "waiting" : "idle",
@@ -21,10 +32,13 @@ const fishVY = ref(0);
 // 图标默认朝向：facesRight=true 的鱼先镜像成朝左，再按游动方向翻。
 const fishFacing = ref(-1); // -1 朝左，1 朝右
 const progress = ref(35);
+const peakProgress = ref(35);
 const done = ref(false);
 const message = ref(props.session ? "浮标落水了，等鱼咬钩……" : "按 F 抛竿，等浮标落水。");
 const inZone = ref(false);
 const graceLeft = ref(0);
+const biteLeft = ref(0);
+const feel = ref<FeelMode>(readFeel());
 const trail = ref<{ x: number; y: number; facing: number }[]>([]);
 const touchX = ref(0);
 const touchY = ref(0);
@@ -44,16 +58,23 @@ let pondObserver: ResizeObserver | null = null;
 
 let raf = 0;
 let biteTimer = 0;
+let biteWindowTimer = 0;
+let biteCountdownTimer = 0;
 let last = 0;
 let elapsed = 0;
 let targetTimer = 0;
 let stuckMs = 0;
 let facingLockAt = 0;
 let trailAt = 0;
+let badHoldMs = 0;
+let badDirX = 0;
+let badDirY = 0;
+let badReversalMs = 0;
 
 const POND_MIN = 16;
 const POND_MAX = 84;
 const GRACE_SECONDS = 0.8;
+const BITE_WINDOW_MS = 8_000;
 
 /// 把目标点折回池塘内（边界像墙一样反弹），避免目标被夹在边上把鱼钉住。
 function keepInPond(value: number): number {
@@ -87,6 +108,12 @@ const fishStyle = computed(() => {
 const progressStyle = computed(() => ({
   width: `${Math.max(0, Math.min(100, progress.value))}%`,
 }));
+const progressGhostStyle = computed(() => ({
+  width: `${Math.max(0, Math.min(100, peakProgress.value))}%`,
+}));
+const isLosing = computed(
+  () => phase.value === "playing" && !inZone.value && graceLeft.value <= 0,
+);
 const stickKnobStyle = computed(() => ({
   transform: `translate(${stickKnobX.value}px, ${stickKnobY.value}px)`,
 }));
@@ -129,18 +156,54 @@ function finish(success: boolean, text: string) {
   phase.value = "playing";
   inZone.value = false;
   message.value = text;
+  clearBiteWindow();
   cancelAnimationFrame(raf);
   clearTimeout(biteTimer);
+  if (!success) emit("notice", text);
   emit("resolve", success);
+}
+
+function clearBiteWindow() {
+  clearTimeout(biteWindowTimer);
+  clearInterval(biteCountdownTimer);
+  biteWindowTimer = 0;
+  biteCountdownTimer = 0;
+  biteLeft.value = 0;
+}
+
+function beginBiteWindow() {
+  clearBiteWindow();
+  biteLeft.value = BITE_WINDOW_MS / 1000;
+  message.value = `咬钩了！按 F 开始收线（${biteLeft.value} 秒内）`;
+  biteWindowTimer = window.setTimeout(() => {
+    if (phase.value === "bite" && !done.value) {
+      finish(false, "鱼吃掉鱼饵，跑了");
+    }
+  }, BITE_WINDOW_MS);
+  biteCountdownTimer = window.setInterval(() => {
+    if (phase.value !== "bite" || done.value) return;
+    biteLeft.value = Math.max(0, biteLeft.value - 1);
+    message.value = `咬钩了！按 F 开始收线（还剩 ${biteLeft.value} 秒）`;
+  }, 1000);
 }
 
 function startGame() {
   if (!props.session || done.value || phase.value !== "bite") return;
+  clearBiteWindow();
   phase.value = "playing";
   graceLeft.value = GRACE_SECONDS;
   message.value = "WASD / 方向键 / 下方轮盘移动框，把鱼圈住";
   last = 0;
   raf = requestAnimationFrame(tick);
+}
+
+function setFeel(mode: FeelMode) {
+  feel.value = mode;
+  try {
+    window.localStorage.setItem(FEEL_KEY, mode);
+  } catch {
+    // 存不了就只影响本次；默认仍是当前手感。
+  }
 }
 
 function fail() {
@@ -222,6 +285,56 @@ function axis(): { x: number; y: number } {
   return { x, y };
 }
 
+function applyCurrentFeel(
+  input: { x: number; y: number },
+  dt: number,
+  speedPct: number,
+) {
+  const accel = 650 * (speedPct / 100);
+  frameVX.value += input.x * accel * dt;
+  frameVY.value += input.y * accel * dt;
+  const drag = Math.pow(0.88, dt * 60);
+  frameVX.value *= drag;
+  frameVY.value *= drag;
+  const maxSpeed = 90 * (speedPct / 100);
+  frameVX.value = Math.max(-maxSpeed, Math.min(maxSpeed, frameVX.value));
+  frameVY.value = Math.max(-maxSpeed, Math.min(maxSpeed, frameVY.value));
+}
+
+function applyBadFeel(
+  input: { x: number; y: number },
+  dt: number,
+  speedPct: number,
+) {
+  const moving = input.x !== 0 || input.y !== 0;
+  const dirX = Math.sign(input.x);
+  const dirY = Math.sign(input.y);
+  if (moving) {
+    const reversedX = badDirX !== 0 && dirX !== 0 && dirX !== badDirX;
+    const reversedY = badDirY !== 0 && dirY !== 0 && dirY !== badDirY;
+    if ((reversedX || reversedY) && badHoldMs > 350) {
+      badReversalMs = 450;
+    }
+    if (dirX !== 0) badDirX = dirX;
+    if (dirY !== 0) badDirY = dirY;
+    badHoldMs += dt * 1000;
+  } else {
+    badHoldMs = Math.max(0, badHoldMs - dt * 2000);
+  }
+
+  // 长按追鱼加成最多 +40%；速度直接追目标值，不做线性加速。
+  const boost = 1 + Math.min(0.4, (badHoldMs / 1000) * 0.35);
+  const speed = 90 * (speedPct / 100) * boost;
+  const targetX = input.x * speed;
+  const targetY = input.y * speed;
+  // 换向时响应更慢，先漂一段再回头；松开后慢慢滑停。
+  const response = moving ? (badReversalMs > 0 ? 1.1 : 2.6) : 1.6;
+  const alpha = 1 - Math.exp(-response * dt);
+  frameVX.value += (targetX - frameVX.value) * alpha;
+  frameVY.value += (targetY - frameVY.value) * alpha;
+  badReversalMs = Math.max(0, badReversalMs - dt * 1000);
+}
+
 function tick(now: number) {
   if (done.value || phase.value !== "playing") return;
   const session = props.session;
@@ -241,15 +354,11 @@ function tick(now: number) {
   }
 
   const input = axis();
-  const accel = 650 * (session.params.frameSpeedPct / 100);
-  frameVX.value += input.x * accel * dt;
-  frameVY.value += input.y * accel * dt;
-  const drag = Math.pow(0.88, dt * 60);
-  frameVX.value *= drag;
-  frameVY.value *= drag;
-  const maxSpeed = 90 * (session.params.frameSpeedPct / 100);
-  frameVX.value = Math.max(-maxSpeed, Math.min(maxSpeed, frameVX.value));
-  frameVY.value = Math.max(-maxSpeed, Math.min(maxSpeed, frameVY.value));
+  if (feel.value === "bad") {
+    applyBadFeel(input, dt, session.params.frameSpeedPct);
+  } else {
+    applyCurrentFeel(input, dt, session.params.frameSpeedPct);
+  }
   frameX.value += frameVX.value * dt;
   frameY.value += frameVY.value * dt;
 
@@ -386,6 +495,9 @@ function tick(now: number) {
   }
   if (inside) {
     progress.value += session.params.progressGain * dt;
+    if (progress.value > peakProgress.value) {
+      peakProgress.value = progress.value;
+    }
   } else if (graceLeft.value <= 0) {
     progress.value -= session.params.progressLoss * dt;
   }
@@ -428,13 +540,20 @@ function onKeyUp(event: KeyboardEvent) {
 function resetRound() {
   cancelAnimationFrame(raf);
   clearTimeout(biteTimer);
+  clearBiteWindow();
   raf = 0;
   biteTimer = 0;
   keys.clear();
   done.value = false;
   progress.value = 35;
+  peakProgress.value = 35;
   inZone.value = false;
   graceLeft.value = 0;
+  biteLeft.value = 0;
+  badHoldMs = 0;
+  badDirX = 0;
+  badDirY = 0;
+  badReversalMs = 0;
   trail.value = [];
   frameX.value = 50;
   frameY.value = 50;
@@ -467,7 +586,7 @@ function beginSession() {
   biteTimer = window.setTimeout(() => {
     if (!props.session || done.value) return;
     phase.value = "bite";
-    message.value = "咬钩了！按 F 开始收线";
+    beginBiteWindow();
   }, delay);
 }
 
@@ -500,6 +619,7 @@ onMounted(() => {
 onUnmounted(() => {
   cancelAnimationFrame(raf);
   clearTimeout(biteTimer);
+  clearBiteWindow();
   pondObserver?.disconnect();
   pondObserver = null;
   window.removeEventListener("keydown", onKey);
@@ -513,10 +633,33 @@ onUnmounted(() => {
     <div class="fg-head">
       <strong>{{ session?.fishName ?? "还没抛竿" }}</strong>
       <span v-if="session" class="muted">
+        <b v-if="session.isGolden" class="fg-golden">金色变异 · </b>
         {{ session.spotLabel }} · {{ session.params.personalityLabel }} ·
         {{ session.isKing ? "鱼王" : `难度 ${session.difficulty}` }}
       </span>
       <span v-else class="muted">按 F 抛竿，浮标落水后会等鱼咬钩</span>
+    </div>
+    <div class="fg-feel">
+      <span class="muted">手感</span>
+      <button
+        class="link"
+        :class="{ active: feel === 'current' }"
+        type="button"
+        @click="setFeel('current')"
+      >
+        [1 当前]
+      </button>
+      <button
+        class="link"
+        :class="{ active: feel === 'bad' }"
+        type="button"
+        @click="setFeel('bad')"
+      >
+        [2 坏杆 + 追鱼]
+      </button>
+      <span class="muted">
+        {{ feel === "bad" ? "测试中：长按加速，换向有惯性漂移" : "默认手感（保留）" }}
+      </span>
     </div>
 
     <div
@@ -583,7 +726,10 @@ onUnmounted(() => {
           }"
         ></span>
       </div>
-      <div class="fg-progress"><span :style="progressStyle"></span></div>
+      <div class="fg-progress" :class="{ losing: isLosing }">
+        <i class="fg-progress-ghost" :style="progressGhostStyle"></i>
+        <span :style="progressStyle"></span>
+      </div>
       <div class="fg-trail">
         <img
           v-for="(point, index) in trail"

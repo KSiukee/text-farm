@@ -489,6 +489,66 @@ fn rod_maintenance_clears_wear_and_restores_frame_speed() {
 }
 
 #[test]
+fn owned_rods_switch_and_maintenance_waits_for_session_end() {
+    let mut game = game(1_000);
+    game.state_mut().coins = 10_000;
+    game.state_mut().skills.fishing.level = 5;
+    game.dispatch(Action::BuyRod { rod: RodKind::Bamboo }, 1_000)
+        .unwrap();
+    assert_eq!(game.state().fishing.rod, RodKind::Bamboo);
+    assert!(game.state().fishing.owns_rod(RodKind::Bamboo));
+
+    game.dispatch(Action::SwitchRod { rod: RodKind::Wood }, 1_000)
+        .unwrap();
+    assert_eq!(game.state().fishing.rod, RodKind::Wood);
+    game.dispatch(Action::SwitchRod { rod: RodKind::Bamboo }, 1_000)
+        .unwrap();
+    assert_eq!(game.state().fishing.rod, RodKind::Bamboo);
+    assert!(game
+        .dispatch(Action::SwitchRod { rod: RodKind::Carbon }, 1_000)
+        .is_err());
+
+    for _ in 0..30 {
+        game.state_mut().fishing.add_rod_wear(RodKind::Bamboo);
+    }
+    game.dispatch(
+        Action::CastLine {
+            spot: FishingSpot::Creek,
+            quality: None,
+        },
+        1_000,
+    )
+    .unwrap();
+    assert!(matches!(
+        game.dispatch(Action::MaintainRod { rod: RodKind::Bamboo }, 1_000),
+        Err(GameError::FishingSessionActive)
+    ));
+    assert!(matches!(
+        game.dispatch(Action::SwitchRod { rod: RodKind::Wood }, 1_000),
+        Err(GameError::FishingSessionActive)
+    ));
+    game.dispatch(Action::ResolveFishing { success: false }, 2_000)
+        .unwrap();
+    game.dispatch(Action::MaintainRod { rod: RodKind::Bamboo }, 2_000)
+        .unwrap();
+    assert!(!game.state().fishing.needs_maintenance(RodKind::Bamboo));
+}
+
+#[test]
+fn golden_session_gets_king_window() {
+    let id = (1u64..1_000_000)
+        .find(|id| {
+            farm_core::golden_session(*id, FishingSpot::Creek)
+                && !farm_core::golden_session(*id, FishingSpot::River)
+        })
+        .expect("golden session seed");
+    assert!(farm_core::golden_session(id, FishingSpot::Creek));
+    assert!(!farm_core::golden_session(id, FishingSpot::River));
+    assert_eq!(farm_core::FISHING_GOLDEN_CATCH_MS, 20_000);
+    assert_eq!(farm_core::FISHING_KING_CATCH_MS, 20_000);
+}
+
+#[test]
 fn active_cast_uses_selected_bait_quality() {
     let mut game = game(1_000);
     game.state_mut().fishing.bait_fine = 1;

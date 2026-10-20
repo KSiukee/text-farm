@@ -801,6 +801,14 @@ function buyRod(rod: RodKind) {
   void act({ type: "buyRod", rod });
 }
 
+function switchRod(rod: RodKind) {
+  if (fishing.value?.session) {
+    notice.value = "等收线/咬钩时不能换竿，先收竿";
+    return;
+  }
+  void act({ type: "switchRod", rod });
+}
+
 function castLine() {
   void act({ type: "castLine", spot: fishingSpot.value, quality: activeBaitQuality.value });
 }
@@ -830,6 +838,10 @@ function sellAllFish() {
 }
 
 function maintainRod(rod: RodKind) {
+  if (fishing.value?.session) {
+    notice.value = "等收线/咬钩时不能保养，先收竿";
+    return;
+  }
   void act({ type: "maintainRod", rod });
 }
 
@@ -2785,7 +2797,7 @@ onUnmounted(() => {
               v-if="fishing.needsMaintenance"
               class="link"
               type="button"
-              :disabled="acting || (snapshot?.coins ?? 0) < fishing.maintenanceCost"
+              :disabled="acting || !!fishing.session || (snapshot?.coins ?? 0) < fishing.maintenanceCost"
               @click="maintainRod(fishing.rod)"
             >
               [保养 {{ fishing.maintenanceCost }}]
@@ -2812,6 +2824,7 @@ onUnmounted(() => {
             :session="fishing.session"
             :active="activeTab === '钓鱼'"
             @resolve="resolveFishing"
+            @notice="notice = $event"
           />
           <div v-if="!fishing.session" class="row">
             <button
@@ -2840,6 +2853,15 @@ onUnmounted(() => {
                 {{ fishing.rodLabel }} · 磨损 {{ fishing.rodWear }}/{{ fishing.rodMaxWear }}
                 <template v-if="fishing.needsMaintenance"> · 可保养 {{ fishing.maintenanceCost }}</template>
               </span>
+              <button
+                v-if="fishing.needsMaintenance"
+                class="link"
+                type="button"
+                :disabled="acting || !!fishing.session"
+                @click.stop="maintainRod(fishing.rod)"
+              >
+                [快速保养 {{ fishing.maintenanceCost }}]
+              </button>
             </summary>
             <div class="ranch-recipe-group">鱼竿</div>
           <div class="ranch-recipes">
@@ -2849,7 +2871,15 @@ onUnmounted(() => {
                 {{ rod.wear }}/{{ rod.maxWear }}
               </span>
               <span v-if="rod.current" class="muted">使用中</span>
-              <span v-else-if="rod.owned" class="muted">已拥有</span>
+              <button
+                v-else-if="rod.owned"
+                class="link"
+                type="button"
+                :disabled="acting || !!fishing.session"
+                @click="switchRod(rod.kind)"
+              >
+                [切换]
+              </button>
               <span v-else-if="fishing.level < rod.level" class="muted">
                 需要钓鱼等级 {{ rod.level }} 级
               </span>
@@ -2857,16 +2887,16 @@ onUnmounted(() => {
                 v-else
                 class="link"
                 type="button"
-                :disabled="acting || !rod.canBuy"
+                :disabled="acting || !rod.canBuy || !!fishing.session"
                 @click="buyRod(rod.kind)"
               >
                 [换竿 {{ rod.cost }}]
               </button>
               <button
-                v-if="rod.needsMaintenance"
+                v-if="rod.needsMaintenance && rod.owned"
                 class="link"
                 type="button"
-                :disabled="acting || (snapshot?.coins ?? 0) < rod.maintenanceCost"
+                :disabled="acting || !!fishing.session || (snapshot?.coins ?? 0) < rod.maintenanceCost"
                 @click="maintainRod(rod.kind)"
               >
                 [保养 {{ rod.maintenanceCost }}]

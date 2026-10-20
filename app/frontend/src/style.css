@@ -1658,6 +1658,32 @@ footer {
   margin-bottom: 8px;
 }
 
+.fg-golden {
+  color: var(--gold-strong);
+}
+
+.fg-feel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.fg-feel .link {
+  padding: 0;
+  color: var(--muted);
+}
+
+.fg-feel .link.active {
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
 .fg-pond {
   position: relative;
   width: min(100%, 760px);
@@ -1742,6 +1768,28 @@ footer {
   background: var(--pond-ring);
   content: "";
   transform: translateX(-50%);
+  z-index: 3;
+}
+
+.fg-progress-ghost {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  height: 100%;
+  background: var(--danger);
+  opacity: 0.22;
+  transform: translateX(-50%);
+  transition: width 0.2s linear;
+  z-index: 1;
+}
+
+.fg-progress.losing .fg-progress-ghost {
+  opacity: 0.48;
+  animation: fg-bar-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes fg-bar-pulse {
+  50% { opacity: 0.24; }
 }
 
 .fg-progress span {
@@ -1753,6 +1801,7 @@ footer {
   box-shadow: 0 0 12px var(--fg-progress-glow, var(--pond-progress-glow));
   transform: translateX(-50%);
   transition: width 0.12s linear, background 0.16s linear;
+  z-index: 2;
 }
 
 .fg-trail {

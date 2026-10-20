@@ -41,14 +41,15 @@ pub use engine::{Effect, Outcome};
 pub use error::{GameError, SaveError};
 pub use fishing::{
     apply_manual_bonus, auto_interval_ms_with_skill, bait_saver_pct, bait_weight,
-    big_fish_bonus_tenths, catch_exp, faces_right, fish, fish_list, fishing_exp_need, market_pct,
-    params, pick_auto_fish, pick_auto_fish_with_bait, pick_fish, pick_fish_with_bait,
+    big_fish_bonus_tenths, catch_exp, faces_right, fish, fish_list, fishing_exp_need, golden_session,
+    market_pct, params, pick_auto_fish, pick_auto_fish_with_bait, pick_fish, pick_fish_with_bait,
     pick_personality, price_for, quality_for, quality_label, reel_bonus, rod_unlocked, skill_cost,
     skill_def, skill_level, spot_fish, spot_fish_count, spot_unlocked, weight_tenths_for,
     AutoFishing, BaitQuality, BaitRecipe, BaitType, FishBatch, FishCatchResult, FishCodexEntry,
     FishDef, FishPersonality, FishRarity, FishingParams, FishingSession, FishingSkillDef,
     FishingSpot, FishingState, FishingStats, RodKind, FISH, FISHING_AUTO_CAP_MS,
-    FISHING_AUTO_MAX_STEPS, FISHING_BAIT_PRICE, FISHING_MAX_LEVEL, FISHING_SESSION_TTL_MS,
+    FISHING_AUTO_MAX_STEPS, FISHING_BAIT_PRICE, FISHING_GOLDEN_CATCH_MS, FISHING_KING_CATCH_MS,
+    FISHING_MAX_LEVEL, FISHING_SESSION_TTL_MS,
     FISHING_SKILLS, FISHING_SKILL_MAX, FISHING_START_BAIT, MANUAL_QUALITY_BONUS,
     MANUAL_WEIGHT_BONUS_TENTHS,
 };

@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 pub const FISHING_BAIT_PRICE: u64 = 10;
 pub const FISHING_START_BAIT: u32 = 10;
 pub const FISHING_SESSION_TTL_MS: i64 = 60_000;
+pub const FISHING_KING_CATCH_MS: i64 = 20_000;
+pub const FISHING_GOLDEN_CATCH_MS: i64 = 20_000;
 pub const FISHING_AUTO_CAP_MS: i64 = 8 * 60 * 60 * 1000;
 pub const FISHING_AUTO_MAX_STEPS: u32 = 96;
 pub const FISHING_ROD_MAINTENANCE_CATCHES: u32 = 30;
@@ -1124,6 +1126,9 @@ pub struct FishingState {
     pub active_bait: BaitQuality,
     #[serde(default)]
     pub active_bait_type: BaitType,
+    /// 已拥有的鱼竿；旧档没有这个字段时按「当前竿及以下都拥有」回填。
+    #[serde(default)]
+    pub owned_rods: BTreeSet<RodKind>,
     #[serde(default)]
     pub rod_wear: BTreeMap<RodKind, u32>,
     #[serde(default)]
@@ -1181,6 +1186,7 @@ impl FishingState {
             bait_lure: [0; 4],
             active_bait: BaitQuality::Normal,
             active_bait_type: BaitType::Dough,
+            owned_rods: BTreeSet::from([RodKind::Wood]),
             rod_wear: BTreeMap::new(),
             locked_fish: BTreeSet::new(),
             auto: AutoFishing::default(),
@@ -1202,6 +1208,14 @@ impl FishingState {
         if self.session_seq == 0 {
             self.session_seq = 1;
         }
+        if self.owned_rods.is_empty() {
+            self.owned_rods = RodKind::ALL
+                .iter()
+                .copied()
+                .filter(|rod| *rod <= self.rod)
+                .collect();
+        }
+        self.owned_rods.insert(RodKind::Wood);
         for entry in self.codex.values_mut() {
             if entry.count > 0 && entry.manual_count == 0 && entry.auto_count == 0 {
                 entry.manual_count = entry.count;
@@ -1220,6 +1234,10 @@ impl FishingState {
     /// 鱼竿是否可购买/升级：只看钓鱼等级；已拥有的竿不受影响。
     pub fn rod_unlocked(&self, fishing_level: u32, rod: RodKind) -> bool {
         fishing_level >= rod.unlock_level()
+    }
+
+    pub fn owns_rod(&self, rod: RodKind) -> bool {
+        self.owned_rods.contains(&rod)
     }
 
     pub fn caught_count(&self) -> usize {
@@ -1383,6 +1401,19 @@ pub fn rod_unlocked(level: u32, rod: RodKind) -> bool {
     level >= rod.unlock_level()
 }
 
+/// 金色变异在抛竿时就按会话种子定好；结算/图鉴/时长同一个口径。
+pub fn golden_session(id: u64, spot: FishingSpot) -> bool {
+    let mut hash = 1_469_598_103_934_665_603u64 ^ (id ^ 0x60d1);
+    for byte in b"golden" {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(1_099_511_628_211);
+    }
+    hash ^= u64::from(spot as u8);
+    hash = hash.wrapping_mul(1_099_511_628_211);
+    let roll = hash ^ (hash >> 33);
+    roll % 1000 < 15
+}
+
 /// 小游戏参数：框高、鱼速度、变向频率、时限。
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -1447,7 +1478,7 @@ pub fn params_with_reel(
         personality,
         personality_label: personality.label().into(),
         catch_ms: if def.rarity == FishRarity::King {
-            20_000
+            FISHING_KING_CATCH_MS
         } else {
             11_000 + i64::from(difficulty) * 900
         },

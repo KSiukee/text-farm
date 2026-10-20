@@ -510,6 +510,7 @@ pub struct FishingSessionView {
     pub price: u64,
     pub difficulty: u32,
     pub is_king: bool,
+    pub is_golden: bool,
     pub expires_at: i64,
     pub remaining_ms: i64,
     pub expired: bool,
@@ -1424,9 +1425,9 @@ impl Game {
                 label: rod.label().into(),
                 cost: rod.cost(),
                 level: rod.unlock_level(),
-                owned: *rod <= fishing_state.rod,
+                owned: fishing_state.owns_rod(*rod),
                 current: *rod == fishing_state.rod,
-                can_buy: *rod > fishing_state.rod
+                can_buy: !fishing_state.owns_rod(*rod)
                     && fishing_state.rod_unlocked(player_fishing.level, *rod)
                     && self.state.coins >= rod.cost(),
                 frame_pct: rod.frame_pct(),
@@ -1439,6 +1440,17 @@ impl Game {
             .collect();
         let session = fishing_state.session.as_ref().map(|session| {
             let def = fishing::fish(&session.fish_id);
+            let golden = fishing::golden_session(session.id, session.spot);
+            let mut params = fishing::params_with_reel(
+                fishing_state.rod,
+                def.unwrap_or(&fishing::FISH[0]),
+                fishing_state.needs_maintenance(fishing_state.rod),
+                session.personality,
+                player_fishing.skill_level("reel"),
+            );
+            if golden {
+                params.catch_ms = fishing::FISHING_GOLDEN_CATCH_MS;
+            }
             FishingSessionView {
                 id: session.id,
                 spot: session.spot,
@@ -1449,16 +1461,11 @@ impl Game {
                 price: def.map(|d| d.price).unwrap_or(0),
                 difficulty: def.map(|d| d.difficulty).unwrap_or(1),
                 is_king: def.map(|d| d.rarity == FishRarity::King).unwrap_or(false),
+                is_golden: golden,
                 expires_at: session.expires_at,
                 remaining_ms: (session.expires_at - now).max(0),
                 expired: now > session.expires_at,
-                params: fishing::params_with_reel(
-                    fishing_state.rod,
-                    def.unwrap_or(&fishing::FISH[0]),
-                    fishing_state.needs_maintenance(fishing_state.rod),
-                    session.personality,
-                    player_fishing.skill_level("reel"),
-                ),
+                params,
             }
         });
         let auto_speed_level = player_fishing.skill_level("auto_speed");

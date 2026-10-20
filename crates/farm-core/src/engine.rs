@@ -116,6 +116,7 @@ impl Game {
             } => self.buy_bait(bait_type, quality, qty, now)?,
             Action::SetBaitType { bait_type } => self.set_bait_type(bait_type, now)?,
             Action::BuyRod { rod } => self.buy_rod(rod, now)?,
+            Action::SwitchRod { rod } => self.switch_rod(rod, now)?,
             Action::CastLine { spot, quality } => self.cast_line(spot, quality, now)?,
             Action::ToggleFishLock { fish_id } => self.toggle_fish_lock(&fish_id, now)?,
             Action::SellAllFish => self.sell_all_fish(now)?,
@@ -1072,8 +1073,18 @@ impl Game {
         Ok(vec![Effect::Log { text }])
     }
 
+    fn ensure_no_fishing_session(&self, now: i64) -> Result<(), GameError> {
+        if let Some(session) = self.state.fishing.session.as_ref() {
+            if now < session.expires_at {
+                return Err(GameError::FishingSessionActive);
+            }
+        }
+        Ok(())
+    }
+
     fn maintain_rod(&mut self, rod: RodKind, now: i64) -> Result<Vec<Effect>, GameError> {
-        if rod > self.state.fishing.rod {
+        self.ensure_no_fishing_session(now)?;
+        if !self.state.fishing.owns_rod(rod) {
             return Err(GameError::FishingRodLocked {
                 need: rod.unlock_level(),
             });
@@ -1092,9 +1103,10 @@ impl Game {
         self.push_log(now, text.clone());
         Ok(vec![Effect::Log { text }])
     }
+
     fn buy_rod(&mut self, rod: RodKind, now: i64) -> Result<Vec<Effect>, GameError> {
-        let current = self.state.fishing.rod;
-        if rod <= current {
+        self.ensure_no_fishing_session(now)?;
+        if self.state.fishing.owns_rod(rod) {
             return Err(GameError::FishingRodOwned);
         }
         if !self
@@ -1111,6 +1123,7 @@ impl Game {
             return Err(GameError::NotEnoughCoins { need: cost });
         }
         self.state.coins -= cost;
+        self.state.fishing.owned_rods.insert(rod);
         self.state.fishing.rod = rod;
         let text = format!(
             "你换上了{}（框 {}%），金币-{}",
@@ -1118,6 +1131,22 @@ impl Game {
             rod.frame_pct(),
             cost
         );
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn switch_rod(&mut self, rod: RodKind, now: i64) -> Result<Vec<Effect>, GameError> {
+        self.ensure_no_fishing_session(now)?;
+        if !self.state.fishing.owns_rod(rod) {
+            return Err(GameError::FishingRodLocked {
+                need: rod.unlock_level(),
+            });
+        }
+        if rod == self.state.fishing.rod {
+            return Ok(Vec::new());
+        }
+        self.state.fishing.rod = rod;
+        let text = format!("换回{}（框 {}%）", rod.label(), rod.frame_pct());
         self.push_log(now, text.clone());
         Ok(vec![Effect::Log { text }])
     }
@@ -1248,7 +1277,7 @@ impl Game {
             self.state
                 .fishing
                 .record_catch(def, weight_tenths, quality, price, false, now);
-        let golden = roll_pest(session.id ^ 0x60d1, session.spot as u8, "golden") % 1000 < 15;
+        let golden = fishing::golden_session(session.id, session.spot);
         if golden {
             *self
                 .state

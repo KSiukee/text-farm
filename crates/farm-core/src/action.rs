@@ -154,6 +154,9 @@ pub enum Action {
     BuyRod {
         rod: crate::fishing::RodKind,
     },
+    SwitchRod {
+        rod: crate::fishing::RodKind,
+    },
     CastLine {
         spot: crate::fishing::FishingSpot,
         #[serde(default)]

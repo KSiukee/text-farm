@@ -583,6 +583,7 @@ export interface FishingSessionView {
   price: number;
   difficulty: number;
   isKing: boolean;
+  isGolden: boolean;
   expiresAt: number;
   remainingMs: number;
   expired: boolean;
@@ -879,6 +880,7 @@ export type Action =
   | { type: "buyBait"; qty: number; quality?: BaitQuality; baitType?: BaitType }
   | { type: "setBaitType"; baitType: BaitType }
   | { type: "buyRod"; rod: RodKind }
+  | { type: "switchRod"; rod: RodKind }
   | { type: "castLine"; spot: FishingSpot; quality?: BaitQuality }
   | { type: "resolveFishing"; success: boolean }
   | { type: "setAutoFishing"; spot: FishingSpot; enabled: boolean; rod?: RodKind; baitQuality?: BaitQuality; baitType?: BaitType }

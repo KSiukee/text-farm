@@ -144,7 +144,7 @@ async function startApp({ fresh = true } = {}) {
   // 不随 shadow 目录清掉。每跑先清零再重载，否则下一跑会把「该弹的报告」误判成已读。
   try {
     await evaluate(
-      "localStorage.removeItem('farm.autoReportShownAt'); localStorage.removeItem('farm.ui.themeMode'); localStorage.removeItem('farm.ui.palette'); localStorage.removeItem('farm.ui.stylePack'); localStorage.removeItem('farm.ui.bgMode'); localStorage.removeItem('farm.ui.bgPaper'); localStorage.removeItem('farm.ui.bgFit'); localStorage.removeItem('farm.ui.bgImageAlpha'); localStorage.removeItem('farm.ui.bgPanelAlpha'); localStorage.removeItem('farm.ui.fontId'); localStorage.removeItem('farm.ui.fontName')",
+      "localStorage.removeItem('farm.autoReportShownAt'); localStorage.removeItem('farm.ui.themeMode'); localStorage.removeItem('farm.ui.palette'); localStorage.removeItem('farm.ui.stylePack'); localStorage.removeItem('farm.ui.bgMode'); localStorage.removeItem('farm.ui.bgPaper'); localStorage.removeItem('farm.ui.bgFit'); localStorage.removeItem('farm.ui.bgImageAlpha'); localStorage.removeItem('farm.ui.bgPanelAlpha'); localStorage.removeItem('farm.ui.fontId'); localStorage.removeItem('farm.ui.fontName'); localStorage.removeItem('farm.ui.fishingFeel')",
     );
     await evaluate(`new Promise((resolve) => {
       const request = indexedDB.open('text-farm-ui', 1);
@@ -524,6 +524,18 @@ try {
   );
   await screenshot(layoutShot);
   check("钓鱼页布局截图", existsSync(layoutShot), layoutShot);
+  const feelButtons = await evaluate("document.querySelectorAll('.fg-feel button').length");
+  check("手感切换两个按钮", feelButtons === 2, `buttons=${feelButtons}`);
+  await clickText("2 坏杆 + 追鱼", false);
+  check(
+    "手感 2 已保存",
+    (await evaluate("localStorage.getItem('farm.ui.fishingFeel')")) === "bad",
+  );
+  await clickText("1 当前", false);
+  check(
+    "手感 1 已保存",
+    (await evaluate("localStorage.getItem('farm.ui.fishingFeel')")) === "current",
+  );
   check("新档 10 份鱼饵", state.fishing.bait === 10, `bait=${state.fishing.bait}`);
   const pageText = await bodyText();
   check("钓鱼等级面板", pageText.includes("钓鱼等级") && pageText.includes("技能点"));
@@ -643,13 +655,35 @@ try {
     !!barAlign && barAlign.centerGap < 2 && barAlign.fillRatio > 0.05 && barAlign.fillRatio < 0.95,
     JSON.stringify(barAlign),
   );
+  await send("Input.dispatchKeyEvent", { type: "keyDown", key: "d", code: "KeyD", windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
   await new Promise((r) => setTimeout(r, 1200));
+  await send("Input.dispatchKeyEvent", { type: "keyUp", key: "d", code: "KeyD", windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
   const trailCount = await evaluate("document.querySelectorAll('.fg-trail img').length");
   check("拖影最多 2 段", trailCount <= 2, `trail=${trailCount}`);
   const frameColorNow = await evaluate(
     "getComputedStyle(document.querySelector('.fg-frame')).borderColor",
   );
   check("框颜色随进度变化", frameColorStart !== frameColorNow, `${frameColorStart} -> ${frameColorNow}`);
+  const decay = await evaluate(`(() => {
+    const bar = document.querySelector('.fg-progress')?.getBoundingClientRect();
+    const fill = document.querySelector('.fg-progress span')?.getBoundingClientRect();
+    const ghost = document.querySelector('.fg-progress-ghost')?.getBoundingClientRect();
+    if (!bar || !fill || !ghost) return null;
+    return {
+      gap: Math.abs((ghost.left + ghost.width / 2) - (bar.left + bar.width / 2)),
+      ghostWidth: ghost.width,
+      fillWidth: fill.width,
+      losing: document.querySelector('.fg-progress')?.classList.contains('losing'),
+    };
+  })()`);
+  check(
+    "惩罚回退条留痕",
+    !!decay &&
+      decay.gap < 2 &&
+      decay.ghostWidth > decay.fillWidth + 2 &&
+      decay.losing === true,
+    JSON.stringify(decay),
+  );
   await send("Emulation.setDeviceMetricsOverride", {
     width: 390,
     height: 844,
@@ -676,9 +710,9 @@ try {
   check("鱼在游动（不停住）", fishBefore !== fishAfter, `${fishBefore} -> ${fishAfter}`);
 
   const before = await evaluate("document.querySelector('.fg-frame')?.style.left || ''");
-  await send("Input.dispatchKeyEvent", { type: "keyDown", key: "d", code: "KeyD", windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+  await send("Input.dispatchKeyEvent", { type: "keyDown", key: "a", code: "KeyA", windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65 });
   await new Promise((r) => setTimeout(r, 400));
-  await send("Input.dispatchKeyEvent", { type: "keyUp", key: "d", code: "KeyD", windowsVirtualKeyCode: 68, nativeVirtualKeyCode: 68 });
+  await send("Input.dispatchKeyEvent", { type: "keyUp", key: "a", code: "KeyA", windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65 });
   const after = await evaluate("document.querySelector('.fg-frame')?.style.left || ''");
   check("WASD 移动框", before !== after, `${before} -> ${after}`);
   await screenshot(gameShot);
@@ -709,6 +743,22 @@ try {
   await clickText("[收竿]");
   await waitFor(async () => saveState().fishing.session === null);
   check("续钓后收竿清空", saveState().fishing.session === null);
+
+  const failsBeforeBite = saveState().fishing.stats.fails;
+  await pressKey("f", "KeyF", 70);
+  await waitFor(async () => saveState().fishing.session !== null);
+  await waitFor(async () => (await evaluate("document.querySelector('.fishing-game')?.dataset.phase")) === "waiting");
+  await waitFor(
+    async () => (await evaluate("document.querySelector('.fishing-game')?.dataset.phase")) === "bite",
+    6000,
+  );
+  await new Promise((r) => setTimeout(r, 8500));
+  check(
+    "待收线超时鱼吃饵逃走",
+    saveState().fishing.session === null &&
+      saveState().fishing.stats.fails > failsBeforeBite,
+    `fails=${saveState().fishing.stats.fails}`,
+  );
 
   const activeSelects = await evaluate("document.querySelectorAll('.bait-select').length");
   check("主动鱼饵选择（种类+品质）", activeSelects === 2, `select=${activeSelects}`);
