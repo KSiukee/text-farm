@@ -401,10 +401,10 @@ impl RodKind {
     /// 鱼框高度，百分比。
     pub fn frame_pct(self) -> u32 {
         match self {
-            RodKind::Wood => 26,
-            RodKind::Bamboo => 23,
-            RodKind::Fiberglass => 20,
-            RodKind::Carbon => 17,
+            RodKind::Wood => 20,
+            RodKind::Bamboo => 18,
+            RodKind::Fiberglass => 15,
+            RodKind::Carbon => 13,
         }
     }
 
@@ -1447,9 +1447,9 @@ pub fn params_with_reel(
         personality,
         personality_label: personality.label().into(),
         catch_ms: if def.rarity == FishRarity::King {
-            18_000
+            20_000
         } else {
-            9_000 + i64::from(difficulty) * 900
+            11_000 + i64::from(difficulty) * 900
         },
         progress_gain: 22 + reel_bonus(reel_level),
         progress_loss: 12,

@@ -597,15 +597,16 @@ fn catch_window_is_generous() {
         false,
         FishPersonality::Normal,
     );
-    assert_eq!(normal.catch_ms, 9_900);
+    assert_eq!(normal.catch_ms, 11_900);
     assert_eq!(normal.progress_loss, 12);
+    assert_eq!(normal.frame_pct, 20);
     let king = farm_core::params(
         RodKind::Wood,
         fish("creek_king").unwrap(),
         false,
         FishPersonality::Fierce,
     );
-    assert_eq!(king.catch_ms, 18_000);
+    assert_eq!(king.catch_ms, 20_000);
 }
 
 #[test]
