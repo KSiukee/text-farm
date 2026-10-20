@@ -51,6 +51,13 @@ import type {
 } from "./types";
 import FishingGame from "./FishingGame.vue";
 import {
+  applyStylePack,
+  readStylePack,
+  STYLE_PACKS,
+  stylePackById,
+  writeStylePack,
+} from "./style-pack";
+import {
   applyTheme,
   DEFAULT_PREFS,
   PALETTES,
@@ -81,6 +88,10 @@ const debugTime = ref(window.localStorage.getItem("farm.debugTime") === "1");
 const initialTheme = readThemePrefs(window.localStorage);
 const themeMode = ref<ThemeMode>(initialTheme.mode);
 const paletteId = ref<PaletteId>(initialTheme.palette);
+const initialStylePack = readStylePack(window.localStorage);
+const stylePackId = ref(initialStylePack.id);
+const stylePack = computed(() => stylePackById(stylePackId.value));
+const classicLayout = computed(() => stylePack.value.layout === "classic");
 let themeMedia: MediaQueryList | null = null;
 
 let clockOffset = 0;
@@ -1044,6 +1055,23 @@ function resetAppearance() {
   saveTheme();
 }
 
+/// 样式包只落 data-style/layout/density/decoration；颜色仍归 theme.ts。
+function syncStylePack() {
+  applyStylePack(document.documentElement, stylePackById(stylePackId.value));
+}
+
+function setStylePack(id: string) {
+  const pack = stylePackById(id);
+  stylePackId.value = pack.id;
+  writeStylePack(window.localStorage, pack);
+  applyStylePack(document.documentElement, pack);
+}
+
+/// 经典布局下 section 常开；点 summary 不许把它合上（里面的按钮照常可用）。
+function guardClassicFold(event: MouseEvent) {
+  if (classicLayout.value) event.preventDefault();
+}
+
 function onSystemThemeChange() {
   // 只有「跟随系统」会真的换色；浅色/深色重新应用一次也无副作用。
   syncTheme();
@@ -1130,6 +1158,7 @@ onMounted(() => {
       ? window.matchMedia("(prefers-color-scheme: dark)")
       : null;
   syncTheme();
+  syncStylePack();
   themeMedia?.addEventListener("change", onSystemThemeChange);
   void load();
   timer = window.setInterval(() => {
@@ -1512,8 +1541,22 @@ onUnmounted(() => {
           </button>
           <button class="link" type="button" @click="resetAppearance">恢复默认</button>
         </div>
+        <div class="row">
+          <span>布局</span>
+          <button
+            v-for="pack in STYLE_PACKS"
+            :key="pack.id"
+            class="rate-btn style-pack-btn"
+            :class="{ active: stylePackId === pack.id }"
+            type="button"
+            @click="setStylePack(pack.id)"
+          >
+            {{ pack.name }}
+          </button>
+          <span class="muted">只改钓鱼页；小游戏不变</span>
+        </div>
         <div class="row muted appearance-hint">
-          只存在这台电脑上（localStorage），不写存档；默认跟随系统，改完立即生效。
+          只存在这台电脑上（localStorage），不写存档；默认跟随系统 + 新版布局，改完立即生效。
         </div>
       </section>
 
@@ -2193,7 +2236,11 @@ onUnmounted(() => {
         <section v-if="fishing" class="panel fishing-page">
           <div class="panel-title">
             钓鱼
-            <span class="muted">先选钓点/鱼饵再抛竿；专精、钓具、自动和图鉴奖励都收进折叠</span>
+            <span class="muted">
+              {{ classicLayout
+                ? "按等级解锁小溪/河流/江面/大海；鱼竿、自动与图鉴平铺"
+                : "先选钓点/鱼饵再抛竿；专精、钓具、自动和图鉴奖励都收进折叠" }}
+            </span>
           </div>
 
           <div class="fish-hero">
@@ -2217,7 +2264,7 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <details class="fish-card fish-card--skill fish-fold">
+          <details class="fish-card fish-card--skill fish-fold fish-section fish-section--skills">
             <summary>
               <span class="fish-fold-title">专精</span>
               <span class="muted">省饵 / 收线 / 巨物 / 自动化 · 技能点 {{ fishing.skillPoints }}</span>
@@ -2247,7 +2294,7 @@ onUnmounted(() => {
           </div>
           </details>
 
-          <div class="fish-card fish-card--play">
+          <div class="fish-card fish-card--play fish-section fish-section--play">
           <div class="fishing-spots">
             <button
               v-for="spot in fishing.spots"
@@ -2318,8 +2365,11 @@ onUnmounted(() => {
           </div>
           </div>
 
-          <details class="fish-card fish-card--gear fish-fold">
-            <summary>
+          <details
+            class="fish-card fish-card--gear fish-fold fish-section fish-section--gear"
+            :open="classicLayout ? true : undefined"
+          >
+            <summary @click="guardClassicFold">
               <span class="fish-fold-title">钓具</span>
               <span class="muted">
                 {{ fishing.rodLabel }} · 磨损 {{ fishing.rodWear }}/{{ fishing.rodMaxWear }}
@@ -2363,8 +2413,11 @@ onUnmounted(() => {
           </div>
           </details>
 
-          <details class="fish-card fish-card--auto fish-fold">
-            <summary>
+          <details
+            class="fish-card fish-card--auto fish-fold fish-section fish-section--auto"
+            :open="classicLayout ? true : undefined"
+          >
+            <summary @click="guardClassicFold">
               <span class="fish-fold-title">自动钓鱼</span>
               <b :class="{ on: fishing.auto.enabled }">{{ fishing.auto.enabled ? "开着" : "关着" }}</b>
               <span class="muted">
@@ -2447,7 +2500,7 @@ onUnmounted(() => {
           </div>
           </details>
 
-          <div class="fish-card fish-card--codex">
+          <div class="fish-card fish-card--codex fish-section fish-section--codex">
           <div class="fish-codex-head">
             <div class="fish-codex-title">
               鱼类图鉴 <b>{{ fishing.codexCaught }} / {{ fishing.codexTotal }}</b>
@@ -2458,8 +2511,11 @@ onUnmounted(() => {
               </span>
             </div>
             <div class="fish-codex-bar"><span :style="{ width: `${codexPct}%` }"></span></div>
-            <details class="fish-fold fish-fold--inline">
-              <summary>分钓点进度与鱼王 trophy</summary>
+            <details
+              class="fish-fold fish-fold--inline"
+              :open="classicLayout ? true : undefined"
+            >
+              <summary @click="guardClassicFold">分钓点进度与鱼王 trophy</summary>
           <div class="codex-progress">
             <div v-for="spot in fishing.spotProgress" :key="spot.spot" class="codex-progress-row">
               <b>{{ spot.label }}</b>
@@ -2501,7 +2557,7 @@ onUnmounted(() => {
           </div>
           </div>
 
-          <div class="fish-card fish-card--keep">
+          <div class="fish-card fish-card--keep fish-section fish-section--keep">
             <div class="fish-card-head">
               <b>鱼护</b>
               <span class="muted">共 {{ fishItems.length }} 种 · 锁定的不卖</span>

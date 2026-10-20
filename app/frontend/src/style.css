@@ -2541,3 +2541,113 @@ footer {
 .appearance-hint {
   font-size: 13px;
 }
+
+/* 经典布局（#78）：钓鱼页平铺、无卡片、紧凑；颜色仍走 theme.css。
+   经典版默认复古蓝链接与更白的纸面，但两者都是 token，明暗/主题仍生效。 */
+[data-layout="classic"] .fishing-page {
+  --link: var(--classic-link);
+  gap: 2px;
+}
+
+[data-layout="classic"][data-theme="light"] .fishing-page {
+  background: var(--panel-raised);
+}
+
+[data-layout="classic"] .fish-hero {
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  padding: 0 0 4px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+[data-layout="classic"] .fish-hero-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+}
+
+[data-layout="classic"] .fish-exp {
+  display: none;
+}
+
+[data-layout="classic"] .fish-hero-side {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+}
+
+[data-layout="classic"] .fish-points,
+[data-layout="classic"] .fish-auto-pill {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+[data-layout="classic"] .fish-auto-pill {
+  color: var(--muted);
+}
+
+[data-layout="classic"] .fish-auto-pill.on {
+  color: var(--accent-text);
+}
+
+[data-layout="classic"] .fish-card {
+  padding: 3px 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+[data-layout="classic"] .fish-card + .fish-card {
+  border-top: 1px solid var(--line-soft);
+}
+
+[data-layout="classic"] .fish-fold > summary {
+  cursor: default;
+}
+
+[data-layout="classic"] .fish-fold > summary::before {
+  content: "";
+}
+
+[data-layout="classic"] .fish-section--skills > summary {
+  cursor: pointer;
+}
+
+[data-layout="classic"] .fish-section--skills > summary::before {
+  content: "▸";
+  color: var(--faint);
+}
+
+[data-layout="classic"] .fish-section--skills[open] > summary::before {
+  content: "▾";
+}
+
+[data-layout="classic"] .fish-fold[open] > summary {
+  margin-bottom: 2px;
+  padding-bottom: 2px;
+  border-bottom: 0;
+}
+
+[data-layout="classic"] .fishing-spots {
+  margin-bottom: 2px;
+}
+
+[data-layout="classic"] .fish-codex {
+  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+  gap: 6px;
+}
+
+[data-layout="classic"] .fish-codex-item {
+  background: var(--panel-raised);
+}
+
+[data-layout="classic"] .codex-progress {
+  padding: 0;
+  border: 0;
+  background: none;
+}

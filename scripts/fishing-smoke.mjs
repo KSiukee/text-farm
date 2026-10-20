@@ -144,7 +144,7 @@ async function startApp({ fresh = true } = {}) {
   // 不随 shadow 目录清掉。每跑先清零再重载，否则下一跑会把「该弹的报告」误判成已读。
   try {
     await evaluate(
-      "localStorage.removeItem('farm.autoReportShownAt'); localStorage.removeItem('farm.ui.themeMode'); localStorage.removeItem('farm.ui.palette')",
+      "localStorage.removeItem('farm.autoReportShownAt'); localStorage.removeItem('farm.ui.themeMode'); localStorage.removeItem('farm.ui.palette'); localStorage.removeItem('farm.ui.stylePack')",
     );
     await send("Page.reload", { ignoreCache: true });
     await waitFor(async () => (await evaluate("document.readyState")) === "complete");
@@ -162,6 +162,10 @@ try {
     themePageText.includes("外观") && themePageText.includes("明暗") && themePageText.includes("配色"),
   );
   check("5 个色板按钮", (await evaluate("document.querySelectorAll('.swatch').length")) === 5);
+  check(
+    "布局按钮（经典/新版）",
+    (await evaluate("document.querySelectorAll('.style-pack-btn').length")) === 2,
+  );
   const themeInitial = await evaluate(`({
     theme: document.documentElement.dataset.theme,
     palette: document.documentElement.dataset.palette,
@@ -354,9 +358,9 @@ try {
   check("钓获过渡卡片", catchText.includes("kg") && catchText.includes("品质"), catchText.replace(/\n/g, " / "));
   await screenshot(catchShot);
   check("钓获截图", existsSync(catchShot), catchShot);
-  await pressKey("f", "KeyF", 70);
+  await clickText("[收下]");
   await waitFor(async () => !(await evaluate("!!document.querySelector('.catch-card')")));
-  check("F 关闭渔获卡片", true);
+  check("收下关闭渔获卡片", true);
 
   const activeSelects = await evaluate("document.querySelectorAll('.bait-select').length");
   check("主动鱼饵选择（种类+品质）", activeSelects === 2, `select=${activeSelects}`);
@@ -440,6 +444,86 @@ try {
   await clickText("[关闭]");
 
   await screenshot(pageShot);
+
+  // #78 经典布局：平铺、section 常开、无卡片；切回新版收合。
+  async function closeAutoReportIfAny() {
+    await new Promise((r) => setTimeout(r, 200));
+    if (await evaluate("!!document.querySelector('.auto-report-card')")) {
+      await clickText("[知道了]");
+      await waitFor(
+        async () => !(await evaluate("!!document.querySelector('.auto-report-card')")),
+      );
+    }
+  }
+
+  const classicShot = join(root, "docs", "fishing-classic-v052.png");
+  await clickText("我的农场");
+  await clickText("经典");
+  await waitFor(
+    async () => (await evaluate("document.documentElement.dataset.layout")) === "classic",
+  );
+  check("切经典布局", true);
+  await clickText("钓鱼", false);
+  await waitFor(async () => (await bodyText()).includes("鱼类图鉴"));
+  await closeAutoReportIfAny();
+  await evaluate("document.querySelector('.fishing-page')?.scrollIntoView({ block: 'start' })");
+  await new Promise((r) => setTimeout(r, 260));
+  const classicState = await evaluate(`(() => {
+    const page = document.querySelector('.fishing-page');
+    const gear = document.querySelector('.fish-section--gear');
+    const auto = document.querySelector('.fish-section--auto');
+    const play = document.querySelector('.fish-section--play');
+    const codex = document.querySelector('.fish-section--codex');
+    const card = document.querySelector('.fish-card--play');
+    const style = getComputedStyle(card);
+    const order = [play, gear, auto, codex].filter(Boolean);
+    const orderOk =
+      order.length === 4 &&
+      order.every(
+        (el, i) =>
+          i === 0 ||
+          (order[i - 1].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+      );
+    return {
+      gearOpen: gear?.open === true,
+      autoOpen: auto?.open === true,
+      sections: page ? page.querySelectorAll('.fish-section').length : 0,
+      playBg: style.backgroundColor,
+      playBorder: style.borderLeftWidth,
+      orderOk,
+    };
+  })()`);
+  check(
+    "经典：钓具/自动常开",
+    classicState.gearOpen && classicState.autoOpen,
+    JSON.stringify(classicState),
+  );
+  check(
+    "经典：去掉卡片底色与左边框",
+    classicState.playBg === "rgba(0, 0, 0, 0)" && classicState.playBorder === "0px",
+    `${classicState.playBg} / ${classicState.playBorder}`,
+  );
+  check("经典：6 个稳定区块", classicState.sections === 6, `sections=${classicState.sections}`);
+  check("经典：顺序 play→gear→auto→codex", classicState.orderOk);
+  await screenshot(classicShot);
+  check("经典布局截图", existsSync(classicShot), classicShot);
+  await evaluate("document.querySelector('.fish-section--gear > summary')?.click()");
+  check(
+    "经典：点标题不会合上",
+    (await evaluate("document.querySelector('.fish-section--gear')?.open")) === true,
+  );
+  await clickText("我的农场");
+  await clickText("新版");
+  await waitFor(
+    async () => (await evaluate("document.documentElement.dataset.layout")) === "harbor",
+  );
+  await clickText("钓鱼", false);
+  await waitFor(async () => (await bodyText()).includes("鱼类图鉴"));
+  await closeAutoReportIfAny();
+  check(
+    "切回新版：折叠恢复",
+    (await evaluate("document.querySelector('.fish-section--gear')?.open")) === false,
+  );
 
   // 关掉再开：把报告时间改成未来并关自动，验证「首次进程序弹一次」。
   if (ws) {

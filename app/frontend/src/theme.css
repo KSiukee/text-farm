@@ -59,6 +59,8 @@
   --info: #557086;
   --info-bg: #eef2f4;
   --info-line: #c3d0d8;
+  /* 经典布局的复古蓝链接（仍是 token，明暗各一套） */
+  --classic-link: #2f5d8a;
 
   /* 叠层、阴影、玻璃 */
   --overlay: rgba(28, 45, 36, 0.38);
@@ -187,6 +189,7 @@
   --info: #a9c0cf;
   --info-bg: #232b31;
   --info-line: #3c4a55;
+  --classic-link: #a9c0cf;
 
   --overlay: rgba(8, 12, 8, 0.55);
   --shadow-soft: rgba(0, 0, 0, 0.35);
