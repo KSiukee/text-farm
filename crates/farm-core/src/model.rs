@@ -9,6 +9,7 @@ use crate::fishing::FishingState;
 use crate::npc::{self, NpcMessage, NpcState};
 use crate::pet::{PetCare, PetState};
 use crate::ranch::RanchState;
+use crate::room::RoomState;
 use crate::skills::PlayerSkills;
 use crate::workshop::WorkshopState;
 
@@ -406,6 +407,9 @@ pub struct GameState {
     /// 已领取过奖励的等级；老存档默认为空，达到过的等级可以补领。
     #[serde(default)]
     pub level_rewards_claimed: BTreeSet<u32>,
+    /// 自己的小屋：房间布局按房间 id 存；当前只有 living。
+    #[serde(default)]
+    pub room: RoomState,
 }
 
 pub struct Game {
@@ -473,6 +477,7 @@ impl Game {
             skills: PlayerSkills::new(),
             buffs: Vec::new(),
             level_rewards_claimed: BTreeSet::new(),
+            room: RoomState::default(),
         };
 
         Self { state, content }

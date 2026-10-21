@@ -33,6 +33,7 @@ use crate::planting;
 use crate::processing;
 use crate::ranch::{RanchAnimal, RanchAnimalKind, RanchRecipe};
 use crate::ranching;
+use crate::room::{self, RoomLayout};
 use crate::skills::{self, DisciplineKind};
 use crate::workshop::{
     crop_box_key, EquipmentKind, EquipmentRecipe, WorkshopJob, CROP_BOX_INPUT,
@@ -154,6 +155,7 @@ impl Game {
             Action::ShowGuide => self.show_guide(now)?,
             Action::DismissGuide => self.dismiss_guide(now)?,
             Action::Broadcast { text } => self.broadcast(&text, now)?,
+            Action::SaveRoomLayout { room, layout } => self.save_room_layout(&room, layout, now)?,
         };
 
         let mut effects = effects;
@@ -4153,6 +4155,19 @@ impl Game {
             }
         }
         effects
+    }
+
+    fn save_room_layout(
+        &mut self,
+        room_id: &str,
+        layout: RoomLayout,
+        now: i64,
+    ) -> Result<Vec<Effect>, GameError> {
+        room::validate_layout(room_id, &layout)?;
+        self.state.room.rooms.insert(room_id.to_string(), layout);
+        let text = "你重新布置了小屋。".to_string();
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
     }
 
     fn broadcast(&mut self, text: &str, now: i64) -> Result<Vec<Effect>, GameError> {

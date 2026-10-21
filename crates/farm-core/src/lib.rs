@@ -18,6 +18,7 @@ mod planting;
 mod processing;
 mod ranch;
 mod ranching;
+mod room;
 mod save;
 mod seedgen;
 mod skills;
@@ -39,6 +40,11 @@ pub use content::{
 pub use daily::{DailyTaskView, DailyView, DAILY_TASKS};
 pub use engine::{Effect, Outcome};
 pub use error::{GameError, SaveError};
+pub use room::{
+    default_layout, floor_styles, furniture_def, validate_layout, wall_styles, FurnitureDef,
+    RoomFurniture, RoomLayout, RoomState, FURNITURE, LIVING_HEIGHT, LIVING_ROOM, LIVING_WIDTH,
+    ROOM_GRID,
+};
 pub use fishing::{
     apply_manual_bonus, auto_interval_ms_with_skill, bait_saver_pct, bait_weight,
     big_fish_bonus_tenths, catch_exp, faces_right, fish, fish_list, fishing_exp_need, golden_floor_price,
@@ -102,8 +108,8 @@ pub use specimen::{recipe as specimen_recipe, SpecimenRecipe};
 pub use view::{
     BaitRecipeView, BaitTypeView, BuffItemView, BuffView, CodexView, CropView, DisasterView,
     DisciplineView, FacilityView, FishRecipeView, ItemKind, ItemStack, KingTrophyView, PestView,
-    PetView, PlotEffectsView, PlotStatus, PlotView, SkillView, SkillsView, Snapshot, SpecimenView,
-    SpotProgressView,
+    PetView, PlotEffectsView, PlotStatus, PlotView, RoomView, SkillView, SkillsView, Snapshot,
+    SpecimenView, SpotProgressView,
 };
 pub use workshop::{
     craft_item, crop_box_key, crop_box_price, CraftItemDef, EquipmentKind, EquipmentRecipe,

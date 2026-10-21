@@ -45,11 +45,13 @@ import type {
   RanchRecipe,
   Region,
   RodKind,
+  RoomLayout,
   Season,
   Snapshot,
   SpecimenView,
 } from "./types";
 import FishingGame from "./FishingGame.vue";
+import RoomScene from "./RoomScene.vue";
 import {
   applyBackgroundPrefs,
   BACKGROUND_FITS,
@@ -164,7 +166,7 @@ const topIcons = [
   { icon: "🎣", name: "钓鱼" },
 ];
 
-const tabs = ["我的农场", "邻居农场", "宠物", "标本室", "神秘商店", "图鉴", "神殿", "产业园", "种子精华", "玩家"];
+const tabs = ["我的农场", "牧村", "邻居农场", "宠物", "标本室", "神秘商店", "图鉴", "神殿", "产业园", "种子精华", "玩家"];
 
 const levelLine = computed(() => {
   const s = snapshot.value;
@@ -411,6 +413,7 @@ const npcMessages = computed(() =>
 function selectTab(tab: string) {
   if (
     tab === "我的农场" ||
+    tab === "牧村" ||
     tab === "邻居农场" ||
     tab === "宠物" ||
     tab === "标本室" ||
@@ -427,7 +430,7 @@ function selectTab(tab: string) {
 }
 
 function openTop(name: string) {
-  if (name === "畜牧场" || name === "制造屋" || name === "钓鱼") {
+  if (name === "畜牧场" || name === "制造屋" || name === "钓鱼" || name === "牧村") {
     selectTab(name);
   } else {
     placeholder(name);
@@ -679,6 +682,11 @@ async function act(action: Action) {
   } finally {
     acting.value = false;
   }
+}
+
+async function saveRoom(layout: RoomLayout) {
+  if (!snapshot.value) return;
+  await act({ type: "saveRoomLayout", room: snapshot.value.room.roomId, layout });
 }
 
 function plant(plot: PlotView) {
@@ -2274,6 +2282,22 @@ onUnmounted(() => {
         <div v-if="info" class="path">{{ info.savePath }}</div>
         <p v-if="info?.bootWarning" class="warn">{{ info.bootWarning }}</p>
       </section>
+      </div>
+
+      <div v-show="activeTab === '牧村'">
+        <section class="panel">
+          <div class="panel-title">
+            牧村 · 我的小屋
+            <span class="muted">平时家具锁定；进入装修模式才能移动、收纳和换样式</span>
+          </div>
+          <RoomScene
+            v-if="snapshot"
+            :room="snapshot.room"
+            :active="activeTab === '牧村'"
+            @save="saveRoom"
+            @notice="notice = $event"
+          />
+        </section>
       </div>
 
       <div v-show="activeTab === '邻居农场'">

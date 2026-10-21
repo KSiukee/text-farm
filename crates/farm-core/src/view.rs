@@ -700,6 +700,39 @@ pub struct FishingView {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RoomStyleView {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RoomFurnitureDefView {
+    pub id: String,
+    pub name: String,
+    pub width: u32,
+    pub depth: u32,
+    pub layer: u32,
+    pub collision: bool,
+    pub kind: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RoomView {
+    pub room_id: String,
+    pub label: String,
+    pub width: u32,
+    pub height: u32,
+    pub grid: u32,
+    pub layout: crate::room::RoomLayout,
+    pub floors: Vec<RoomStyleView>,
+    pub walls: Vec<RoomStyleView>,
+    pub catalog: Vec<RoomFurnitureDefView>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Snapshot {
     pub rev: u64,
     pub now: i64,
@@ -732,6 +765,7 @@ pub struct Snapshot {
     pub ranch: RanchView,
     pub workshop: WorkshopView,
     pub fishing: FishingView,
+    pub room: RoomView,
     pub skills: SkillsView,
     pub boarding_debt: u64,
     pub exp_rate: u32,
@@ -746,6 +780,49 @@ pub struct Snapshot {
 }
 
 impl Game {
+    fn room_view(&self) -> RoomView {
+        let layout = self
+            .state
+            .room
+            .layout(crate::room::LIVING_ROOM)
+            .cloned()
+            .unwrap_or_else(crate::room::default_layout);
+        RoomView {
+            room_id: crate::room::LIVING_ROOM.into(),
+            label: "小屋".into(),
+            width: crate::room::LIVING_WIDTH,
+            height: crate::room::LIVING_HEIGHT,
+            grid: crate::room::ROOM_GRID,
+            layout,
+            floors: crate::room::floor_styles()
+                .iter()
+                .map(|(id, name)| RoomStyleView {
+                    id: (*id).into(),
+                    name: (*name).into(),
+                })
+                .collect(),
+            walls: crate::room::wall_styles()
+                .iter()
+                .map(|(id, name)| RoomStyleView {
+                    id: (*id).into(),
+                    name: (*name).into(),
+                })
+                .collect(),
+            catalog: crate::room::FURNITURE
+                .iter()
+                .map(|def| RoomFurnitureDefView {
+                    id: def.id.into(),
+                    name: def.name.into(),
+                    width: def.width,
+                    depth: def.depth,
+                    layer: def.layer,
+                    collision: def.collision,
+                    kind: def.kind.into(),
+                })
+                .collect(),
+        }
+    }
+
     pub fn snapshot(&self, now: i64) -> Snapshot {
         let plots = self
             .state
@@ -1778,6 +1855,7 @@ impl Game {
             ranch,
             workshop,
             fishing,
+            room: self.room_view(),
             skills: skills_view,
             boarding_debt: self.state.boarding_debt,
             exp_rate: self.state.settings.exp_rate,

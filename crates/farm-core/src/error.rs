@@ -150,6 +150,8 @@ pub enum GameError {
     PetHealthy,
     #[error("宠物名字需要 1–12 个字")]
     InvalidPetName,
+    #[error("房间布置不合法：{0}")]
+    RoomLayoutInvalid(String),
     #[error("最多同时养 3 只宠物，先寄养或放生一只")]
     PetLimit,
     #[error("找不到这只宠物")]
@@ -296,6 +298,7 @@ impl GameError {
             GameError::PetLocationLocked => "pet_location_locked",
             GameError::PetHealthy => "pet_healthy",
             GameError::InvalidPetName => "invalid_pet_name",
+            GameError::RoomLayoutInvalid(_) => "room_layout_invalid",
             GameError::PetLimit => "pet_limit",
             GameError::PetNotFound => "pet_not_found",
             GameError::PetBoarded => "pet_boarded",

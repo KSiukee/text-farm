@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::room::RoomLayout;
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum FacilityKind {
@@ -263,5 +265,9 @@ pub enum Action {
     DismissGuide,
     Broadcast {
         text: String,
+    },
+    SaveRoomLayout {
+        room: String,
+        layout: RoomLayout,
     },
 }

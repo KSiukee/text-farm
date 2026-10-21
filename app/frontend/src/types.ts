@@ -782,6 +782,47 @@ export interface FishingView {
   lastAutoReport: AutoReportView | null;
 }
 
+export interface RoomFurniture {
+  id: string;
+  def: string;
+  x: number;
+  y: number;
+  rot: number;
+}
+
+export interface RoomLayout {
+  floor: string;
+  wall: string;
+  furniture: RoomFurniture[];
+}
+
+export interface RoomStyleView {
+  id: string;
+  name: string;
+}
+
+export interface RoomFurnitureDefView {
+  id: string;
+  name: string;
+  width: number;
+  depth: number;
+  layer: number;
+  collision: boolean;
+  kind: string;
+}
+
+export interface RoomView {
+  roomId: string;
+  label: string;
+  width: number;
+  height: number;
+  grid: number;
+  layout: RoomLayout;
+  floors: RoomStyleView[];
+  walls: RoomStyleView[];
+  catalog: RoomFurnitureDefView[];
+}
+
 export interface Snapshot {
   rev: number;
   now: number;
@@ -814,6 +855,7 @@ export interface Snapshot {
   ranch: RanchView;
   workshop: WorkshopView;
   fishing: FishingView;
+  room: RoomView;
   skills: SkillsView;
   boardingDebt: number;
   expRate: number;
@@ -911,6 +953,7 @@ export type Action =
   | { type: "updateSettings"; expRate: number }
   | { type: "showGuide" }
   | { type: "dismissGuide" }
+  | { type: "saveRoomLayout"; room: string; layout: RoomLayout }
   | { type: "broadcast"; text: string };
 
 export interface ImportReply {
