@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type {
+  PetView,
   RoomDoor,
   RoomFurniture,
   RoomFurnitureDefView,
@@ -14,6 +15,7 @@ const props = defineProps<{
   active: boolean;
   extraUnlocked: boolean;
   extraCost: number;
+  pets: PetView[];
 }>();
 const emit = defineEmits<{
   save: [layout: RoomLayout];
@@ -40,7 +42,30 @@ const drag = ref<{ id: string; ox: number; oy: number } | null>(null);
 const dragWindow = ref<{ id: string; ox: number; oy: number } | null>(null);
 const dragDoor = ref<{ id: string; ox: number } | null>(null);
 const spriteCache = new Map<string, HTMLImageElement>();
+const petCache = new Map<string, HTMLImageElement>();
 let seq = 0;
+
+type PetState = "idle" | "walk" | "sit" | "sleep";
+type PetActor = {
+  petId: string;
+  name: string;
+  image: string;
+  x: number;
+  y: number;
+  dir: "left" | "right";
+  state: PetState;
+  timer: number;
+  phase: number;
+  target: P | null;
+};
+
+const PET_HEIGHT = 36;
+const petActors = ref<PetActor[]>([]);
+let petTimer: number | null = null;
+let lastPetTick = 0;
+let nextEntryAt = 0;
+
+const activePetCount = computed(() => props.pets.filter((pet) => !pet.boarded).length);
 
 type P = { x: number; y: number };
 
@@ -713,6 +738,211 @@ function preloadSprites() {
   }
 }
 
+function petImage(pet: PetView): string {
+  return pet.image || `/pets/${pet.breed}.png`;
+}
+
+function preloadPetImages() {
+  for (const pet of props.pets) {
+    if (pet.boarded) continue;
+    const path = petImage(pet);
+    if (petCache.has(path)) continue;
+    const img = new Image();
+    img.onload = () => draw();
+    img.src = path;
+    petCache.set(path, img);
+  }
+}
+
+function petFree(x: number, y: number): boolean {
+  if (x < 0.45 || y < 0.45 || x > props.room.width - 0.45 || y > props.room.height - 0.45) {
+    return false;
+  }
+  for (const item of draft.value.furniture) {
+    const b = itemBox(item);
+    if (!b || !b.def.collision) continue;
+    if (
+      x > b.x - 0.18 &&
+      x < b.x + b.w + 0.18 &&
+      y > b.y - 0.18 &&
+      y < b.y + b.d + 0.18
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function randomPetSpot(): P {
+  for (let i = 0; i < 40; i++) {
+    const x = 0.7 + Math.random() * (props.room.width - 1.4);
+    const y = 0.7 + Math.random() * (props.room.height - 1.4);
+    if (petFree(x, y)) return { x, y };
+  }
+  return { x: props.room.width / 2, y: props.room.height / 2 };
+}
+
+function spawnPet(pet: PetView): boolean {
+  if (pet.boarded) return false;
+  if (petActors.value.some((actor) => actor.petId === pet.id)) return false;
+  if (petActors.value.length >= 3) return false;
+  const spot = randomPetSpot();
+  petActors.value.push({
+    petId: pet.id,
+    name: pet.name,
+    image: petImage(pet),
+    x: spot.x,
+    y: spot.y,
+    dir: Math.random() > 0.5 ? "left" : "right",
+    state: "idle",
+    timer: 1.5 + Math.random() * 2,
+    phase: 0,
+    target: null,
+  });
+  ensurePetLoop();
+  draw();
+  return true;
+}
+
+function callPets() {
+  if (editing.value) return;
+  const limit = 3 - petActors.value.length;
+  let added = 0;
+  for (const pet of props.pets) {
+    if (added >= limit) break;
+    if (spawnPet(pet)) added++;
+  }
+  if (added === 0) {
+    emit("notice", petActors.value.length >= 3 ? "屋里已经有 3 只宠物了" : "还没有可进屋的宠物");
+  } else {
+    emit("notice", `${added} 只宠物进屋了`);
+  }
+}
+
+function choosePetTarget(actor: PetActor): P {
+  for (let i = 0; i < 20; i++) {
+    const spot = randomPetSpot();
+    if (Math.hypot(spot.x - actor.x, spot.y - actor.y) > 0.8) return spot;
+  }
+  return randomPetSpot();
+}
+
+function updatePets(dt: number) {
+  if (!props.active || editing.value) return;
+  const now = Date.now();
+  if (activePetCount.value > 0 && petActors.value.length < 3 && now >= nextEntryAt) {
+    const candidates = props.pets.filter(
+      (pet) => !pet.boarded && !petActors.value.some((actor) => actor.petId === pet.id),
+    );
+    if (candidates.length > 0) {
+      spawnPet(candidates[Math.floor(Math.random() * candidates.length)]);
+    }
+    nextEntryAt = now + 35_000 + Math.random() * 40_000;
+  }
+
+  for (const actor of petActors.value) {
+    actor.phase += dt;
+    actor.timer -= dt;
+
+    if (actor.state === "walk") {
+      if (!actor.target) {
+        actor.state = "idle";
+        actor.timer = 1;
+        continue;
+      }
+      const dx = actor.target.x - actor.x;
+      const dy = actor.target.y - actor.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 0.04) {
+        actor.state = "idle";
+        actor.timer = 1.5 + Math.random() * 3;
+        actor.target = null;
+        continue;
+      }
+      if (Math.abs(dx) > 0.01) actor.dir = dx > 0 ? "right" : "left";
+      const step = Math.min(dist, dt * 0.85);
+      const nx = actor.x + (dx / dist) * step;
+      const ny = actor.y + (dy / dist) * step;
+      if (!petFree(nx, ny)) {
+        actor.state = "idle";
+        actor.timer = 1;
+        actor.target = null;
+      } else {
+        actor.x = nx;
+        actor.y = ny;
+      }
+      continue;
+    }
+
+    if (actor.timer > 0) continue;
+
+    const roll = Math.random();
+    if (roll < 0.55) {
+      actor.state = "walk";
+      actor.target = choosePetTarget(actor);
+      actor.timer = 8;
+    } else if (roll < 0.75) {
+      actor.state = "sit";
+      actor.timer = 4 + Math.random() * 5;
+    } else if (roll < 0.9) {
+      actor.state = "sleep";
+      actor.timer = 6 + Math.random() * 7;
+    } else {
+      actor.state = "idle";
+      actor.timer = 2 + Math.random() * 3;
+    }
+  }
+}
+
+function drawPets(ctx: CanvasRenderingContext2D) {
+  if (editing.value) return;
+  const actors = [...petActors.value].sort((a, b) => a.y - b.y);
+  for (const actor of actors) {
+    const img = petCache.get(actor.image);
+    if (!img || !img.complete || img.naturalWidth === 0) continue;
+    const base = iso(actor.x, actor.y);
+    const width = Math.max(1, Math.round((img.naturalWidth / img.naturalHeight) * PET_HEIGHT));
+
+    ctx.fillStyle = "rgba(54,38,24,.22)";
+    ctx.beginPath();
+    ctx.ellipse(base.x, base.y + 1, 13, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const bob = actor.state === "walk" ? Math.sin(actor.phase * 9) * 1.5 : 0;
+    const squash = actor.state === "sit" ? 0.9 : actor.state === "sleep" ? 0.82 : 1;
+    ctx.save();
+    ctx.translate(base.x, base.y + bob);
+    if (actor.dir === "right") ctx.scale(-1, 1);
+    ctx.scale(1, squash);
+    if (actor.state === "sleep") ctx.globalAlpha = 0.9;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, -width / 2, -PET_HEIGHT, width, PET_HEIGHT);
+    ctx.restore();
+  }
+}
+
+function ensurePetLoop() {
+  if (petTimer !== null) return;
+  if (!props.active || activePetCount.value === 0) return;
+  lastPetTick = performance.now();
+  petTimer = window.setInterval(() => {
+    const now = performance.now();
+    const dt = Math.min(0.25, (now - lastPetTick) / 1000);
+    lastPetTick = now;
+    if (props.active && !editing.value) {
+      updatePets(dt);
+      draw();
+    }
+  }, 120);
+}
+
+function stopPetLoop() {
+  if (petTimer !== null) {
+    window.clearInterval(petTimer);
+    petTimer = null;
+  }
+}
+
 function drawSpriteItem(
   ctx: CanvasRenderingContext2D,
   item: RoomFurniture,
@@ -889,6 +1119,7 @@ function draw() {
   drawWindows(ctx);
   drawDoor(ctx);
   for (const item of sorted.value) drawItem(ctx, item);
+  drawPets(ctx);
   if (editing.value) {
     ctx.strokeStyle = "rgba(70,80,60,.65)";
     ctx.lineWidth = 1;
@@ -1074,10 +1305,53 @@ watch(
   },
   { deep: true },
 );
-onMounted(() => {
-  preloadSprites();
+watch(
+  () => props.pets.map((pet) => `${pet.id}:${pet.boarded}`).join(","),
+  () => {
+    const active = new Set(props.pets.filter((pet) => !pet.boarded).map((pet) => pet.id));
+    petActors.value = petActors.value.filter((actor) => active.has(actor.petId));
+    preloadPetImages();
+    if (activePetCount.value === 0) stopPetLoop();
+    else ensurePetLoop();
+    draw();
+  },
+);
+watch(
+  () => props.active,
+  (active) => {
+    if (active) {
+      nextEntryAt = Date.now() + 18_000 + Math.random() * 20_000;
+      ensurePetLoop();
+    } else {
+      stopPetLoop();
+    }
+    draw();
+  },
+);
+watch(
+  () => props.room.roomId,
+  () => {
+    petActors.value = [];
+    nextEntryAt = Date.now() + 15_000;
+    ensurePetLoop();
+    draw();
+  },
+);
+watch(editing, (value) => {
+  if (!value) {
+    nextEntryAt = Date.now() + 18_000;
+    ensurePetLoop();
+  }
   draw();
 });
+onMounted(() => {
+  preloadSprites();
+  preloadPetImages();
+  nextEntryAt = Date.now() + 18_000 + Math.random() * 20_000;
+  ensurePetLoop();
+  draw();
+});
+onBeforeUnmount(stopPetLoop);
 </script>
 
 <template>
@@ -1087,6 +1361,14 @@ onMounted(() => {
       <span class="muted">{{ room.width }}×{{ room.height }} · 1/8 格吸附</span>
       <template v-if="!editing">
         <button class="link" type="button" @click="startEdit">[装修]</button>
+        <button
+          v-if="activePetCount > 0"
+          class="link"
+          type="button"
+          @click="callPets"
+        >
+          [呼唤宠物 {{ petActors.length }}/3]
+        </button>
         <button
           v-if="room.roomId === 'living' && !extraUnlocked"
           class="link"
@@ -1124,6 +1406,10 @@ onMounted(() => {
         @pointercancel="onPointerUp"
       />
     </div>
+
+    <p v-if="!editing && activePetCount > 0" class="muted room-tip">
+      宠物会偶尔自己进屋，最多 3 只；也可以点「呼唤宠物」。装修模式下宠物暂停。
+    </p>
 
     <div v-if="editing" class="room-editor">
       <div class="room-row">

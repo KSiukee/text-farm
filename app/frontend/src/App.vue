@@ -2324,6 +2324,7 @@ onUnmounted(() => {
             :active="activeTab === '牧村'"
             :extra-unlocked="!!snapshot?.extraRoom"
             :extra-cost="EXTRA_ROOM_COST"
+            :pets="activePets"
             @save="saveRoom"
             @travel="travelRoom"
             @unlock="unlockExtraRoom"
