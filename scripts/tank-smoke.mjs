@@ -126,7 +126,7 @@ async function main() {
     await waitFor(async () => (await bodyText()).includes("我的农场"));
     await clickText("牧村", true);
     await waitFor(async () => (await bodyText()).includes("牧村 · 小屋"));
-    await clickCanvas(351, 297);
+    await clickCanvas(351, 311);
     const text = await bodyText();
     check("点鱼缸打开面板", text.includes("小鱼缸") || text.includes("仓库里的鱼"), text.match(/小鱼缸[^\n]*/)?.[0] ?? "");
     await clickText("放入");
