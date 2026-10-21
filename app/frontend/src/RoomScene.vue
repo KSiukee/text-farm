@@ -69,7 +69,9 @@ const drag = ref<{ id: string; ox: number; oy: number } | null>(null);
 const dragWindow = ref<{ id: string; ox: number; oy: number } | null>(null);
 const dragDoor = ref<{ id: string; ox: number } | null>(null);
 const spriteCache = new Map<string, HTMLImageElement>();
+const silhouetteCache = new Map<string, HTMLCanvasElement>();
 const petCache = new Map<string, HTMLImageElement>();
+const petFootCache = new Map<string, { x: number; y: number; width: number }>();
 const fishCache = new Map<string, HTMLImageElement>();
 let seq = 0;
 
@@ -793,15 +795,9 @@ function softShadow(
 ) {
   if (rx <= 0 || ry <= 0) return;
   ctx.save();
-  ctx.translate(cx, cy);
-  ctx.scale(rx, ry);
-  const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
-  gradient.addColorStop(0, `rgba(54,38,24,${alpha})`);
-  gradient.addColorStop(0.55, `rgba(54,38,24,${alpha * 0.55})`);
-  gradient.addColorStop(1, "rgba(54,38,24,0)");
-  ctx.fillStyle = gradient;
+  ctx.fillStyle = `rgba(45,28,16,${alpha})`;
   ctx.beginPath();
-  ctx.arc(0, 0, 1, 0, Math.PI * 2);
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
@@ -841,6 +837,57 @@ function preloadSprites() {
 
 function petImage(pet: PetView): string {
   return pet.image || `/pets/${pet.breed}.png`;
+}
+
+function petFootPoint(path: string, img: HTMLImageElement): { x: number; y: number; width: number } {
+  const cached = petFootCache.get(path);
+  if (cached) return cached;
+  const w = img.naturalWidth;
+  const h = img.naturalHeight;
+  const fallback = { x: w / 2, y: h, width: w * 0.4 };
+  if (w === 0 || h === 0) return fallback;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return fallback;
+  ctx.drawImage(img, 0, 0);
+  let data: Uint8ClampedArray;
+  try {
+    data = ctx.getImageData(0, 0, w, h).data;
+  } catch {
+    return fallback;
+  }
+  let minX = w;
+  let maxX = 0;
+  let maxY = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (data[(y * w + x) * 4 + 3] > 32) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < minX) return fallback;
+  const band = Math.max(4, Math.round((maxY - 0) * 0.12));
+  let footMin = w;
+  let footMax = 0;
+  for (let y = Math.max(0, maxY - band); y <= maxY; y++) {
+    for (let x = 0; x < w; x++) {
+      if (data[(y * w + x) * 4 + 3] > 32) {
+        if (x < footMin) footMin = x;
+        if (x > footMax) footMax = x;
+      }
+    }
+  }
+  const point =
+    footMax >= footMin
+      ? { x: (footMin + footMax) / 2, y: maxY, width: footMax - footMin }
+      : fallback;
+  petFootCache.set(path, point);
+  return point;
 }
 
 function preloadPetImages() {
@@ -1059,7 +1106,11 @@ function drawPets(ctx: CanvasRenderingContext2D) {
     const base = iso(actor.x, actor.y);
     const width = Math.max(1, Math.round((img.naturalWidth / img.naturalHeight) * PET_HEIGHT));
 
-    softShadow(ctx, base.x, base.y - 1, 12, 3.2, 0.15);
+    const foot = petFootPoint(actor.image, img);
+    const footScale = PET_HEIGHT / img.naturalHeight;
+    const footX = base.x + (foot.x - img.naturalWidth / 2) * footScale;
+    const footY = base.y - (img.naturalHeight - foot.y) * footScale;
+    softShadow(ctx, footX, footY - 1, Math.max(14, foot.width * footScale * 1.2), 6, 0.6);
 
     const bob = actor.state === "walk" ? Math.sin(actor.phase * 9) * 1.5 : 0;
     const squash = actor.state === "sit" ? 0.9 : actor.state === "sleep" ? 0.82 : 1;
@@ -1097,6 +1148,22 @@ function stopPetLoop() {
   }
 }
 
+function spriteSilhouette(path: string, img: HTMLImageElement, color: string): HTMLCanvasElement {
+  const key = `${path}|${color}`;
+  const cached = silhouetteCache.get(key);
+  if (cached) return cached;
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(img, 0, 0);
+  ctx.globalCompositeOperation = "source-in";
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  silhouetteCache.set(key, canvas);
+  return canvas;
+}
+
 function drawSpriteItem(
   ctx: CanvasRenderingContext2D,
   item: RoomFurniture,
@@ -1110,36 +1177,33 @@ function drawSpriteItem(
 
   const base = iso(boxInfo.x + boxInfo.w / 2, boxInfo.y + boxInfo.d);
   if (boxInfo.def.kind !== "rug") {
-    const shadowCenter = iso(boxInfo.x + boxInfo.w / 2, boxInfo.y + boxInfo.d / 2 + 0.15);
     softShadow(
       ctx,
-      shadowCenter.x,
-      shadowCenter.y,
-      Math.max(10, img.naturalWidth * 0.3),
-      Math.max(2.5, img.naturalWidth * 0.065),
-      0.26,
+      base.x,
+      base.y - 1,
+      Math.max(12, img.naturalWidth * 0.38),
+      Math.max(4, img.naturalWidth * 0.07),
+      0.38,
     );
   }
-  ctx.drawImage(
-    img,
-    Math.round(base.x - img.naturalWidth / 2),
-    Math.round(base.y - img.naturalHeight),
-  );
-
-  if (outline) {
-    const points = [
-      iso(boxInfo.x, boxInfo.y),
-      iso(boxInfo.x + boxInfo.w, boxInfo.y),
-      iso(boxInfo.x + boxInfo.w, boxInfo.y + boxInfo.d),
-      iso(boxInfo.x, boxInfo.y + boxInfo.d),
-    ];
-    ctx.strokeStyle = outline;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-    ctx.closePath();
-    ctx.stroke();
+  const left = Math.round(base.x - img.naturalWidth / 2);
+  const top = Math.round(base.y - img.naturalHeight);
+  const color = outline ?? "rgba(54,36,22,.92)";
+  const silhouette = spriteSilhouette(path, img, color);
+  const spread = outline ? 2 : 1;
+  for (const [dx, dy] of [
+    [-spread, 0],
+    [spread, 0],
+    [0, -spread],
+    [0, spread],
+    [-spread, -spread],
+    [spread, -spread],
+    [-spread, spread],
+    [spread, spread],
+  ]) {
+    ctx.drawImage(silhouette, left + dx, top + dy);
   }
+  ctx.drawImage(img, left, top);
   return true;
 }
 

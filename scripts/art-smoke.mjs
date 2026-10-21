@@ -115,6 +115,23 @@ async function main() {
     writeFileSync(shot, Buffer.from(capture.result.data, "base64"));
     console.log("PASS 新家具房间截图", shot);
     console.log("PASS 相机缩放截图", zoomShot);
+
+    const clickPos = await evaluate(`(() => {
+      const c = document.querySelector('.room-canvas');
+      if (!c) return null;
+      const r = c.getBoundingClientRect();
+      return { x: r.left + r.width * 538 / 900, y: r.top + r.height * 300 / 480 };
+    })()`);
+    if (!clickPos) throw new Error("找不到画布");
+    await send("Input.dispatchMouseEvent", { type: "mousePressed", x: clickPos.x, y: clickPos.y, button: "left", clickCount: 1 });
+    await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: clickPos.x, y: clickPos.y, button: "left", clickCount: 1 });
+    await new Promise((r) => setTimeout(r, 400));
+    const selectedText = await evaluate("document.body.innerText");
+    console.log(`${selectedText.includes("木床") ? "PASS" : "FAIL"} 选中木床`);
+    const selectionShot = join(root, "docs", "selection-v066.png");
+    capture = await send("Page.captureScreenshot", { format: "png", fromSurface: true });
+    writeFileSync(selectionShot, Buffer.from(capture.result.data, "base64"));
+    console.log("PASS 选中轮廓截图", selectionShot);
   } finally {
     if (ws) ws.close();
     if (child) child.kill();
