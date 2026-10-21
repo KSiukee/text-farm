@@ -156,6 +156,12 @@ impl Game {
             Action::DismissGuide => self.dismiss_guide(now)?,
             Action::Broadcast { text } => self.broadcast(&text, now)?,
             Action::SaveRoomLayout { room, layout } => self.save_room_layout(&room, layout, now)?,
+            Action::MoveFishToAquarium { room, furniture_id, fish_id } => {
+                self.move_fish_to_aquarium(&room, &furniture_id, &fish_id, now)?
+            }
+            Action::RemoveFishFromAquarium { room, furniture_id, fish_id } => {
+                self.remove_fish_from_aquarium(&room, &furniture_id, &fish_id, now)?
+            }
             Action::UnlockExtraRoom => self.unlock_extra_room(now)?,
         };
 
@@ -4167,6 +4173,82 @@ impl Game {
         room::validate_layout(room_id, &layout)?;
         self.state.room.rooms.insert(room_id.to_string(), layout);
         let text = "你重新布置了小屋。".to_string();
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn move_fish_to_aquarium(
+        &mut self,
+        room_id: &str,
+        furniture_id: &str,
+        fish_id: &str,
+        now: i64,
+    ) -> Result<Vec<Effect>, GameError> {
+        let key = format!("fish:{fish_id}");
+        if self.state.inventory.get(&key).copied().unwrap_or(0) == 0 {
+            return Err(GameError::NotEnoughItems);
+        }
+        let layout = self
+            .state
+            .room
+            .rooms
+            .get_mut(room_id)
+            .ok_or_else(|| GameError::RoomLayoutInvalid("这个房间还没开放".into()))?;
+        let item = layout
+            .furniture
+            .iter_mut()
+            .find(|item| item.id == furniture_id)
+            .ok_or_else(|| GameError::RoomLayoutInvalid("没有这个鱼缸".into()))?;
+        let def = room::furniture_def(&item.def)
+            .ok_or_else(|| GameError::RoomLayoutInvalid("没有这个鱼缸".into()))?;
+        if def.capacity == 0 {
+            return Err(GameError::RoomLayoutInvalid("这件家具不是鱼缸".into()));
+        }
+        if item.fish.len() >= def.capacity as usize {
+            return Err(GameError::RoomLayoutInvalid("鱼缸已经满了".into()));
+        }
+        if let Some(qty) = self.state.inventory.get_mut(&key) {
+            *qty -= 1;
+            if *qty == 0 {
+                self.state.inventory.remove(&key);
+            }
+        }
+        item.fish.push(fish_id.to_string());
+        let text = "你把一条鱼放进了鱼缸。".to_string();
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn remove_fish_from_aquarium(
+        &mut self,
+        room_id: &str,
+        furniture_id: &str,
+        fish_id: &str,
+        now: i64,
+    ) -> Result<Vec<Effect>, GameError> {
+        let layout = self
+            .state
+            .room
+            .rooms
+            .get_mut(room_id)
+            .ok_or_else(|| GameError::RoomLayoutInvalid("这个房间还没开放".into()))?;
+        let item = layout
+            .furniture
+            .iter_mut()
+            .find(|item| item.id == furniture_id)
+            .ok_or_else(|| GameError::RoomLayoutInvalid("没有这个鱼缸".into()))?;
+        let index = item
+            .fish
+            .iter()
+            .position(|id| id == fish_id)
+            .ok_or_else(|| GameError::RoomLayoutInvalid("鱼缸里没有这条鱼".into()))?;
+        item.fish.remove(index);
+        *self
+            .state
+            .inventory
+            .entry(format!("fish:{fish_id}"))
+            .or_insert(0) += 1;
+        let text = "你把一条鱼捞回了仓库。".to_string();
         self.push_log(now, text.clone());
         Ok(vec![Effect::Log { text }])
     }

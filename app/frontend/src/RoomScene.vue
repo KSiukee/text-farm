@@ -22,6 +22,7 @@ const emit = defineEmits<{
   notice: [text: string];
   travel: [];
   unlock: [];
+  aquarium: [id: string];
 }>();
 
 const CW = 900;
@@ -43,6 +44,7 @@ const dragWindow = ref<{ id: string; ox: number; oy: number } | null>(null);
 const dragDoor = ref<{ id: string; ox: number } | null>(null);
 const spriteCache = new Map<string, HTMLImageElement>();
 const petCache = new Map<string, HTMLImageElement>();
+const fishCache = new Map<string, HTMLImageElement>();
 let seq = 0;
 
 type PetState = "idle" | "walk" | "sit" | "sleep";
@@ -66,6 +68,9 @@ let lastPetTick = 0;
 let nextEntryAt = 0;
 
 const activePetCount = computed(() => props.pets.filter((pet) => !pet.boarded).length);
+const hasAquariumFish = computed(() =>
+  draft.value.furniture.some((item) => (item.fish?.length ?? 0) > 0),
+);
 
 type P = { x: number; y: number };
 
@@ -289,6 +294,7 @@ function addFurniture(def: RoomFurnitureDefView) {
     x: Math.max(0, Math.round((props.room.width * g - w) / 2)),
     y: Math.max(0, Math.round((props.room.height * g - d) / 2)),
     rot: 0,
+    fish: [],
   };
   draft.value.furniture.push(item);
   selectedId.value = item.id;
@@ -754,6 +760,61 @@ function preloadPetImages() {
   }
 }
 
+function preloadFishImages() {
+  for (const item of draft.value.furniture) {
+    for (const fish of item.fish ?? []) {
+      const path = `/fish/${fish}.png`;
+      if (fishCache.has(path)) continue;
+      const img = new Image();
+      img.onload = () => draw();
+      img.src = path;
+      fishCache.set(path, img);
+    }
+  }
+}
+
+function drawAquariumFish(
+  ctx: CanvasRenderingContext2D,
+  item: RoomFurniture,
+  boxInfo: { x: number; y: number; w: number; d: number; def: RoomFurnitureDefView },
+) {
+  const path = spritePath(boxInfo.def, item.rot);
+  if (!path) return;
+  const tank = spriteCache.get(path);
+  if (!tank || !tank.complete || tank.naturalWidth === 0) return;
+  const base = iso(boxInfo.x + boxInfo.w / 2, boxInfo.y + boxInfo.d);
+  const width = tank.naturalWidth;
+  const height = tank.naturalHeight;
+  const left = base.x - width / 2;
+  const top = base.y - height;
+  const padX = width * 0.18;
+  const padTop = height * 0.16;
+  const waterW = width * 0.64;
+  const waterH = height * 0.42;
+  if (waterW <= 0 || waterH <= 0) return;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(left + padX, top + padTop, waterW, waterH);
+  ctx.clip();
+  const now = performance.now() / 1000;
+  const fishSize = Math.max(10, Math.round(height * 0.14));
+  (item.fish ?? []).forEach((fish, index) => {
+    const img = fishCache.get(`/fish/${fish}.png`);
+    if (!img || !img.complete || img.naturalWidth === 0) return;
+    const phase = now * 0.8 + index * 1.9;
+    const x = left + padX + waterW * (0.5 + 0.38 * Math.sin(phase));
+    const y = top + padTop + waterH * (0.5 + 0.32 * Math.cos(phase * 0.7));
+    const dir = Math.cos(phase) >= 0 ? 1 : -1;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(dir, 1);
+    ctx.drawImage(img, -fishSize / 2, -fishSize / 2, fishSize, fishSize);
+    ctx.restore();
+  });
+  ctx.restore();
+}
+
 function petFree(x: number, y: number): boolean {
   if (x < 0.45 || y < 0.45 || x > props.room.width - 0.45 || y > props.room.height - 0.45) {
     return false;
@@ -923,7 +984,7 @@ function drawPets(ctx: CanvasRenderingContext2D) {
 
 function ensurePetLoop() {
   if (petTimer !== null) return;
-  if (!props.active || activePetCount.value === 0) return;
+  if (!props.active || (activePetCount.value === 0 && !hasAquariumFish.value)) return;
   lastPetTick = performance.now();
   petTimer = window.setInterval(() => {
     const now = performance.now();
@@ -988,7 +1049,10 @@ function drawItem(ctx: CanvasRenderingContext2D, item: RoomFurniture) {
   const outline = selectedId.value === item.id ? "#efb14a" : isInvalid(item) ? "#d95d4f" : undefined;
   const line = outline ?? "rgba(52,36,24,.55)";
 
-  if (drawSpriteItem(ctx, item, { x, y, w, d, def }, outline)) return;
+  if (drawSpriteItem(ctx, item, { x, y, w, d, def }, outline)) {
+    if (def.capacity > 0) drawAquariumFish(ctx, item, { x, y, w, d, def });
+    return;
+  }
 
   if (def.kind === "rug") {
     const p0 = iso(x + 0.08, y + 0.08);
@@ -1237,8 +1301,12 @@ function onPointerDown(event: PointerEvent) {
 
   const hit = hitTest(p.x, p.y);
   selectedId.value = hit?.id ?? null;
-  if (!editing.value || !hit) {
-    if (!hit) selectedWindowId.value = null;
+  if (!editing.value) {
+    if (hit && hit.def.startsWith("aquarium")) emit("aquarium", hit.id);
+    return;
+  }
+  if (!hit) {
+    selectedWindowId.value = null;
     return;
   }
   selectedWindowId.value = null;
@@ -1300,6 +1368,9 @@ watch(
   (layout) => {
     if (!editing.value) {
       draft.value = clone(layout);
+      preloadFishImages();
+      if (activePetCount.value === 0 && !hasAquariumFish.value) stopPetLoop();
+      else ensurePetLoop();
       draw();
     }
   },
@@ -1347,6 +1418,7 @@ watch(editing, (value) => {
 onMounted(() => {
   preloadSprites();
   preloadPetImages();
+  preloadFishImages();
   nextEntryAt = Date.now() + 18_000 + Math.random() * 20_000;
   ensurePetLoop();
   draw();

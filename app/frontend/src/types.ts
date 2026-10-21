@@ -788,6 +788,7 @@ export interface RoomFurniture {
   x: number;
   y: number;
   rot: number;
+  fish: string[];
 }
 
 export interface RoomDoor {
@@ -830,6 +831,7 @@ export interface RoomFurnitureDefView {
   layer: number;
   collision: boolean;
   kind: string;
+  capacity: number;
   sprite: string | null;
   spriteRotations: number;
 }
@@ -986,6 +988,8 @@ export type Action =
   | { type: "showGuide" }
   | { type: "dismissGuide" }
   | { type: "saveRoomLayout"; room: string; layout: RoomLayout }
+  | { type: "moveFishToAquarium"; room: string; furnitureId: string; fishId: string }
+  | { type: "removeFishFromAquarium"; room: string; furnitureId: string; fishId: string }
   | { type: "unlockExtraRoom" }
   | { type: "broadcast"; text: string };
 

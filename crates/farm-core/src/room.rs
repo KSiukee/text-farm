@@ -30,12 +30,14 @@ pub struct FurnitureDef {
     pub layer: u32,
     pub collision: bool,
     pub kind: &'static str,
+    /// 鱼缸容量；0 表示不是鱼缸。
+    pub capacity: u32,
     /// PNG 基名；多向时文件为 `<sprite>_00..03.png`，单向时 `<sprite>.png`。
     pub sprite: Option<&'static str>,
     pub sprite_rotations: u8,
 }
 
-pub const FURNITURE: [FurnitureDef; 6] = [
+pub const FURNITURE: [FurnitureDef; 10] = [
     FurnitureDef {
         id: "bed",
         name: "木床",
@@ -44,6 +46,7 @@ pub const FURNITURE: [FurnitureDef; 6] = [
         layer: 2,
         collision: true,
         kind: "bed",
+        capacity: 0,
         sprite: Some("furn_bed_wood"),
         sprite_rotations: 4,
     },
@@ -55,6 +58,7 @@ pub const FURNITURE: [FurnitureDef; 6] = [
         layer: 2,
         collision: true,
         kind: "desk",
+        capacity: 0,
         sprite: Some("furn_desk_wood"),
         sprite_rotations: 4,
     },
@@ -66,6 +70,7 @@ pub const FURNITURE: [FurnitureDef; 6] = [
         layer: 2,
         collision: true,
         kind: "chair",
+        capacity: 0,
         sprite: Some("furn_chair_wood"),
         sprite_rotations: 4,
     },
@@ -77,6 +82,7 @@ pub const FURNITURE: [FurnitureDef; 6] = [
         layer: 0,
         collision: false,
         kind: "rug",
+        capacity: 0,
         sprite: Some("furn_rug_sage_01"),
         sprite_rotations: 1,
     },
@@ -88,6 +94,7 @@ pub const FURNITURE: [FurnitureDef; 6] = [
         layer: 2,
         collision: true,
         kind: "cabinet",
+        capacity: 0,
         sprite: Some("furn_cabinet_wood"),
         sprite_rotations: 4,
     },
@@ -99,7 +106,56 @@ pub const FURNITURE: [FurnitureDef; 6] = [
         layer: 2,
         collision: true,
         kind: "plant",
+        capacity: 0,
         sprite: Some("prop_plant_green_01"),
+        sprite_rotations: 1,
+    },
+    FurnitureDef {
+        id: "flower_vase",
+        name: "花瓶",
+        width: 1,
+        depth: 1,
+        layer: 2,
+        collision: true,
+        kind: "flower",
+        capacity: 0,
+        sprite: Some("prop_flower_vase_01"),
+        sprite_rotations: 1,
+    },
+    FurnitureDef {
+        id: "planter",
+        name: "落地花盆",
+        width: 1,
+        depth: 1,
+        layer: 2,
+        collision: true,
+        kind: "planter",
+        capacity: 0,
+        sprite: Some("prop_planter_01"),
+        sprite_rotations: 1,
+    },
+    FurnitureDef {
+        id: "aquarium_small",
+        name: "小鱼缸",
+        width: 2,
+        depth: 1,
+        layer: 2,
+        collision: true,
+        kind: "aquarium",
+        capacity: 2,
+        sprite: Some("prop_aquarium_small_01"),
+        sprite_rotations: 1,
+    },
+    FurnitureDef {
+        id: "aquarium_large",
+        name: "大鱼缸",
+        width: 2,
+        depth: 2,
+        layer: 2,
+        collision: true,
+        kind: "aquarium_large",
+        capacity: 5,
+        sprite: Some("prop_aquarium_large_01"),
         sprite_rotations: 1,
     },
 ];
@@ -118,6 +174,9 @@ pub struct RoomFurniture {
     pub y: u32,
     /// 0/1/2/3，90° 一档。
     pub rot: u32,
+    /// 鱼缸里的鱼（fish id）；非鱼缸为空。
+    #[serde(default)]
+    pub fish: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -250,6 +309,7 @@ pub fn default_layout() -> RoomLayout {
                 x: 56,
                 y: 52,
                 rot: 0,
+                fish: vec![],
             },
             RoomFurniture {
                 id: "starter-bed".into(),
@@ -257,6 +317,7 @@ pub fn default_layout() -> RoomLayout {
                 x: 88,
                 y: 24,
                 rot: 0,
+                fish: vec![],
             },
             RoomFurniture {
                 id: "starter-desk".into(),
@@ -264,6 +325,7 @@ pub fn default_layout() -> RoomLayout {
                 x: 24,
                 y: 16,
                 rot: 0,
+                fish: vec![],
             },
             RoomFurniture {
                 id: "starter-chair".into(),
@@ -271,6 +333,7 @@ pub fn default_layout() -> RoomLayout {
                 x: 40,
                 y: 24,
                 rot: 0,
+                fish: vec![],
             },
             RoomFurniture {
                 id: "starter-cabinet".into(),
@@ -278,6 +341,7 @@ pub fn default_layout() -> RoomLayout {
                 x: 8,
                 y: 40,
                 rot: 0,
+                fish: vec![],
             },
             RoomFurniture {
                 id: "starter-plant".into(),
@@ -285,6 +349,7 @@ pub fn default_layout() -> RoomLayout {
                 x: 112,
                 y: 64,
                 rot: 0,
+                fish: vec![],
             },
         ],
     }
@@ -435,6 +500,11 @@ pub fn validate_layout(room: &str, layout: &RoomLayout) -> Result<(), GameError>
         }
         let def = furniture_def(&item.def)
             .ok_or_else(|| GameError::RoomLayoutInvalid("没有这件家具".into()))?;
+        if !item.fish.is_empty() {
+            if def.capacity == 0 || item.fish.len() > def.capacity as usize {
+                return Err(GameError::RoomLayoutInvalid("鱼缸装不下这么多鱼".into()));
+            }
+        }
         let (w, d) = footprint(def, item.rot);
         if item.x + w > width * ROOM_GRID || item.y + d > height * ROOM_GRID {
             return Err(GameError::RoomLayoutInvalid("家具超出房间范围".into()));
@@ -453,3 +523,6 @@ pub fn validate_layout(room: &str, layout: &RoomLayout) -> Result<(), GameError>
     }
     Ok(())
 }
+
+
+

@@ -15,6 +15,7 @@ fn layout() -> RoomLayout {
             x: 8,
             y: 8,
             rot: 0,
+            fish: vec![],
         }],
     }
 }
@@ -27,7 +28,7 @@ fn default_room_is_valid_and_visible() {
     assert_eq!(room.width, LIVING_WIDTH);
     assert_eq!(room.grid, ROOM_GRID);
     assert!(room.layout.furniture.len() >= 4);
-    assert_eq!(room.catalog.len(), 6);
+    assert_eq!(room.catalog.len(), 10);
     assert!(validate_layout(LIVING_ROOM, &room.layout).is_ok());
 
     let saved = layout();
@@ -42,6 +43,61 @@ fn default_room_is_valid_and_visible() {
     let after = &game.snapshot(2_000).room;
     assert_eq!(after.layout, saved);
 }
+
+#[test]
+fn aquarium_moves_fish_between_tank_and_inventory() {
+    let mut game = Game::new(1_000);
+    let mut room = layout();
+    room.furniture.push(RoomFurniture {
+        id: "tank".into(),
+        def: "aquarium_small".into(),
+        x: 0,
+        y: 0,
+        rot: 0,
+        fish: vec![],
+    });
+    game.dispatch(
+        Action::SaveRoomLayout {
+            room: LIVING_ROOM.into(),
+            layout: room,
+        },
+        2_000,
+    )
+    .unwrap();
+    game.state_mut().inventory.insert("fish:carp".into(), 1);
+
+    game.dispatch(
+        Action::MoveFishToAquarium {
+            room: LIVING_ROOM.into(),
+            furniture_id: "tank".into(),
+            fish_id: "carp".into(),
+        },
+        3_000,
+    )
+    .unwrap();
+    let snap = game.snapshot(3_000);
+    let tank = snap.room.layout.furniture.iter().find(|item| item.id == "tank").unwrap();
+    assert_eq!(tank.fish, vec!["carp".to_string()]);
+    assert!(!snap.inventory.iter().any(|item| item.key == "fish:carp"));
+
+    game.dispatch(
+        Action::RemoveFishFromAquarium {
+            room: LIVING_ROOM.into(),
+            furniture_id: "tank".into(),
+            fish_id: "carp".into(),
+        },
+        4_000,
+    )
+    .unwrap();
+    let snap = game.snapshot(4_000);
+    let tank = snap.room.layout.furniture.iter().find(|item| item.id == "tank").unwrap();
+    assert!(tank.fish.is_empty());
+    assert_eq!(
+        snap.inventory.iter().find(|item| item.key == "fish:carp").map(|item| item.qty),
+        Some(1)
+    );
+}
+
 
 #[test]
 fn extra_room_unlocks_once_with_door_and_cost() {
@@ -139,6 +195,7 @@ fn room_rejects_bad_style_bounds_and_overlap() {
         x: 8,
         y: 8,
         rot: 0,
+        fish: vec![],
     });
     assert!(validate_layout(LIVING_ROOM, &overlap).is_err());
 
@@ -149,6 +206,7 @@ fn room_rejects_bad_style_bounds_and_overlap() {
         x: 40,
         y: 8,
         rot: 0,
+        fish: vec![],
     });
     assert!(validate_layout(LIVING_ROOM, &duplicate).is_err());
 

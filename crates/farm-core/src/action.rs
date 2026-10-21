@@ -270,5 +270,19 @@ pub enum Action {
         room: String,
         layout: RoomLayout,
     },
+    MoveFishToAquarium {
+        room: String,
+        #[serde(rename = "furnitureId")]
+        furniture_id: String,
+        #[serde(rename = "fishId")]
+        fish_id: String,
+    },
+    RemoveFishFromAquarium {
+        room: String,
+        #[serde(rename = "furnitureId")]
+        furniture_id: String,
+        #[serde(rename = "fishId")]
+        fish_id: String,
+    },
     UnlockExtraRoom,
 }

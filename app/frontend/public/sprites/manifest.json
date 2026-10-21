@@ -291,6 +291,57 @@
       "sha256": "5b356db19b166a1c3b733c3c4c6ca81acf462c3515f83854da9d09fc1fbfb885"
     },
     {
+      "id": "prop_aquarium_large_01",
+      "category": "prop.aquarium",
+      "file": "prop_aquarium_large_01.png",
+      "size": [
+        88,
+        124
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 1,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "cc25d2218302decdb36b2bed687bcc3257b30c90d917e4da03c995c03a185ae5"
+    },
+    {
+      "id": "prop_aquarium_small_01",
+      "category": "prop.aquarium",
+      "file": "prop_aquarium_small_01.png",
+      "size": [
+        70,
+        77
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 1,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "0f643d6319f85787e10186edd1285ff4434eff9fbdbaf08c8c0873dc3e64aff0"
+    },
+    {
+      "id": "prop_flower_vase_01",
+      "category": "prop.flower",
+      "file": "prop_flower_vase_01.png",
+      "size": [
+        40,
+        60
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 1,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "8c7acd00ec9f9c562c45a78fc5a5113032ef354c12fd3e5c5e36d29108ef76ec"
+    },
+    {
       "id": "prop_plant_green_01",
       "category": "prop.plant",
       "file": "prop_plant_green_01.png",
@@ -306,6 +357,23 @@
       "status": "candidate",
       "license": "in-house",
       "sha256": "c9533a9eb25a967905c65b8559073be68da7db367aadf9ba95b7b6c4e59b9d8f"
+    },
+    {
+      "id": "prop_planter_01",
+      "category": "prop.plant",
+      "file": "prop_planter_01.png",
+      "size": [
+        50,
+        44
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 1,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "6f54c5b1af5833ab1dc0046a5c31323eb70d8da5a9555efcae893268fdc1a881"
     }
   ]
 }

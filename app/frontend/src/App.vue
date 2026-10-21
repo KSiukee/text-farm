@@ -691,11 +691,53 @@ async function saveRoom(layout: RoomLayout) {
 }
 
 const currentRoomId = ref("living");
+const selectedAquariumId = ref("");
 const currentRoom = computed(() => {
   if (currentRoomId.value === "extra_1" && snapshot.value?.extraRoom) return snapshot.value.extraRoom;
   return snapshot.value?.room ?? null;
 });
+const selectedAquarium = computed(
+  () => currentRoom.value?.layout.furniture.find((item) => item.id === selectedAquariumId.value) ?? null,
+);
+const aquariumDef = computed(
+  () => currentRoom.value?.catalog.find((def) => def.id === selectedAquarium.value?.def) ?? null,
+);
+const fishInventory = computed(
+  () => snapshot.value?.inventory.filter((item) => item.kind === "fish" && item.qty > 0) ?? [],
+);
 const EXTRA_ROOM_COST = 20_000;
+
+function fishName(id: string): string {
+  return (
+    snapshot.value?.inventory.find((item) => item.key === `fish:${id}`)?.name ??
+    snapshot.value?.fishing.codex.find((fish) => fish.id === id)?.name ??
+    id
+  );
+}
+
+function moveFishToTank(fishId: string) {
+  if (!selectedAquarium.value || !currentRoom.value) return;
+  void act({
+    type: "moveFishToAquarium",
+    room: currentRoom.value.roomId,
+    furnitureId: selectedAquarium.value.id,
+    fishId,
+  });
+}
+
+function removeFishFromTank(fishId: string) {
+  if (!selectedAquarium.value || !currentRoom.value) return;
+  void act({
+    type: "removeFishFromAquarium",
+    room: currentRoom.value.roomId,
+    furnitureId: selectedAquarium.value.id,
+    fishId,
+  });
+}
+
+watch(currentRoomId, () => {
+  selectedAquariumId.value = "";
+});
 
 function travelRoom() {
   if (currentRoomId.value === "living" && snapshot.value?.extraRoom) {
@@ -2328,8 +2370,46 @@ onUnmounted(() => {
             @save="saveRoom"
             @travel="travelRoom"
             @unlock="unlockExtraRoom"
+            @aquarium="selectedAquariumId = $event"
             @notice="notice = $event"
           />
+          <div v-if="selectedAquarium" class="tank-panel">
+            <div class="tank-head">
+              <strong>{{ aquariumDef?.name ?? "鱼缸" }}</strong>
+              <span class="muted">{{ selectedAquarium.fish.length }}/{{ aquariumDef?.capacity ?? 0 }}</span>
+              <button class="link" type="button" @click="selectedAquariumId = ''">[关闭]</button>
+            </div>
+            <div class="tank-row">
+              <span class="muted">缸里：</span>
+              <template v-if="selectedAquarium.fish.length">
+                <span v-for="(fish, index) in selectedAquarium.fish" :key="`${fish}-${index}`" class="tank-fish">
+                  <img :src="`/fish/${fish}.png`" alt="" />
+                  {{ fishName(fish) }}
+                  <button class="link" type="button" @click="removeFishFromTank(fish)">[取出]</button>
+                </span>
+              </template>
+              <span v-else class="muted">空的</span>
+            </div>
+            <div class="tank-row">
+              <span class="muted">仓库里的鱼：</span>
+              <template v-if="fishInventory.length">
+                <span v-for="item in fishInventory" :key="item.key" class="tank-fish">
+                  <img :src="`/fish/${item.key.slice(5)}.png`" alt="" />
+                  {{ item.name }}×{{ item.qty }}
+                  <button
+                    class="link"
+                    type="button"
+                    :disabled="selectedAquarium.fish.length >= (aquariumDef?.capacity ?? 0)"
+                    @click="moveFishToTank(item.key.slice(5))"
+                  >
+                    [放入]
+                  </button>
+                </span>
+              </template>
+              <span v-else class="muted">没有可放的鱼</span>
+            </div>
+            <p class="muted tank-tip">放进鱼缸的鱼不会出现在仓库，也不能出售；取出后才回到仓库。</p>
+          </div>
         </section>
       </div>
 
