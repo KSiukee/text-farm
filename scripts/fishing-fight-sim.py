@@ -59,7 +59,7 @@ PLANS = {
 }
 
 
-def simulate(case: Case, mult: float, rng: random.Random) -> dict:
+def simulate(case: Case, mult: float, rng: random.Random, grace_s: float = GRACE) -> dict:
     gain = GAIN / mult
     loss = LOSS / mult
     window = case.window_s * mult
@@ -93,7 +93,7 @@ def simulate(case: Case, mult: float, rng: random.Random) -> dict:
                 in_zone = False
                 exits += 1
             if in_zone:
-                grace = GRACE
+                grace = grace_s
                 progress += gain * DT
             else:
                 if grace > 0:
@@ -158,6 +158,29 @@ def main() -> None:
         "- 失误次数从 2.9 / 3.7 / 4.2 升到 3.9 / 5.7 / 7.8，长架确实更能“打架”，不是单纯看条慢。",
         "- 结论：D2 是“纯拉长、不中和难度”的方案；D3 鱼王 16.6s 可能偏拖。"
         "模拟测不了“好玩”，最终要你真机试 D1/D2/D3。",
+        "",
+        "## 离框容错（grace）方案（D2）",
+        "",
+        "| grace | 平均成功率 | 平均时长 | 活泼成功率 | 凶猛成功率 | 鱼王成功率 | 平均失误 |",
+        "|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    d2 = PLANS["D2 中"]
+    for grace in (0.8, 1.0, 1.2, 1.5, 2.0):
+        vals = [simulate(c, d2[c.key], random.Random(20261020), grace) for c in CASES]
+        avg_success = sum(v["success"] for v in vals) / len(vals)
+        avg_duration = sum(v["duration"] for v in vals) / len(vals)
+        avg_exits = sum(v["exits"] for v in vals) / len(vals)
+        by_name = {c.key: v for c, v in zip(CASES, vals)}
+        lines.append(
+            f"| {grace:.1f}s | {avg_success:.1f}% | {avg_duration:.1f}s | "
+            f"{by_name['active']['success']:.1f}% | {by_name['fierce']['success']:.1f}% | "
+            f"{by_name['king']['success']:.1f}% | {avg_exits:.1f} |"
+        )
+    lines += [
+        "",
+        "- grace 越长，掉进度越少：成功率上升、实际时长略缩短；它买的是**容错**，不是更长/更难。",
+        "- 0.8s 当前；1.0s 小幅；1.2s 中等；1.5s 很宽容；2.0s 基本很难失败，容易削弱紧张感。",
+        "- 全局改，所有竿一起；不建议按竿单独给 grace，否则又回到每根竿调手感。",
         "",
         "## 复跑",
         "",
