@@ -707,6 +707,15 @@ pub struct RoomStyleView {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RoomWindowStyleView {
+    pub id: String,
+    pub name: String,
+    pub width: u32,
+    pub height: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RoomFurnitureDefView {
     pub id: String,
     pub name: String,
@@ -728,6 +737,7 @@ pub struct RoomView {
     pub layout: crate::room::RoomLayout,
     pub floors: Vec<RoomStyleView>,
     pub walls: Vec<RoomStyleView>,
+    pub window_styles: Vec<RoomWindowStyleView>,
     pub catalog: Vec<RoomFurnitureDefView>,
 }
 
@@ -806,6 +816,15 @@ impl Game {
                 .map(|(id, name)| RoomStyleView {
                     id: (*id).into(),
                     name: (*name).into(),
+                })
+                .collect(),
+            window_styles: crate::room::window_styles()
+                .iter()
+                .map(|(id, name, width, height)| RoomWindowStyleView {
+                    id: (*id).into(),
+                    name: (*name).into(),
+                    width: *width,
+                    height: *height,
                 })
                 .collect(),
             catalog: crate::room::FURNITURE

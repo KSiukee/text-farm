@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import type { RoomFurniture, RoomFurnitureDefView, RoomLayout, RoomView } from "./types";
+import type { RoomFurniture, RoomFurnitureDefView, RoomLayout, RoomView, RoomWindow } from "./types";
 
 const props = defineProps<{ room: RoomView; active: boolean }>();
 const emit = defineEmits<{ save: [layout: RoomLayout]; notice: [text: string] }>();
@@ -16,8 +16,10 @@ const WALL_H = 86;
 const canvas = ref<HTMLCanvasElement | null>(null);
 const editing = ref(false);
 const selectedId = ref<string | null>(null);
+const selectedWindowId = ref<string | null>(null);
 const draft = ref<RoomLayout>(clone(props.room.layout));
 const drag = ref<{ id: string; ox: number; oy: number } | null>(null);
+const dragWindow = ref<{ id: string; ox: number; oy: number } | null>(null);
 let seq = 0;
 
 type P = { x: number; y: number };
@@ -62,6 +64,8 @@ const wallColor = computed(() => {
   if (id === "sky") return { top: "#cad9e1", bottom: "#b2c5d0", trim: "#8fa6b4" };
   return { top: "#f0e7d7", bottom: "#ddd2be", trim: "#c5b79e" };
 });
+const WALL_HEIGHT_UNITS = 48;
+const WALL_HEIGHT_TILES = 6;
 
 const sorted = computed(() =>
   [...draft.value.furniture].sort((a, b) => {
@@ -75,24 +79,122 @@ const sorted = computed(() =>
 );
 
 const selected = computed(() => draft.value.furniture.find((item) => item.id === selectedId.value) ?? null);
+const selectedWindow = computed(() => draft.value.windows.find((item) => item.id === selectedWindowId.value) ?? null);
+
+const windowStyles = computed(() => new Map(props.room.windowStyles.map((style) => [style.id, style])));
+
+function wallLength(wall: "left" | "right"): number {
+  return (wall === "left" ? props.room.height : props.room.width) * props.room.grid;
+}
+
+function windowInvalid(window: RoomWindow): boolean {
+  const len = wallLength(window.wall);
+  if (window.w < 8 || window.h < 8) return true;
+  if (window.x < 0 || window.y < 0) return true;
+  if (window.x + window.w > len || window.y + window.h > WALL_HEIGHT_UNITS) return true;
+  return draft.value.windows.some((other) => {
+    if (other.id === window.id || other.wall !== window.wall) return false;
+    return window.x < other.x + other.w &&
+      other.x < window.x + window.w &&
+      window.y < other.y + other.h &&
+      other.y < window.y + window.h;
+  });
+}
+
+function findWindowSpot(wall: "left" | "right", w: number, h: number): { x: number; y: number } | null {
+  const len = wallLength(wall);
+  for (const y of [16, 24, 8, 32, 40, 0]) {
+    if (y + h > WALL_HEIGHT_UNITS) continue;
+    for (let x = 0; x + w <= len; x += 8) {
+      const candidate: RoomWindow = {
+        id: "__candidate__",
+        wall,
+        x,
+        y,
+        w,
+        h,
+        style: "small",
+      };
+      if (!draft.value.windows.some((other) => other.wall === wall &&
+        candidate.x < other.x + other.w &&
+        other.x < candidate.x + candidate.w &&
+        candidate.y < other.y + other.h &&
+        other.y < candidate.y + candidate.h)) {
+        return { x, y };
+      }
+    }
+  }
+  return null;
+}
+
+function addWindow(styleId: string) {
+  if (draft.value.windows.length >= 5) {
+    emit("notice", "每间房最多 5 扇窗");
+    return;
+  }
+  const style = windowStyles.value.get(styleId);
+  if (!style) return;
+  const wall: "left" | "right" = "right";
+  const spot = findWindowSpot(wall, style.width, style.height);
+  if (!spot) {
+    emit("notice", "这面墙放不下这扇窗了");
+    return;
+  }
+  const item: RoomWindow = {
+    id: `w-${Date.now()}-${seq++}`,
+    wall,
+    x: spot.x,
+    y: spot.y,
+    w: style.width,
+    h: style.height,
+    style: style.id,
+  };
+  draft.value.windows.push(item);
+  selectedWindowId.value = item.id;
+  selectedId.value = null;
+}
+
+function moveWindowWall(wall: "left" | "right") {
+  const item = selectedWindow.value;
+  if (!item) return;
+  item.wall = wall;
+  item.x = Math.max(0, Math.min(item.x, wallLength(wall) - item.w));
+}
+
+function resizeWindow(dw: number, dh: number) {
+  const item = selectedWindow.value;
+  if (!item) return;
+  item.w = Math.max(8, Math.min(wallLength(item.wall) - item.x, item.w + dw));
+  item.h = Math.max(8, Math.min(WALL_HEIGHT_UNITS - item.y, item.h + dh));
+}
+
+function storeWindow() {
+  if (!selectedWindowId.value) return;
+  draft.value.windows = draft.value.windows.filter((item) => item.id !== selectedWindowId.value);
+  selectedWindowId.value = null;
+}
 
 function startEdit() {
   draft.value = clone(props.room.layout);
   editing.value = true;
   selectedId.value = null;
+  selectedWindowId.value = null;
 }
 
 function cancelEdit() {
   draft.value = clone(props.room.layout);
   editing.value = false;
   selectedId.value = null;
+  selectedWindowId.value = null;
   emit("notice", "已取消装修，布局没有变化");
 }
 
 function saveEdit() {
   editing.value = false;
   drag.value = null;
+  dragWindow.value = null;
   selectedId.value = null;
+  selectedWindowId.value = null;
   emit("save", clone(draft.value));
 }
 
@@ -109,6 +211,7 @@ function addFurniture(def: RoomFurnitureDefView) {
   };
   draft.value.furniture.push(item);
   selectedId.value = item.id;
+  selectedWindowId.value = null;
 }
 
 function rotateSelected() {
@@ -149,7 +252,13 @@ function isInvalid(item: RoomFurniture): boolean {
   });
 }
 
-function poly(ctx: CanvasRenderingContext2D, points: P[], fill: string, stroke?: string, width = 1) {
+function poly(
+  ctx: CanvasRenderingContext2D,
+  points: P[],
+  fill: string | CanvasGradient,
+  stroke?: string,
+  width = 1,
+) {
   ctx.beginPath();
   points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
   ctx.closePath();
@@ -245,6 +354,94 @@ function wallGradient(ctx: CanvasRenderingContext2D, top: number, bottom: number
   return gradient;
 }
 
+function wallPoint(wall: "left" | "right", u: number, v: number): P {
+  const base = wall === "right" ? iso(u, 0) : iso(0, u);
+  return { x: base.x, y: base.y - (v / WALL_HEIGHT_TILES) * WALL_H };
+}
+
+function windowPoints(window: RoomWindow): P[] {
+  const grid = props.room.grid;
+  const u0 = window.x / grid;
+  const u1 = (window.x + window.w) / grid;
+  const v0 = window.y / grid;
+  const v1 = (window.y + window.h) / grid;
+  return [
+    wallPoint(window.wall, u0, v0),
+    wallPoint(window.wall, u1, v0),
+    wallPoint(window.wall, u1, v1),
+    wallPoint(window.wall, u0, v1),
+  ];
+}
+
+function drawWindows(ctx: CanvasRenderingContext2D) {
+  for (const window of draft.value.windows) {
+    const points = windowPoints(window);
+    const selected = selectedWindowId.value === window.id;
+    const invalid = windowInvalid(window);
+    const outline = selected ? "#efb14a" : invalid ? "#d95d4f" : undefined;
+
+    // 窗外天空：直接盖住墙纸，模拟墙体开洞。
+    const top = Math.min(...points.map((p) => p.y));
+    const bottom = Math.max(...points.map((p) => p.y));
+    const sky = ctx.createLinearGradient(0, top, 0, bottom);
+    sky.addColorStop(0, "#cfe2ec");
+    sky.addColorStop(0.65, "#e7efe8");
+    sky.addColorStop(1, "#c9d9bd");
+    poly(ctx, points, sky, outline ?? "rgba(48,34,22,.65)", selected || invalid ? 3 : 1.6);
+
+    // 窗框
+    const frame = 5;
+    ctx.save();
+    ctx.beginPath();
+    points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+    ctx.closePath();
+    ctx.clip();
+    ctx.strokeStyle = "#a57a50";
+    ctx.lineWidth = frame * 2;
+    ctx.stroke();
+    ctx.strokeStyle = "#e3d3b8";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // 玻璃反光 + 中梃
+    const inner = points.map((p) => ({
+      x: (p.x + (points[0].x + points[2].x) / 2) / 2,
+      y: (p.y + (points[0].y + points[2].y) / 2) / 2,
+    }));
+    ctx.globalAlpha = 0.22;
+    poly(ctx, inner, "#ffffff");
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = "rgba(165,122,80,.85)";
+    ctx.lineWidth = 3;
+    const c = {
+      x: points.reduce((sum, p) => sum + p.x, 0) / 4,
+      y: points.reduce((sum, p) => sum + p.y, 0) / 4,
+    };
+    ctx.beginPath();
+    ctx.moveTo(c.x, top);
+    ctx.lineTo(c.x, bottom);
+    ctx.moveTo(points[0].x, c.y);
+    ctx.lineTo(points[1].x, c.y);
+    ctx.stroke();
+    ctx.restore();
+
+    // 窗台
+    const sillTop = Math.max(points[0].y, points[1].y);
+    ctx.strokeStyle = "#8f6440";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(points[0].x - 4, sillTop + 2);
+    ctx.lineTo(points[1].x + 4, sillTop + 2);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255,235,200,.45)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(points[0].x - 3, sillTop);
+    ctx.lineTo(points[1].x + 3, sillTop);
+    ctx.stroke();
+  }
+}
+
 function drawWalls(ctx: CanvasRenderingContext2D) {
   const colors = wallColor.value;
   const top = (p: P): P => ({ x: p.x, y: p.y - WALL_H });
@@ -330,8 +527,8 @@ function drawWalls(ctx: CanvasRenderingContext2D) {
   );
   ctx.strokeStyle = "rgba(255,238,205,.35)";
   ctx.beginPath();
-  ctx.moveTo(left0.x, left0.y - base);
-  ctx.lineTo(left1.x, left1.y - base);
+  ctx.moveTo(left1.x, left1.y - base);
+  ctx.lineTo(left0.x, left0.y - base);
   ctx.lineTo(right1.x, right1.y - base);
   ctx.stroke();
 
@@ -339,15 +536,15 @@ function drawWalls(ctx: CanvasRenderingContext2D) {
   ctx.strokeStyle = colors.trim;
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(leftTop.x, leftTop.y);
-  ctx.lineTo(leftBottomTop.x, leftBottomTop.y);
+  ctx.moveTo(leftBottomTop.x, leftBottomTop.y);
+  ctx.lineTo(leftTop.x, leftTop.y);
   ctx.lineTo(rightTop.x, rightTop.y);
   ctx.stroke();
   ctx.strokeStyle = "rgba(255,255,255,.35)";
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(leftTop.x, leftTop.y + 4);
-  ctx.lineTo(leftBottomTop.x, leftBottomTop.y + 4);
+  ctx.moveTo(leftBottomTop.x, leftBottomTop.y + 4);
+  ctx.lineTo(leftTop.x, leftTop.y + 4);
   ctx.lineTo(rightTop.x, rightTop.y + 4);
   ctx.stroke();
 }
@@ -518,6 +715,7 @@ function draw() {
   ctx.fillRect(0, 0, CW, CH);
   drawFloor(ctx);
   drawWalls(ctx);
+  drawWindows(ctx);
   for (const item of sorted.value) drawItem(ctx, item);
   if (editing.value) {
     ctx.strokeStyle = "rgba(70,80,60,.65)";
@@ -571,11 +769,49 @@ function toRoom(px: number, py: number): P {
   };
 }
 
+function hitWindow(px: number, py: number): RoomWindow | null {
+  for (const window of [...draft.value.windows].reverse()) {
+    if (pointInPoly(px, py, windowPoints(window))) return window;
+  }
+  return null;
+}
+
+function windowPointer(wall: "left" | "right", px: number, py: number): P {
+  let u = 0;
+  if (wall === "right") u = (px - OX) / (TW / 2);
+  else u = (OX - px) / (TW / 2);
+  const baseY = OY + u * (TH / 2);
+  const v = ((baseY - py) / WALL_H) * WALL_HEIGHT_TILES;
+  return { x: u * props.room.grid, y: v * props.room.grid };
+}
+
 function onPointerDown(event: PointerEvent) {
   const p = canvasPoint(event);
+
+  if (editing.value) {
+    const win = hitWindow(p.x, p.y);
+    if (win) {
+      event.preventDefault();
+      selectedWindowId.value = win.id;
+      selectedId.value = null;
+      const local = windowPointer(win.wall, p.x, p.y);
+      dragWindow.value = {
+        id: win.id,
+        ox: win.x - local.x,
+        oy: win.y - local.y,
+      };
+      canvas.value?.setPointerCapture(event.pointerId);
+      return;
+    }
+  }
+
   const hit = hitTest(p.x, p.y);
   selectedId.value = hit?.id ?? null;
-  if (!editing.value || !hit) return;
+  if (!editing.value || !hit) {
+    if (!hit) selectedWindowId.value = null;
+    return;
+  }
+  selectedWindowId.value = null;
   event.preventDefault();
   const room = toRoom(p.x, p.y);
   drag.value = {
@@ -587,6 +823,17 @@ function onPointerDown(event: PointerEvent) {
 }
 
 function onPointerMove(event: PointerEvent) {
+  if (dragWindow.value) {
+    const item = draft.value.windows.find((entry) => entry.id === dragWindow.value?.id);
+    if (!item) return;
+    const p = canvasPoint(event);
+    const local = windowPointer(item.wall, p.x, p.y);
+    const maxX = wallLength(item.wall) - item.w;
+    const maxY = WALL_HEIGHT_UNITS - item.h;
+    item.x = Math.max(0, Math.min(maxX, Math.round(local.x + (dragWindow.value?.ox ?? 0))));
+    item.y = Math.max(0, Math.min(maxY, Math.round(local.y + (dragWindow.value?.oy ?? 0))));
+    return;
+  }
   if (!drag.value) return;
   const p = canvasPoint(event);
   const room = toRoom(p.x, p.y);
@@ -603,10 +850,11 @@ function onPointerMove(event: PointerEvent) {
 
 function onPointerUp() {
   drag.value = null;
+  dragWindow.value = null;
 }
 
 watch(draft, draw, { deep: true });
-watch([editing, selectedId], draw);
+watch([editing, selectedId, selectedWindowId], draw);
 watch(
   () => props.room.layout,
   (layout) => {
@@ -672,13 +920,35 @@ onMounted(draw);
           +{{ def.name }}
         </button>
       </div>
-      <div v-if="selected" class="room-row">
+      <div class="room-row">
+        <span class="muted">窗户 {{ draft.windows.length }}/5</span>
+        <button class="link" type="button" @click="addWindow('small')">+小窗</button>
+        <button class="link" type="button" @click="addWindow('large')">+大窗</button>
+        <button class="link" type="button" @click="addWindow('floor')">+落地窗</button>
+      </div>
+      <div v-if="selectedWindow" class="room-row">
+        <span class="muted">
+          窗户：{{ selectedWindow.wall === "left" ? "左墙" : "右墙" }} ·
+          {{ selectedWindow.w }}×{{ selectedWindow.h }}
+        </span>
+        <button class="link" type="button" @click="moveWindowWall('left')">[左墙]</button>
+        <button class="link" type="button" @click="moveWindowWall('right')">[右墙]</button>
+        <button class="link" type="button" @click="resizeWindow(8, 0)">[宽+]</button>
+        <button class="link" type="button" @click="resizeWindow(-8, 0)">[宽-]</button>
+        <button class="link" type="button" @click="resizeWindow(0, 8)">[高+]</button>
+        <button class="link" type="button" @click="resizeWindow(0, -8)">[高-]</button>
+        <button class="link" type="button" @click="storeWindow">[删除]</button>
+        <span v-if="windowInvalid(selectedWindow)" class="warn">窗户越界或重叠</span>
+      </div>
+      <div v-else-if="selected" class="room-row">
         <span class="muted">选中：{{ defs.get(selected.def)?.name ?? selected.def }}</span>
         <button class="link" type="button" @click="rotateSelected">[旋转]</button>
         <button class="link" type="button" @click="storeSelected">[收纳]</button>
         <span v-if="isInvalid(selected)" class="warn">位置不合法（红色）</span>
       </div>
-      <p class="muted room-tip">拖动家具移动；松手吸附 1/8 格；红色表示越界或重叠，完成时会被拦下。</p>
+      <p class="muted room-tip">
+        拖动家具/窗户移动；松手吸附 1/8 格；红色表示越界或重叠，完成时会被拦下。窗户只能放左右两面墙。
+      </p>
     </div>
   </div>
 </template>

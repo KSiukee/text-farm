@@ -41,9 +41,10 @@ pub use daily::{DailyTaskView, DailyView, DAILY_TASKS};
 pub use engine::{Effect, Outcome};
 pub use error::{GameError, SaveError};
 pub use room::{
-    default_layout, floor_styles, furniture_def, validate_layout, wall_styles, FurnitureDef,
-    RoomFurniture, RoomLayout, RoomState, FURNITURE, LIVING_HEIGHT, LIVING_ROOM, LIVING_WIDTH,
-    ROOM_GRID,
+    default_layout, floor_styles, furniture_def, validate_layout, wall_styles, window_style,
+    window_styles, FurnitureDef, RoomFurniture, RoomLayout, RoomState, RoomWindow, FURNITURE,
+    LIVING_HEIGHT, LIVING_ROOM, LIVING_WIDTH, MAX_WINDOWS, ROOM_GRID, WALL_HEIGHT_TILES,
+    WALL_HEIGHT_UNITS,
 };
 pub use fishing::{
     apply_manual_bonus, auto_interval_ms_with_skill, bait_saver_pct, bait_weight,
@@ -108,8 +109,8 @@ pub use specimen::{recipe as specimen_recipe, SpecimenRecipe};
 pub use view::{
     BaitRecipeView, BaitTypeView, BuffItemView, BuffView, CodexView, CropView, DisasterView,
     DisciplineView, FacilityView, FishRecipeView, ItemKind, ItemStack, KingTrophyView, PestView,
-    PetView, PlotEffectsView, PlotStatus, PlotView, RoomView, SkillView, SkillsView, Snapshot,
-    SpecimenView, SpotProgressView,
+    PetView, PlotEffectsView, PlotStatus, PlotView, RoomView, RoomWindowStyleView, SkillView,
+    SkillsView, Snapshot, SpecimenView, SpotProgressView,
 };
 pub use workshop::{
     craft_item, crop_box_key, crop_box_price, CraftItemDef, EquipmentKind, EquipmentRecipe,

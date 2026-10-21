@@ -790,9 +790,20 @@ export interface RoomFurniture {
   rot: number;
 }
 
+export interface RoomWindow {
+  id: string;
+  wall: "left" | "right";
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  style: string;
+}
+
 export interface RoomLayout {
   floor: string;
   wall: string;
+  windows: RoomWindow[];
   furniture: RoomFurniture[];
 }
 
@@ -820,7 +831,15 @@ export interface RoomView {
   layout: RoomLayout;
   floors: RoomStyleView[];
   walls: RoomStyleView[];
+  windowStyles: RoomWindowStyleView[];
   catalog: RoomFurnitureDefView[];
+}
+
+export interface RoomWindowStyleView {
+  id: string;
+  name: string;
+  width: number;
+  height: number;
 }
 
 export interface Snapshot {

@@ -11,6 +11,9 @@ pub const LIVING_WIDTH: u32 = 16;
 pub const LIVING_HEIGHT: u32 = 12;
 pub const DEFAULT_FLOOR: &str = "wood";
 pub const DEFAULT_WALL: &str = "cream";
+pub const WALL_HEIGHT_TILES: u32 = 6;
+pub const WALL_HEIGHT_UNITS: u32 = WALL_HEIGHT_TILES * ROOM_GRID;
+pub const MAX_WINDOWS: usize = 5;
 
 #[derive(Debug, Clone, Copy)]
 pub struct FurnitureDef {
@@ -98,9 +101,26 @@ pub struct RoomFurniture {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct RoomWindow {
+    pub id: String,
+    /// left / right，只有两面可见墙。
+    pub wall: String,
+    /// 沿墙方向，1/8 格。
+    pub x: u32,
+    /// 离地高度，1/8 格。
+    pub y: u32,
+    pub w: u32,
+    pub h: u32,
+    pub style: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct RoomLayout {
     pub floor: String,
     pub wall: String,
+    #[serde(default)]
+    pub windows: Vec<RoomWindow>,
     pub furniture: Vec<RoomFurniture>,
 }
 
@@ -129,6 +149,15 @@ pub fn default_layout() -> RoomLayout {
     RoomLayout {
         floor: DEFAULT_FLOOR.into(),
         wall: DEFAULT_WALL.into(),
+        windows: vec![RoomWindow {
+            id: "starter-window".into(),
+            wall: "right".into(),
+            x: 64,
+            y: 24,
+            w: 24,
+            h: 20,
+            style: "large".into(),
+        }],
         furniture: vec![
             RoomFurniture {
                 id: "starter-rug".into(),
@@ -184,6 +213,19 @@ pub fn wall_styles() -> [(&'static str, &'static str); 3] {
     [("cream", "米白"), ("sage", "鼠尾草"), ("sky", "雾蓝")]
 }
 
+/// 窗户预设：id / 名称 / 宽 / 高（1/8 格；墙高 48）。
+pub fn window_styles() -> [(&'static str, &'static str, u32, u32); 3] {
+    [
+        ("small", "小窗", 16, 16),
+        ("large", "大窗", 24, 20),
+        ("floor", "落地窗", 32, WALL_HEIGHT_UNITS),
+    ]
+}
+
+pub fn window_style(id: &str) -> Option<(&'static str, &'static str, u32, u32)> {
+    window_styles().into_iter().find(|(key, _, _, _)| *key == id)
+}
+
 fn style_valid(styles: &[(&str, &str)], id: &str) -> bool {
     styles.iter().any(|(key, _)| *key == id)
 }
@@ -214,6 +256,48 @@ pub fn validate_layout(room: &str, layout: &RoomLayout) -> Result<(), GameError>
     }
     if layout.furniture.len() > 48 {
         return Err(GameError::RoomLayoutInvalid("家具太多了".into()));
+    }
+    if layout.windows.len() > MAX_WINDOWS {
+        return Err(GameError::RoomLayoutInvalid("窗户最多 5 扇".into()));
+    }
+
+    let mut window_ids = std::collections::BTreeSet::new();
+    let mut window_boxes: Vec<(u32, u32, u32, u32, String)> = Vec::new();
+    for window in &layout.windows {
+        if window.id.trim().is_empty() || !window_ids.insert(window.id.clone()) {
+            return Err(GameError::RoomLayoutInvalid("窗户 id 重复或为空".into()));
+        }
+        let wall_len = match window.wall.as_str() {
+            "left" => LIVING_HEIGHT * ROOM_GRID,
+            "right" => LIVING_WIDTH * ROOM_GRID,
+            _ => return Err(GameError::RoomLayoutInvalid("窗户只能放左/右墙".into())),
+        };
+        if window_style(&window.style).is_none() {
+            return Err(GameError::RoomLayoutInvalid("没有这个窗户样式".into()));
+        }
+        if window.w == 0 || window.h == 0 || window.w < 8 || window.h < 8 {
+            return Err(GameError::RoomLayoutInvalid("窗户太小了".into()));
+        }
+        if window.x + window.w > wall_len || window.y + window.h > WALL_HEIGHT_UNITS {
+            return Err(GameError::RoomLayoutInvalid("窗户超出墙面范围".into()));
+        }
+        for (x, y, w, h, wall) in &window_boxes {
+            if wall == &window.wall
+                && window.x < x + w
+                && *x < window.x + window.w
+                && window.y < y + h
+                && *y < window.y + window.h
+            {
+                return Err(GameError::RoomLayoutInvalid("窗户和窗户重叠了".into()));
+            }
+        }
+        window_boxes.push((
+            window.x,
+            window.y,
+            window.w,
+            window.h,
+            window.wall.clone(),
+        ));
     }
 
     let mut ids = std::collections::BTreeSet::new();

@@ -135,9 +135,13 @@ try {
   await waitFor(async () => (await bodyText()).includes("完成"));
   check("进入装修模式", true);
   check("编辑器有家具面板", (await bodyText()).includes("+绿植"));
+  check("默认有一扇窗", (await bodyText()).includes("窗户 1/5"));
   await clickText("+绿植", true);
   await new Promise((r) => setTimeout(r, 200));
   check("加绿植后出现选中", (await bodyText()).includes("选中：绿植"));
+  await clickText("+小窗", true);
+  await new Promise((r) => setTimeout(r, 200));
+  check("加窗后 2/5", (await bodyText()).includes("窗户 2/5"));
   await evaluate(`(() => {
     const select = document.querySelectorAll('.room-editor select')[0];
     if (!select) return false;
@@ -154,6 +158,7 @@ try {
   const layout = save.room.rooms.living;
   check("完成写回存档", layout.furniture.length >= 7, `furniture=${layout.furniture.length}`);
   check("地板样式写回", layout.floor === "tile", `floor=${layout.floor}`);
+  check("窗户写回", layout.windows.length >= 2, `windows=${layout.windows.length}`);
   check("退出装修模式", (await bodyText()).includes("装修") && !(await bodyText()).includes("完成"));
   check("小屋截图", existsSync(shot), shot);
   check("装修截图", existsSync(editShot), editShot);
