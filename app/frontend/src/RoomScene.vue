@@ -724,7 +724,9 @@ function drawSpriteItem(
   const img = spriteCache.get(path);
   if (!img || !img.complete || img.naturalWidth === 0) return false;
 
-  contactShadow(ctx, boxInfo.x, boxInfo.y, boxInfo.w, boxInfo.d);
+  if (boxInfo.def.kind !== "rug") {
+    contactShadow(ctx, boxInfo.x, boxInfo.y, boxInfo.w, boxInfo.d);
+  }
   const base = iso(boxInfo.x + boxInfo.w / 2, boxInfo.y + boxInfo.d);
   ctx.drawImage(
     img,
@@ -756,6 +758,8 @@ function drawItem(ctx: CanvasRenderingContext2D, item: RoomFurniture) {
   const outline = selectedId.value === item.id ? "#efb14a" : isInvalid(item) ? "#d95d4f" : undefined;
   const line = outline ?? "rgba(52,36,24,.55)";
 
+  if (drawSpriteItem(ctx, item, { x, y, w, d, def }, outline)) return;
+
   if (def.kind === "rug") {
     const p0 = iso(x + 0.08, y + 0.08);
     const p1 = iso(x + w - 0.08, y + 0.08);
@@ -774,8 +778,6 @@ function drawItem(ctx: CanvasRenderingContext2D, item: RoomFurniture) {
     ctx.fill();
     return;
   }
-
-  if (drawSpriteItem(ctx, item, { x, y, w, d, def }, outline)) return;
 
   contactShadow(ctx, x, y, w, d);
 

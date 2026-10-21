@@ -44,8 +44,8 @@ pub const FURNITURE: [FurnitureDef; 6] = [
         layer: 2,
         collision: true,
         kind: "bed",
-        sprite: None,
-        sprite_rotations: 1,
+        sprite: Some("furn_bed_wood"),
+        sprite_rotations: 4,
     },
     FurnitureDef {
         id: "desk",
@@ -66,8 +66,8 @@ pub const FURNITURE: [FurnitureDef; 6] = [
         layer: 2,
         collision: true,
         kind: "chair",
-        sprite: None,
-        sprite_rotations: 1,
+        sprite: Some("furn_chair_wood"),
+        sprite_rotations: 4,
     },
     FurnitureDef {
         id: "rug",
@@ -77,7 +77,7 @@ pub const FURNITURE: [FurnitureDef; 6] = [
         layer: 0,
         collision: false,
         kind: "rug",
-        sprite: None,
+        sprite: Some("furn_rug_sage_01"),
         sprite_rotations: 1,
     },
     FurnitureDef {
@@ -88,8 +88,8 @@ pub const FURNITURE: [FurnitureDef; 6] = [
         layer: 2,
         collision: true,
         kind: "cabinet",
-        sprite: None,
-        sprite_rotations: 1,
+        sprite: Some("furn_cabinet_wood"),
+        sprite_rotations: 4,
     },
     FurnitureDef {
         id: "plant",

@@ -2,6 +2,210 @@
   "schema": 1,
   "assets": [
     {
+      "id": "furn_bed_wood_00",
+      "category": "furniture.bed",
+      "file": "furn_bed_wood_00.png",
+      "size": [
+        105,
+        85
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "cb9f452d902b09e741b74c9a97bb1bbe3f167f32f982c1e6136af57db690134a"
+    },
+    {
+      "id": "furn_bed_wood_01",
+      "category": "furniture.bed",
+      "file": "furn_bed_wood_01.png",
+      "size": [
+        105,
+        85
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "4de023a42b4629bcba849af0650a85cddeac43dc30aebcb1c7089e7dbecc000d"
+    },
+    {
+      "id": "furn_bed_wood_02",
+      "category": "furniture.bed",
+      "file": "furn_bed_wood_02.png",
+      "size": [
+        105,
+        85
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "35442ea0bdb7acd358c02f38c8e107e062076a304dcd2c35df1c0799a8fa3a09"
+    },
+    {
+      "id": "furn_bed_wood_03",
+      "category": "furniture.bed",
+      "file": "furn_bed_wood_03.png",
+      "size": [
+        105,
+        85
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "8de4a2c9f637c35cc2eee076b0681755be0caa67b5ba5248f5a7cbb3a2754e84"
+    },
+    {
+      "id": "furn_cabinet_wood_00",
+      "category": "furniture.cabinet",
+      "file": "furn_cabinet_wood_00.png",
+      "size": [
+        48,
+        74
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "8bdc585a683adac3538c5c2e1a095f59e1f631438d06defdd5e0451137cf8c22"
+    },
+    {
+      "id": "furn_cabinet_wood_01",
+      "category": "furniture.cabinet",
+      "file": "furn_cabinet_wood_01.png",
+      "size": [
+        48,
+        74
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "29c6fe5bd564e1583e7e670a4ea47260d7f2eca4378d164cd4b60e4ba67adf65"
+    },
+    {
+      "id": "furn_cabinet_wood_02",
+      "category": "furniture.cabinet",
+      "file": "furn_cabinet_wood_02.png",
+      "size": [
+        48,
+        74
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "964fc673c27297c0dadb1d11f9ef52c49bab570d7cf74e5bf57decd05683d537"
+    },
+    {
+      "id": "furn_cabinet_wood_03",
+      "category": "furniture.cabinet",
+      "file": "furn_cabinet_wood_03.png",
+      "size": [
+        48,
+        74
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "0de0326703312f8b1760e740928d88c385e4eb179c212729f2daa10d22cdeaa6"
+    },
+    {
+      "id": "furn_chair_wood_00",
+      "category": "furniture.chair",
+      "file": "furn_chair_wood_00.png",
+      "size": [
+        40,
+        63
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "ab288e3bba066c2e436f71f0af0bc9f503e39744f5336ccf76cdd6615f8517f4"
+    },
+    {
+      "id": "furn_chair_wood_01",
+      "category": "furniture.chair",
+      "file": "furn_chair_wood_01.png",
+      "size": [
+        40,
+        63
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "a4e918e0b906e1f1cf0340eebb09f7875f3926e600a1212e109730bdce288a28"
+    },
+    {
+      "id": "furn_chair_wood_02",
+      "category": "furniture.chair",
+      "file": "furn_chair_wood_02.png",
+      "size": [
+        40,
+        63
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "8de0c3cff5b53f0f66d0b65654edb8a27755fcf6ee7b46820491ebf9223a6bd6"
+    },
+    {
+      "id": "furn_chair_wood_03",
+      "category": "furniture.chair",
+      "file": "furn_chair_wood_03.png",
+      "size": [
+        40,
+        63
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "7dbc46df52e594e6ba05b15955dfec3501d019d9a882f3815241c08dcedd802f"
+    },
+    {
       "id": "furn_desk_wood_00",
       "category": "furniture.desk",
       "file": "furn_desk_wood_00.png",
@@ -68,6 +272,23 @@
       "status": "candidate",
       "license": "in-house",
       "sha256": "64ebc9845c34f7085605b96d860beee72441329b5c1212792b0431b06feb1aae"
+    },
+    {
+      "id": "furn_rug_sage_01",
+      "category": "furniture.rug",
+      "file": "furn_rug_sage_01.png",
+      "size": [
+        105,
+        53
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 1,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "5b356db19b166a1c3b733c3c4c6ca81acf462c3515f83854da9d09fc1fbfb885"
     },
     {
       "id": "prop_plant_green_01",
