@@ -33,6 +33,7 @@ const TH = 21;
 const OX = 460;
 const OY = 140;
 const WALL_H = 112;
+const CANVAS_SCALE = 2;
 const CAMERA_MIN = 0.7;
 const CAMERA_MAX = 2.2;
 const camera = ref({ zoom: 1.05, panX: 0, panY: 0 });
@@ -645,8 +646,6 @@ function drawWindows(ctx: CanvasRenderingContext2D) {
     ctx.beginPath();
     ctx.moveTo(c.x, top);
     ctx.lineTo(c.x, bottom);
-    ctx.moveTo(points[0].x, c.y);
-    ctx.lineTo(points[1].x, c.y);
     ctx.stroke();
     ctx.restore();
   }
@@ -784,12 +783,34 @@ function box(
   poly(ctx, [t0, t1, t2, t3], topColor, stroke, 1.4);
 }
 
-function contactShadow(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, d: number) {
-  const p = iso(x + w / 2, y + d / 2);
-  ctx.fillStyle = "rgba(54,38,24,.20)";
+function softShadow(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number,
+  alpha = 0.2,
+) {
+  if (rx <= 0 || ry <= 0) return;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(rx, ry);
+  const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+  gradient.addColorStop(0, `rgba(54,38,24,${alpha})`);
+  gradient.addColorStop(0.55, `rgba(54,38,24,${alpha * 0.55})`);
+  gradient.addColorStop(1, "rgba(54,38,24,0)");
+  ctx.fillStyle = gradient;
   ctx.beginPath();
-  ctx.ellipse(p.x, p.y + 4, (w + d) * TW * 0.24, (w + d) * TH * 0.30, 0, 0, Math.PI * 2);
+  ctx.arc(0, 0, 1, 0, Math.PI * 2);
   ctx.fill();
+  ctx.restore();
+}
+
+function contactShadow(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, d: number) {
+  const p = iso(x + w / 2, y + d);
+  const rx = Math.max(12, Math.min(78, (w + d) * TW * 0.22));
+  const ry = Math.max(3, Math.min(16, (w + d) * TH * 0.22));
+  softShadow(ctx, p.x, p.y - 1, rx, ry, 0.18);
 }
 
 function spritePath(def: RoomFurnitureDefView, rot: number): string | null {
@@ -1038,10 +1059,7 @@ function drawPets(ctx: CanvasRenderingContext2D) {
     const base = iso(actor.x, actor.y);
     const width = Math.max(1, Math.round((img.naturalWidth / img.naturalHeight) * PET_HEIGHT));
 
-    ctx.fillStyle = "rgba(54,38,24,.22)";
-    ctx.beginPath();
-    ctx.ellipse(base.x, base.y + 1, 13, 4, 0, 0, Math.PI * 2);
-    ctx.fill();
+    softShadow(ctx, base.x, base.y - 1, 12, 3.2, 0.15);
 
     const bob = actor.state === "walk" ? Math.sin(actor.phase * 9) * 1.5 : 0;
     const squash = actor.state === "sit" ? 0.9 : actor.state === "sleep" ? 0.82 : 1;
@@ -1050,7 +1068,8 @@ function drawPets(ctx: CanvasRenderingContext2D) {
     if (actor.dir === "right") ctx.scale(-1, 1);
     ctx.scale(1, squash);
     if (actor.state === "sleep") ctx.globalAlpha = 0.9;
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
     ctx.drawImage(img, -width / 2, -PET_HEIGHT, width, PET_HEIGHT);
     ctx.restore();
   }
@@ -1089,10 +1108,18 @@ function drawSpriteItem(
   const img = spriteCache.get(path);
   if (!img || !img.complete || img.naturalWidth === 0) return false;
 
-  if (boxInfo.def.kind !== "rug") {
-    contactShadow(ctx, boxInfo.x, boxInfo.y, boxInfo.w, boxInfo.d);
-  }
   const base = iso(boxInfo.x + boxInfo.w / 2, boxInfo.y + boxInfo.d);
+  if (boxInfo.def.kind !== "rug") {
+    const shadowCenter = iso(boxInfo.x + boxInfo.w / 2, boxInfo.y + boxInfo.d / 2 + 0.15);
+    softShadow(
+      ctx,
+      shadowCenter.x,
+      shadowCenter.y,
+      Math.max(10, img.naturalWidth * 0.3),
+      Math.max(2.5, img.naturalWidth * 0.065),
+      0.26,
+    );
+  }
   ctx.drawImage(
     img,
     Math.round(base.x - img.naturalWidth / 2),
@@ -1248,8 +1275,10 @@ function draw() {
   if (!el) return;
   const ctx = el.getContext("2d");
   if (!ctx) return;
+  ctx.setTransform(CANVAS_SCALE, 0, 0, CANVAS_SCALE, 0, 0);
   ctx.clearRect(0, 0, CW, CH);
-  ctx.imageSmoothingEnabled = false;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
   ctx.fillStyle = "#f4eee1";
   ctx.fillRect(0, 0, CW, CH);
   ctx.save();
@@ -1570,8 +1599,8 @@ onBeforeUnmount(stopPetLoop);
     <div class="room-canvas-wrap">
       <canvas
         ref="canvas"
-        :width="CW"
-        :height="CH"
+        :width="CW * CANVAS_SCALE"
+        :height="CH * CANVAS_SCALE"
         class="room-canvas"
         @pointerdown="onPointerDown"
         @pointermove="onPointerMove"
@@ -1704,7 +1733,7 @@ onBeforeUnmount(stopPetLoop);
   display: block;
   width: 100%;
   height: auto;
-  image-rendering: pixelated;
+  image-rendering: auto;
   touch-action: none;
   cursor: default;
 }
