@@ -746,6 +746,18 @@ pub struct RoomView {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct NpcRoomView {
+    pub npc_id: String,
+    pub name: String,
+    pub relation: String,
+    pub friendship: i32,
+    pub threshold: i32,
+    pub unlocked: bool,
+    pub room: RoomView,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Snapshot {
     pub rev: u64,
     pub now: i64,
@@ -780,6 +792,7 @@ pub struct Snapshot {
     pub fishing: FishingView,
     pub room: RoomView,
     pub extra_room: Option<RoomView>,
+    pub npc_rooms: Vec<NpcRoomView>,
     pub skills: SkillsView,
     pub boarding_debt: u64,
     pub exp_rate: u32,
@@ -791,6 +804,107 @@ pub struct Snapshot {
     pub ranch_helps_left: u32,
     pub log: Vec<LogEntry>,
     pub content_crops: usize,
+}
+
+fn room_view_data(room_id: &str, label: &str, width: u32, height: u32, layout: crate::room::RoomLayout) -> RoomView {
+    RoomView {
+        room_id: room_id.into(),
+        label: label.into(),
+        width,
+        height,
+        grid: crate::room::ROOM_GRID,
+        layout,
+        floors: crate::room::floor_styles()
+            .iter()
+            .map(|(id, name)| RoomStyleView {
+                id: (*id).into(),
+                name: (*name).into(),
+            })
+            .collect(),
+        walls: crate::room::wall_styles()
+            .iter()
+            .map(|(id, name)| RoomStyleView {
+                id: (*id).into(),
+                name: (*name).into(),
+            })
+            .collect(),
+        window_styles: crate::room::window_styles()
+            .iter()
+            .map(|(id, name, width, height)| RoomWindowStyleView {
+                id: (*id).into(),
+                name: (*name).into(),
+                width: *width,
+                height: *height,
+            })
+            .collect(),
+        catalog: crate::room::FURNITURE
+            .iter()
+            .map(|def| RoomFurnitureDefView {
+                id: def.id.into(),
+                name: def.name.into(),
+                width: def.width,
+                depth: def.depth,
+                layer: def.layer,
+                collision: def.collision,
+                kind: def.kind.into(),
+                capacity: def.capacity,
+                sprite: def.sprite.map(|s| s.into()),
+                sprite_rotations: def.sprite_rotations,
+            })
+            .collect(),
+    }
+}
+
+fn npc_threshold(id: &str) -> i32 {
+    match id {
+        "ahe" => 10,
+        "xiaoman" => 25,
+        _ => 40,
+    }
+}
+
+fn npc_room_layout(id: &str) -> crate::room::RoomLayout {
+    use crate::room::{RoomFurniture, RoomLayout, RoomWindow};
+    let f = |id: &str, def: &str, x: u32, y: u32| RoomFurniture {
+        id: id.into(),
+        def: def.into(),
+        x,
+        y,
+        rot: 0,
+        fish: vec![],
+    };
+    let mut furniture = vec![
+        f("npc-bed", "bed", 64, 8),
+        f("npc-desk", "desk", 8, 8),
+        f("npc-chair", "chair", 24, 16),
+        f("npc-rug", "rug", 32, 40),
+        f("npc-cabinet", "cabinet", 0, 48),
+        f("npc-plant", "plant", 88, 56),
+        f("npc-vase", "flower_vase", 88, 24),
+        f("npc-planter", "planter", 72, 48),
+    ];
+    if id == "ahe" {
+        furniture.push(f("npc-tank", "aquarium_small", 8, 64));
+    } else if id == "qingxing" {
+        let mut tank = f("npc-tank", "aquarium_large", 40, 8);
+        tank.fish = vec!["carp".into()];
+        furniture.push(tank);
+    }
+    RoomLayout {
+        floor: "wood".into(),
+        wall: if id == "xiaoman" { "sage".into() } else { "cream".into() },
+        door: None,
+        windows: vec![RoomWindow {
+            id: "npc-window".into(),
+            wall: "right".into(),
+            x: 28,
+            y: 24,
+            w: 24,
+            h: 20,
+            style: "large".into(),
+        }],
+        furniture,
+    }
 }
 
 impl Game {
@@ -1888,6 +2002,24 @@ impl Game {
             fishing,
             room: self.room_view(crate::room::LIVING_ROOM).expect("living room"),
             extra_room: self.room_view(crate::room::EXTRA_ROOM),
+            npc_rooms: self.state.npcs.iter().map(|entry| {
+                let threshold = npc_threshold(&entry.id);
+                NpcRoomView {
+                    npc_id: entry.id.clone(),
+                    name: entry.name.clone(),
+                    relation: npc::relation(entry.friendship).into(),
+                    friendship: entry.friendship,
+                    threshold,
+                    unlocked: entry.friendship >= threshold,
+                    room: room_view_data(
+                        &format!("npc_{}", entry.id),
+                        &format!("{}的小屋", entry.name),
+                        12,
+                        9,
+                        npc_room_layout(&entry.id),
+                    ),
+                }
+            }).collect(),
             skills: skills_view,
             boarding_debt: self.state.boarding_debt,
             exp_rate: self.state.settings.exp_rate,

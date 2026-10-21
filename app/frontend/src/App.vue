@@ -692,6 +692,10 @@ async function saveRoom(layout: RoomLayout) {
 
 const currentRoomId = ref("living");
 const selectedAquariumId = ref("");
+const selectedNpcRoomId = ref("");
+const selectedNpcRoom = computed(
+  () => snapshot.value?.npcRooms.find((room) => room.npcId === selectedNpcRoomId.value) ?? null,
+);
 const currentRoom = computed(() => {
   if (currentRoomId.value === "extra_1" && snapshot.value?.extraRoom) return snapshot.value.extraRoom;
   return snapshot.value?.room ?? null;
@@ -2409,6 +2413,37 @@ onUnmounted(() => {
               <span v-else class="muted">没有可放的鱼</span>
             </div>
             <p class="muted tank-tip">放进鱼缸的鱼不会出现在仓库，也不能出售；取出后才回到仓库。</p>
+          </div>
+          <div class="npc-room-list">
+            <div class="panel-title">邻居小屋</div>
+            <div v-for="room in snapshot?.npcRooms ?? []" :key="room.npcId" class="npc-room-row">
+              <span>{{ room.name }} · {{ room.relation }} · 好感 {{ room.friendship }}/{{ room.threshold }}</span>
+              <button
+                v-if="room.unlocked"
+                class="link"
+                type="button"
+                @click="selectedNpcRoomId = room.npcId"
+              >
+                [参观]
+              </button>
+              <span v-else class="muted">好感不足</span>
+            </div>
+          </div>
+          <div v-if="selectedNpcRoom" class="npc-room-view">
+            <div class="tank-head">
+              <strong>{{ selectedNpcRoom.room.label }}</strong>
+              <span class="muted">只读参观 · 不能装修</span>
+              <button class="link" type="button" @click="selectedNpcRoomId = ''">[返回]</button>
+            </div>
+            <RoomScene
+              :room="selectedNpcRoom.room"
+              :active="true"
+              :extra-unlocked="true"
+              :extra-cost="0"
+              :pets="[]"
+              readonly
+              @notice="notice = $event"
+            />
           </div>
         </section>
       </div>

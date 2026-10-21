@@ -686,6 +686,25 @@ textarea {
   font-size: 12px;
 }
 
+.npc-room-list {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.npc-room-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 3px 0;
+  font-size: 14px;
+}
+
+.npc-room-view {
+  margin-top: 10px;
+}
+
 .row {
   display: flex;
   flex-wrap: wrap;

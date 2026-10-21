@@ -110,8 +110,8 @@ pub use specimen::{recipe as specimen_recipe, SpecimenRecipe};
 pub use view::{
     BaitRecipeView, BaitTypeView, BuffItemView, BuffView, CodexView, CropView, DisasterView,
     DisciplineView, FacilityView, FishRecipeView, ItemKind, ItemStack, KingTrophyView, PestView,
-    PetView, PlotEffectsView, PlotStatus, PlotView, RoomView, RoomWindowStyleView, SkillView,
-    SkillsView, Snapshot, SpecimenView, SpotProgressView,
+    NpcRoomView, PetView, PlotEffectsView, PlotStatus, PlotView, RoomView, RoomWindowStyleView,
+    SkillView, SkillsView, Snapshot, SpecimenView, SpotProgressView,
 };
 pub use workshop::{
     craft_item, crop_box_key, crop_box_price, CraftItemDef, EquipmentKind, EquipmentRecipe,

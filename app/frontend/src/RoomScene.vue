@@ -16,6 +16,7 @@ const props = defineProps<{
   extraUnlocked: boolean;
   extraCost: number;
   pets: PetView[];
+  readonly?: boolean;
 }>();
 const emit = defineEmits<{
   save: [layout: RoomLayout];
@@ -257,6 +258,7 @@ function storeWindow() {
 }
 
 function startEdit() {
+  if (props.readonly) return;
   draft.value = clone(props.room.layout);
   editing.value = true;
   selectedId.value = null;
@@ -956,7 +958,7 @@ function updatePets(dt: number) {
 }
 
 function drawPets(ctx: CanvasRenderingContext2D) {
-  if (editing.value) return;
+  if (editing.value || props.readonly) return;
   const actors = [...petActors.value].sort((a, b) => a.y - b.y);
   for (const actor of actors) {
     const img = petCache.get(actor.image);
@@ -1262,6 +1264,7 @@ function windowPointer(wall: "left" | "right", px: number, py: number): P {
 }
 
 function onPointerDown(event: PointerEvent) {
+  if (props.readonly) return;
   const p = canvasPoint(event);
 
   const door = hitDoor(p.x, p.y);
@@ -1432,9 +1435,9 @@ onBeforeUnmount(stopPetLoop);
       <strong>{{ room.label }}</strong>
       <span class="muted">{{ room.width }}×{{ room.height }} · 1/8 格吸附</span>
       <template v-if="!editing">
-        <button class="link" type="button" @click="startEdit">[装修]</button>
+        <button v-if="!readonly" class="link" type="button" @click="startEdit">[装修]</button>
         <button
-          v-if="activePetCount > 0"
+          v-if="!readonly && activePetCount > 0"
           class="link"
           type="button"
           @click="callPets"
@@ -1442,7 +1445,7 @@ onBeforeUnmount(stopPetLoop);
           [呼唤宠物 {{ petActors.length }}/3]
         </button>
         <button
-          v-if="room.roomId === 'living' && !extraUnlocked"
+          v-if="!readonly && room.roomId === 'living' && !extraUnlocked"
           class="link"
           type="button"
           @click="$emit('unlock')"
@@ -1450,14 +1453,14 @@ onBeforeUnmount(stopPetLoop);
           [解锁里屋 {{ extraCost }}]
         </button>
         <button
-          v-else-if="room.roomId === 'living'"
+          v-else-if="!readonly && room.roomId === 'living'"
           class="link"
           type="button"
           @click="$emit('travel')"
         >
           [进里屋]
         </button>
-        <button v-else class="link" type="button" @click="$emit('travel')">[回客厅]</button>
+        <button v-else-if="!readonly" class="link" type="button" @click="$emit('travel')">[回客厅]</button>
         <span v-if="selected" class="muted">{{ defs.get(selected.def)?.name ?? selected.def }}</span>
       </template>
       <template v-else>
@@ -1479,7 +1482,7 @@ onBeforeUnmount(stopPetLoop);
       />
     </div>
 
-    <p v-if="!editing && activePetCount > 0" class="muted room-tip">
+    <p v-if="!editing && !readonly && activePetCount > 0" class="muted room-tip">
       宠物会偶尔自己进屋，最多 3 只；也可以点「呼唤宠物」。装修模式下宠物暂停。
     </p>
 

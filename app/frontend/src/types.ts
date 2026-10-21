@@ -505,6 +505,16 @@ export interface NpcView {
   ranch: NpcRanchAnimalView[];
 }
 
+export interface NpcRoomView {
+  npcId: string;
+  name: string;
+  relation: string;
+  friendship: number;
+  threshold: number;
+  unlocked: boolean;
+  room: RoomView;
+}
+
 export interface NpcMessageView {
   at: number;
   npcName: string;
@@ -890,6 +900,7 @@ export interface Snapshot {
   fishing: FishingView;
   room: RoomView;
   extraRoom: RoomView | null;
+  npcRooms: NpcRoomView[];
   skills: SkillsView;
   boardingDebt: number;
   expRate: number;

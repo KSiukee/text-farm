@@ -45,6 +45,21 @@ fn default_room_is_valid_and_visible() {
 }
 
 #[test]
+fn npc_rooms_are_read_only_views_with_thresholds() {
+    let game = Game::new(1_000);
+    let snap = game.snapshot(1_000);
+    assert_eq!(snap.npc_rooms.len(), snap.npcs.len());
+    let ahe = snap.npc_rooms.iter().find(|room| room.npc_id == "ahe").unwrap();
+    assert!(ahe.unlocked);
+    assert_eq!(ahe.room.width, 12);
+    assert_eq!(ahe.room.height, 9);
+    assert!(!ahe.room.layout.furniture.is_empty());
+    let xiaoman = snap.npc_rooms.iter().find(|room| room.npc_id == "xiaoman").unwrap();
+    assert!(!xiaoman.unlocked);
+}
+
+
+#[test]
 fn aquarium_moves_fish_between_tank_and_inventory() {
     let mut game = Game::new(1_000);
     let mut room = layout();
