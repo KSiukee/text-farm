@@ -70,12 +70,12 @@
       "sha256": "8de4a2c9f637c35cc2eee076b0681755be0caa67b5ba5248f5a7cbb3a2754e84"
     },
     {
-      "id": "furn_cabinet_wood_00",
-      "category": "furniture.cabinet",
-      "file": "furn_cabinet_wood_00.png",
+      "id": "furn_bookshelf_wood_00",
+      "category": "furniture.bookshelf",
+      "file": "furn_bookshelf_wood_00.png",
       "size": [
-        48,
-        74
+        46,
+        88
       ],
       "anchor": [
         0.5,
@@ -84,15 +84,83 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "8bdc585a683adac3538c5c2e1a095f59e1f631438d06defdd5e0451137cf8c22"
+      "sha256": "f5d52ae7d9a6817fa2b856415a3d1ce971f993ec385092171c35dc342cac59e6"
+    },
+    {
+      "id": "furn_bookshelf_wood_01",
+      "category": "furniture.bookshelf",
+      "file": "furn_bookshelf_wood_01.png",
+      "size": [
+        46,
+        88
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "6a83c5f7c3e62ca7000497e7f89f59f7b4cdd6ffddda6af03a6fe15a39210cf5"
+    },
+    {
+      "id": "furn_bookshelf_wood_02",
+      "category": "furniture.bookshelf",
+      "file": "furn_bookshelf_wood_02.png",
+      "size": [
+        46,
+        88
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "6d5434216f3034c5adbb18358d0f435e627e4db55b0e72e7d4f1e44a94486c1b"
+    },
+    {
+      "id": "furn_bookshelf_wood_03",
+      "category": "furniture.bookshelf",
+      "file": "furn_bookshelf_wood_03.png",
+      "size": [
+        46,
+        88
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "e47494bb5ef7f594669873029b2fb775032af91f6599611b1ef03135491b5d02"
+    },
+    {
+      "id": "furn_cabinet_wood_00",
+      "category": "furniture.cabinet",
+      "file": "furn_cabinet_wood_00.png",
+      "size": [
+        52,
+        68
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "0e417e11bdaca7c02b8d40711a262a896e6f846f716b9286a5f652aa027f2367"
     },
     {
       "id": "furn_cabinet_wood_01",
       "category": "furniture.cabinet",
       "file": "furn_cabinet_wood_01.png",
       "size": [
-        48,
-        74
+        52,
+        68
       ],
       "anchor": [
         0.5,
@@ -101,15 +169,15 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "29c6fe5bd564e1583e7e670a4ea47260d7f2eca4378d164cd4b60e4ba67adf65"
+      "sha256": "4190d0e12463c473b3ec2a729b2348d06b03ba53daf37f873ecdaa229399ddd6"
     },
     {
       "id": "furn_cabinet_wood_02",
       "category": "furniture.cabinet",
       "file": "furn_cabinet_wood_02.png",
       "size": [
-        48,
-        74
+        52,
+        68
       ],
       "anchor": [
         0.5,
@@ -118,15 +186,15 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "964fc673c27297c0dadb1d11f9ef52c49bab570d7cf74e5bf57decd05683d537"
+      "sha256": "0e417e11bdaca7c02b8d40711a262a896e6f846f716b9286a5f652aa027f2367"
     },
     {
       "id": "furn_cabinet_wood_03",
       "category": "furniture.cabinet",
       "file": "furn_cabinet_wood_03.png",
       "size": [
-        48,
-        74
+        52,
+        68
       ],
       "anchor": [
         0.5,
@@ -135,7 +203,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "0de0326703312f8b1760e740928d88c385e4eb179c212729f2daa10d22cdeaa6"
+      "sha256": "4190d0e12463c473b3ec2a729b2348d06b03ba53daf37f873ecdaa229399ddd6"
     },
     {
       "id": "furn_chair_wood_00",
@@ -210,8 +278,8 @@
       "category": "furniture.desk",
       "file": "furn_desk_wood_00.png",
       "size": [
-        78,
-        64
+        84,
+        68
       ],
       "anchor": [
         0.5,
@@ -220,15 +288,15 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "29774d724f908f96fab23b25b1d56c0e646c676d398cbfd5c19952abab708957"
+      "sha256": "a4d8233a8f203f9a51d49032c7e11a47443582e0b0e68d518ae4cf10d71c7ce7"
     },
     {
       "id": "furn_desk_wood_01",
       "category": "furniture.desk",
       "file": "furn_desk_wood_01.png",
       "size": [
-        78,
-        64
+        84,
+        68
       ],
       "anchor": [
         0.5,
@@ -237,15 +305,15 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "d816fd13a5d28e46d29d50f07794db70c7f84bf541ccc2babcdca6d8961db374"
+      "sha256": "4dfda6884a37a7e816f876c0140c863fc84e4417990ea30c970e38e4ee6fede7"
     },
     {
       "id": "furn_desk_wood_02",
       "category": "furniture.desk",
       "file": "furn_desk_wood_02.png",
       "size": [
-        78,
-        64
+        84,
+        68
       ],
       "anchor": [
         0.5,
@@ -254,15 +322,15 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "07bd75dfe1bddadae7eaea3d2255a8a57074009be17a7528672bf8fe23a4b107"
+      "sha256": "d52b1b966422214aee2da55a73e3819de8977531cf6cfc2ec7c35b57570478e7"
     },
     {
       "id": "furn_desk_wood_03",
       "category": "furniture.desk",
       "file": "furn_desk_wood_03.png",
       "size": [
-        78,
-        64
+        84,
+        68
       ],
       "anchor": [
         0.5,
@@ -271,7 +339,75 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "64ebc9845c34f7085605b96d860beee72441329b5c1212792b0431b06feb1aae"
+      "sha256": "a5fcba2c91699426dac5de6a52cb08ae48beeb37e61133ea43ca964dc75544c1"
+    },
+    {
+      "id": "furn_lamp_floor_00",
+      "category": "prop.lamp",
+      "file": "furn_lamp_floor_00.png",
+      "size": [
+        30,
+        67
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "66e8ad414f6d44ff61a4cb511ba9c4c7f5673097c0f1fc3f42434632fbbaa9f9"
+    },
+    {
+      "id": "furn_lamp_floor_01",
+      "category": "prop.lamp",
+      "file": "furn_lamp_floor_01.png",
+      "size": [
+        30,
+        67
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "e4894ab58a440ed35fc3527cb30bcec7c5aeaa7747859137ef15c2a0c48608fc"
+    },
+    {
+      "id": "furn_lamp_floor_02",
+      "category": "prop.lamp",
+      "file": "furn_lamp_floor_02.png",
+      "size": [
+        30,
+        67
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "66e8ad414f6d44ff61a4cb511ba9c4c7f5673097c0f1fc3f42434632fbbaa9f9"
+    },
+    {
+      "id": "furn_lamp_floor_03",
+      "category": "prop.lamp",
+      "file": "furn_lamp_floor_03.png",
+      "size": [
+        30,
+        67
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "e4894ab58a440ed35fc3527cb30bcec7c5aeaa7747859137ef15c2a0c48608fc"
     },
     {
       "id": "furn_rug_sage_01",
@@ -289,6 +425,74 @@
       "status": "candidate",
       "license": "in-house",
       "sha256": "5b356db19b166a1c3b733c3c4c6ca81acf462c3515f83854da9d09fc1fbfb885"
+    },
+    {
+      "id": "furn_sofa_green_00",
+      "category": "furniture.sofa",
+      "file": "furn_sofa_green_00.png",
+      "size": [
+        84,
+        64
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "b7357af4096dba5eb5df89c8dba57a4dc7462f7f85b601ee20fc453e88ec5f7e"
+    },
+    {
+      "id": "furn_sofa_green_01",
+      "category": "furniture.sofa",
+      "file": "furn_sofa_green_01.png",
+      "size": [
+        84,
+        64
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "8a747702a2ec80ba8d0d03c0c848448136c8e05a3fdc5f7606588ffdd56c8558"
+    },
+    {
+      "id": "furn_sofa_green_02",
+      "category": "furniture.sofa",
+      "file": "furn_sofa_green_02.png",
+      "size": [
+        84,
+        64
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "8c78568e4578942806b969280ac2c64eb22cb79c0c9e204e77c2ca9320eaa1ce"
+    },
+    {
+      "id": "furn_sofa_green_03",
+      "category": "furniture.sofa",
+      "file": "furn_sofa_green_03.png",
+      "size": [
+        84,
+        64
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "f301e6c384dd85a2e7cf8b9f0eb6ec911ec9baf3a0c6c0c86ae4fa79bc65fc6b"
     },
     {
       "id": "prop_aquarium_large_01",

@@ -28,7 +28,7 @@ fn default_room_is_valid_and_visible() {
     assert_eq!(room.width, LIVING_WIDTH);
     assert_eq!(room.grid, ROOM_GRID);
     assert!(room.layout.furniture.len() >= 4);
-    assert_eq!(room.catalog.len(), 10);
+    assert_eq!(room.catalog.len(), 13);
     assert!(validate_layout(LIVING_ROOM, &room.layout).is_ok());
 
     let saved = layout();

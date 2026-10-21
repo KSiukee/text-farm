@@ -37,7 +37,7 @@ pub struct FurnitureDef {
     pub sprite_rotations: u8,
 }
 
-pub const FURNITURE: [FurnitureDef; 10] = [
+pub const FURNITURE: [FurnitureDef; 13] = [
     FurnitureDef {
         id: "bed",
         name: "木床",
@@ -157,6 +157,42 @@ pub const FURNITURE: [FurnitureDef; 10] = [
         capacity: 5,
         sprite: Some("prop_aquarium_large_01"),
         sprite_rotations: 1,
+    },
+    FurnitureDef {
+        id: "sofa",
+        name: "布艺沙发",
+        width: 3,
+        depth: 1,
+        layer: 2,
+        collision: true,
+        kind: "sofa",
+        capacity: 0,
+        sprite: Some("furn_sofa_green"),
+        sprite_rotations: 4,
+    },
+    FurnitureDef {
+        id: "bookshelf",
+        name: "书架",
+        width: 1,
+        depth: 2,
+        layer: 2,
+        collision: true,
+        kind: "bookshelf",
+        capacity: 0,
+        sprite: Some("furn_bookshelf_wood"),
+        sprite_rotations: 4,
+    },
+    FurnitureDef {
+        id: "floor_lamp",
+        name: "落地灯",
+        width: 1,
+        depth: 1,
+        layer: 2,
+        collision: true,
+        kind: "lamp",
+        capacity: 0,
+        sprite: Some("furn_lamp_floor"),
+        sprite_rotations: 4,
     },
 ];
 
