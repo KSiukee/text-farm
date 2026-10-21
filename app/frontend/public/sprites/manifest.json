@@ -2,6 +2,74 @@
   "schema": 1,
   "assets": [
     {
+      "id": "furn_beanbag_sage_00",
+      "category": "furniture.beanbag",
+      "file": "furn_beanbag_sage_00.png",
+      "size": [
+        80,
+        60
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "39bc60847dd185c7674bc9a28b083839120ac6ae8623a2b8b50a5b1fc86e7b09"
+    },
+    {
+      "id": "furn_beanbag_sage_01",
+      "category": "furniture.beanbag",
+      "file": "furn_beanbag_sage_01.png",
+      "size": [
+        80,
+        60
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "8d20ece1bc8386fc170ce97a01d19f777006ef92df73fba167df37ab52b651a6"
+    },
+    {
+      "id": "furn_beanbag_sage_02",
+      "category": "furniture.beanbag",
+      "file": "furn_beanbag_sage_02.png",
+      "size": [
+        80,
+        60
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "c059784cc3f0d184d34aaf567769bc679f49cfedec4f3dd4fd845f1a7f268234"
+    },
+    {
+      "id": "furn_beanbag_sage_03",
+      "category": "furniture.beanbag",
+      "file": "furn_beanbag_sage_03.png",
+      "size": [
+        80,
+        60
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "d17e5172c10d300aabbca0d3839ef719394ead86608d5a993cf84b50fc8620dd"
+    },
+    {
       "id": "furn_bed_wood_00",
       "category": "furniture.bed",
       "file": "furn_bed_wood_00.png",
@@ -343,7 +411,7 @@
     },
     {
       "id": "furn_lamp_floor_00",
-      "category": "prop.lamp",
+      "category": "prop.lamp.floor",
       "file": "furn_lamp_floor_00.png",
       "size": [
         30,
@@ -356,11 +424,11 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "66e8ad414f6d44ff61a4cb511ba9c4c7f5673097c0f1fc3f42434632fbbaa9f9"
+      "sha256": "6b2aca3db48c6ef0b43414ada54729b9b837e5d36d4ef0fa8dd56754fdcee10e"
     },
     {
       "id": "furn_lamp_floor_01",
-      "category": "prop.lamp",
+      "category": "prop.lamp.floor",
       "file": "furn_lamp_floor_01.png",
       "size": [
         30,
@@ -373,11 +441,11 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "e4894ab58a440ed35fc3527cb30bcec7c5aeaa7747859137ef15c2a0c48608fc"
+      "sha256": "6b2aca3db48c6ef0b43414ada54729b9b837e5d36d4ef0fa8dd56754fdcee10e"
     },
     {
       "id": "furn_lamp_floor_02",
-      "category": "prop.lamp",
+      "category": "prop.lamp.floor",
       "file": "furn_lamp_floor_02.png",
       "size": [
         30,
@@ -390,11 +458,11 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "66e8ad414f6d44ff61a4cb511ba9c4c7f5673097c0f1fc3f42434632fbbaa9f9"
+      "sha256": "6b2aca3db48c6ef0b43414ada54729b9b837e5d36d4ef0fa8dd56754fdcee10e"
     },
     {
       "id": "furn_lamp_floor_03",
-      "category": "prop.lamp",
+      "category": "prop.lamp.floor",
       "file": "furn_lamp_floor_03.png",
       "size": [
         30,
@@ -407,7 +475,75 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "e4894ab58a440ed35fc3527cb30bcec7c5aeaa7747859137ef15c2a0c48608fc"
+      "sha256": "6b2aca3db48c6ef0b43414ada54729b9b837e5d36d4ef0fa8dd56754fdcee10e"
+    },
+    {
+      "id": "furn_nightstand_wood_00",
+      "category": "furniture.nightstand",
+      "file": "furn_nightstand_wood_00.png",
+      "size": [
+        46,
+        47
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "616e00d679da80b8734f44e1a947466260d560d4163d45eae6a81222a8eecff6"
+    },
+    {
+      "id": "furn_nightstand_wood_01",
+      "category": "furniture.nightstand",
+      "file": "furn_nightstand_wood_01.png",
+      "size": [
+        46,
+        47
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "ab9be765818cb7c58c88dde8aef6c71738332dfcc826e75f296bfc8a71f315bc"
+    },
+    {
+      "id": "furn_nightstand_wood_02",
+      "category": "furniture.nightstand",
+      "file": "furn_nightstand_wood_02.png",
+      "size": [
+        46,
+        47
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "79ff7b61ba15c42b2e1df5a29f1854115d29eadcce2098f09f824297db6b53bc"
+    },
+    {
+      "id": "furn_nightstand_wood_03",
+      "category": "furniture.nightstand",
+      "file": "furn_nightstand_wood_03.png",
+      "size": [
+        46,
+        47
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "ab778d7e3ad4e8e815b7b99830e0ea5fe26512a59e346db43f03bf54d55aa161"
     },
     {
       "id": "furn_rug_sage_01",
@@ -495,8 +631,76 @@
       "sha256": "f301e6c384dd85a2e7cf8b9f0eb6ec911ec9baf3a0c6c0c86ae4fa79bc65fc6b"
     },
     {
+      "id": "furn_tv_wood_00",
+      "category": "furniture.tv",
+      "file": "furn_tv_wood_00.png",
+      "size": [
+        82,
+        93
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "e382d29781e49b8d3c25ffe5af404310d7525526e0d8b1960328380f1e7f7e05"
+    },
+    {
+      "id": "furn_tv_wood_01",
+      "category": "furniture.tv",
+      "file": "furn_tv_wood_01.png",
+      "size": [
+        82,
+        93
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "57cd1ae94fbef91b7c67e49690bc3628902fc78ab4898ca2e690c29658a70d16"
+    },
+    {
+      "id": "furn_tv_wood_02",
+      "category": "furniture.tv",
+      "file": "furn_tv_wood_02.png",
+      "size": [
+        82,
+        93
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "02e3dc27ad0676b8badc552d8e5ca3b14e42e3b824ab76a2269632be12655d6e"
+    },
+    {
+      "id": "furn_tv_wood_03",
+      "category": "furniture.tv",
+      "file": "furn_tv_wood_03.png",
+      "size": [
+        82,
+        93
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "aef716b829dc7c2e6d9a313082eb3be5b93e4c11e734e7915de275a712f03c30"
+    },
+    {
       "id": "prop_aquarium_large_01",
-      "category": "prop.aquarium",
+      "category": "prop.aquarium.large",
       "file": "prop_aquarium_large_01.png",
       "size": [
         88,
@@ -506,14 +710,82 @@
         0.5,
         1.0
       ],
-      "rotations": 1,
+      "rotations": 4,
       "status": "candidate",
       "license": "in-house",
       "sha256": "cc25d2218302decdb36b2bed687bcc3257b30c90d917e4da03c995c03a185ae5"
     },
     {
+      "id": "prop_aquarium_large_01_00",
+      "category": "prop.aquarium.large",
+      "file": "prop_aquarium_large_01_00.png",
+      "size": [
+        86,
+        83
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "d5d5072be8a1b766abfe6fb0ea155a97a507f34f70a093df6c12058c4581e7fc"
+    },
+    {
+      "id": "prop_aquarium_large_01_01",
+      "category": "prop.aquarium.large",
+      "file": "prop_aquarium_large_01_01.png",
+      "size": [
+        86,
+        83
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "a2ee33925abf9ed3be794d0646b0d0ceff18d33d7467c761f34c4aefddb68b4e"
+    },
+    {
+      "id": "prop_aquarium_large_01_02",
+      "category": "prop.aquarium.large",
+      "file": "prop_aquarium_large_01_02.png",
+      "size": [
+        86,
+        83
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "9a538261901be62928074c8a009e3a7c63c0bc215996155100fde6c22e468e0c"
+    },
+    {
+      "id": "prop_aquarium_large_01_03",
+      "category": "prop.aquarium.large",
+      "file": "prop_aquarium_large_01_03.png",
+      "size": [
+        86,
+        83
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "f8223c92890ce68d41559838311da46f4c774b02cd478379e147d3cc8be74e21"
+    },
+    {
       "id": "prop_aquarium_small_01",
-      "category": "prop.aquarium",
+      "category": "prop.aquarium.small",
       "file": "prop_aquarium_small_01.png",
       "size": [
         70,
@@ -523,10 +795,78 @@
         0.5,
         1.0
       ],
-      "rotations": 1,
+      "rotations": 4,
       "status": "candidate",
       "license": "in-house",
       "sha256": "0f643d6319f85787e10186edd1285ff4434eff9fbdbaf08c8c0873dc3e64aff0"
+    },
+    {
+      "id": "prop_aquarium_small_01_00",
+      "category": "prop.aquarium.small",
+      "file": "prop_aquarium_small_01_00.png",
+      "size": [
+        68,
+        60
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "4bafc7cd2f191caf124fffae4259c1593fdb851270564b1f6fb415c27b2d5bff"
+    },
+    {
+      "id": "prop_aquarium_small_01_01",
+      "category": "prop.aquarium.small",
+      "file": "prop_aquarium_small_01_01.png",
+      "size": [
+        68,
+        60
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "0ac89cc1f524359ba0f899cf1cb964a93daf307c643a5f837e66683f95ef0a83"
+    },
+    {
+      "id": "prop_aquarium_small_01_02",
+      "category": "prop.aquarium.small",
+      "file": "prop_aquarium_small_01_02.png",
+      "size": [
+        68,
+        60
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "4bafc7cd2f191caf124fffae4259c1593fdb851270564b1f6fb415c27b2d5bff"
+    },
+    {
+      "id": "prop_aquarium_small_01_03",
+      "category": "prop.aquarium.small",
+      "file": "prop_aquarium_small_01_03.png",
+      "size": [
+        68,
+        60
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "0ac89cc1f524359ba0f899cf1cb964a93daf307c643a5f837e66683f95ef0a83"
     },
     {
       "id": "prop_flower_vase_01",
@@ -540,10 +880,78 @@
         0.5,
         1.0
       ],
-      "rotations": 1,
+      "rotations": 4,
       "status": "candidate",
       "license": "in-house",
       "sha256": "8c7acd00ec9f9c562c45a78fc5a5113032ef354c12fd3e5c5e36d29108ef76ec"
+    },
+    {
+      "id": "prop_flower_vase_01_00",
+      "category": "prop.flower",
+      "file": "prop_flower_vase_01_00.png",
+      "size": [
+        34,
+        76
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "7ec16a0239705243fe47388419d27f56e0ea06a013652300754f06927bc025ee"
+    },
+    {
+      "id": "prop_flower_vase_01_01",
+      "category": "prop.flower",
+      "file": "prop_flower_vase_01_01.png",
+      "size": [
+        34,
+        76
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "defe5c7b20706274308ab720ff76dedd2926691fbe6b5d051992793f24b3aec8"
+    },
+    {
+      "id": "prop_flower_vase_01_02",
+      "category": "prop.flower",
+      "file": "prop_flower_vase_01_02.png",
+      "size": [
+        34,
+        76
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "202d352d4a68306699d902e7d6b057750ad9eb1c04cb9066d604ddee32a1fd3e"
+    },
+    {
+      "id": "prop_flower_vase_01_03",
+      "category": "prop.flower",
+      "file": "prop_flower_vase_01_03.png",
+      "size": [
+        34,
+        76
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "10ba882f82e9fcbda9148d26d1843413d987fc99213dda5fe92e512f55b8d2b5"
     },
     {
       "id": "prop_plant_green_01",
@@ -578,6 +986,142 @@
       "status": "candidate",
       "license": "in-house",
       "sha256": "6f54c5b1af5833ab1dc0046a5c31323eb70d8da5a9555efcae893268fdc1a881"
+    },
+    {
+      "id": "prop_planter_01_00",
+      "category": "prop.plant",
+      "file": "prop_planter_01_00.png",
+      "size": [
+        52,
+        49
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 1,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "5e1e9a359e2d2e043bc6575c8e2450b2009d1d24552781e1e620888e90314e65"
+    },
+    {
+      "id": "prop_planter_01_01",
+      "category": "prop.plant",
+      "file": "prop_planter_01_01.png",
+      "size": [
+        52,
+        49
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 1,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "62042d164bbc3c197e7c28f56a84e069b2f013485ccd6ec62e05b51379231841"
+    },
+    {
+      "id": "prop_planter_01_02",
+      "category": "prop.plant",
+      "file": "prop_planter_01_02.png",
+      "size": [
+        52,
+        49
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 1,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "3be9dc7b4d46f01847794df37004ffcb46541463d26aef4aba51e96c7a083e8d"
+    },
+    {
+      "id": "prop_planter_01_03",
+      "category": "prop.plant",
+      "file": "prop_planter_01_03.png",
+      "size": [
+        52,
+        49
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 1,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "79420b7ba83ce84e38c7fd40f9383b3012800e39a48fc3570e47f28ce5d30ff2"
+    },
+    {
+      "id": "prop_table_lamp_00",
+      "category": "surface.table_lamp",
+      "file": "prop_table_lamp_00.png",
+      "size": [
+        26,
+        38
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "af2900df8ae4d8499fabf7670bb348bd7323c66862b7e3cf3c4321125b78f95b"
+    },
+    {
+      "id": "prop_table_lamp_01",
+      "category": "surface.table_lamp",
+      "file": "prop_table_lamp_01.png",
+      "size": [
+        26,
+        38
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "d461e25e84072ba66cf20926d3f5bbbf9a617dc8541d529d64d9ef026b9f9b3f"
+    },
+    {
+      "id": "prop_table_lamp_02",
+      "category": "surface.table_lamp",
+      "file": "prop_table_lamp_02.png",
+      "size": [
+        26,
+        38
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "af2900df8ae4d8499fabf7670bb348bd7323c66862b7e3cf3c4321125b78f95b"
+    },
+    {
+      "id": "prop_table_lamp_03",
+      "category": "surface.table_lamp",
+      "file": "prop_table_lamp_03.png",
+      "size": [
+        26,
+        38
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "d461e25e84072ba66cf20926d3f5bbbf9a617dc8541d529d64d9ef026b9f9b3f"
     }
   ]
 }

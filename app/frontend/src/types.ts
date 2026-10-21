@@ -820,12 +820,19 @@ export interface RoomWindow {
   style: string;
 }
 
+export interface RoomSurfaceItem {
+  id: string;
+  def: string;
+  supportId: string;
+}
+
 export interface RoomLayout {
   floor: string;
   wall: string;
   door: RoomDoor | null;
   windows: RoomWindow[];
   furniture: RoomFurniture[];
+  surfaceItems: RoomSurfaceItem[];
 }
 
 export interface RoomStyleView {
@@ -848,6 +855,14 @@ export interface RoomFurnitureDefView {
   spriteRotations: number;
 }
 
+export interface RoomSurfaceDefView {
+  id: string;
+  name: string;
+  sprite: string;
+  spriteRotations: number;
+  supportKinds: string[];
+}
+
 export interface RoomView {
   roomId: string;
   label: string;
@@ -859,6 +874,7 @@ export interface RoomView {
   walls: RoomStyleView[];
   windowStyles: RoomWindowStyleView[];
   catalog: RoomFurnitureDefView[];
+  surfaceCatalog: RoomSurfaceDefView[];
 }
 
 export interface RoomWindowStyleView {

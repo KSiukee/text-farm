@@ -37,7 +37,7 @@ pub struct FurnitureDef {
     pub sprite_rotations: u8,
 }
 
-pub const FURNITURE: [FurnitureDef; 13] = [
+pub const FURNITURE: [FurnitureDef; 16] = [
     FurnitureDef {
         id: "bed",
         name: "木床",
@@ -120,7 +120,7 @@ pub const FURNITURE: [FurnitureDef; 13] = [
         kind: "flower",
         capacity: 0,
         sprite: Some("prop_flower_vase_01"),
-        sprite_rotations: 1,
+        sprite_rotations: 4,
     },
     FurnitureDef {
         id: "planter",
@@ -132,7 +132,7 @@ pub const FURNITURE: [FurnitureDef; 13] = [
         kind: "planter",
         capacity: 0,
         sprite: Some("prop_planter_01"),
-        sprite_rotations: 1,
+        sprite_rotations: 4,
     },
     FurnitureDef {
         id: "aquarium_small",
@@ -144,7 +144,7 @@ pub const FURNITURE: [FurnitureDef; 13] = [
         kind: "aquarium",
         capacity: 2,
         sprite: Some("prop_aquarium_small_01"),
-        sprite_rotations: 1,
+        sprite_rotations: 4,
     },
     FurnitureDef {
         id: "aquarium_large",
@@ -156,7 +156,7 @@ pub const FURNITURE: [FurnitureDef; 13] = [
         kind: "aquarium_large",
         capacity: 5,
         sprite: Some("prop_aquarium_large_01"),
-        sprite_rotations: 1,
+        sprite_rotations: 4,
     },
     FurnitureDef {
         id: "sofa",
@@ -194,7 +194,65 @@ pub const FURNITURE: [FurnitureDef; 13] = [
         sprite: Some("furn_lamp_floor"),
         sprite_rotations: 4,
     },
+    FurnitureDef {
+        id: "nightstand",
+        name: "床头柜",
+        width: 1,
+        depth: 1,
+        layer: 2,
+        collision: true,
+        kind: "nightstand",
+        capacity: 0,
+        sprite: Some("furn_nightstand_wood"),
+        sprite_rotations: 4,
+    },
+    FurnitureDef {
+        id: "tv",
+        name: "液晶电视",
+        width: 2,
+        depth: 1,
+        layer: 2,
+        collision: true,
+        kind: "tv",
+        capacity: 0,
+        sprite: Some("furn_tv_wood"),
+        sprite_rotations: 4,
+    },
+    FurnitureDef {
+        id: "beanbag",
+        name: "懒人沙发",
+        width: 2,
+        depth: 1,
+        layer: 2,
+        collision: true,
+        kind: "beanbag",
+        capacity: 0,
+        sprite: Some("furn_beanbag_sage"),
+        sprite_rotations: 4,
+    },
 ];
+
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SurfaceDef {
+    pub id: &'static str,
+    pub name: &'static str,
+    pub sprite: &'static str,
+    pub sprite_rotations: u8,
+    pub support_kinds: &'static [&'static str],
+}
+
+pub const SURFACE_ITEMS: [SurfaceDef; 1] = [SurfaceDef {
+    id: "table_lamp",
+    name: "台灯",
+    sprite: "prop_table_lamp",
+    sprite_rotations: 4,
+    support_kinds: &["desk", "nightstand"],
+}];
+
+pub fn surface_item_def(id: &str) -> Option<&'static SurfaceDef> {
+    SURFACE_ITEMS.iter().find(|def| def.id == id)
+}
 
 pub fn furniture_def(id: &str) -> Option<&'static FurnitureDef> {
     FURNITURE.iter().find(|def| def.id == id)
@@ -244,6 +302,14 @@ pub struct RoomWindow {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct RoomSurfaceItem {
+    pub id: String,
+    pub def: String,
+    pub support_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct RoomLayout {
     pub floor: String,
     pub wall: String,
@@ -252,6 +318,8 @@ pub struct RoomLayout {
     #[serde(default)]
     pub windows: Vec<RoomWindow>,
     pub furniture: Vec<RoomFurniture>,
+    #[serde(default)]
+    pub surface_items: Vec<RoomSurfaceItem>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -388,6 +456,7 @@ pub fn default_layout() -> RoomLayout {
                 fish: vec![],
             },
         ],
+        surface_items: vec![],
     }
 }
 
@@ -409,6 +478,7 @@ pub fn default_extra_layout() -> RoomLayout {
         door: default_door(EXTRA_ROOM),
         windows: vec![],
         furniture: vec![],
+        surface_items: vec![],
     }
 }
 
@@ -568,6 +638,32 @@ pub fn validate_layout(room: &str, layout: &RoomLayout) -> Result<(), GameError>
             boxes.push((item.id.clone(), rect, true));
         } else {
             boxes.push((item.id.clone(), (item.x, item.y, w, d), false));
+        }
+    }
+
+    if layout.surface_items.len() > 8 {
+        return Err(GameError::RoomLayoutInvalid("桌面摆件太多了".into()));
+    }
+    let mut surface_ids = std::collections::BTreeSet::new();
+    let mut surface_supports = std::collections::BTreeSet::new();
+    for item in &layout.surface_items {
+        if item.id.trim().is_empty() || !surface_ids.insert(item.id.clone()) {
+            return Err(GameError::RoomLayoutInvalid("摆件 id 重复或为空".into()));
+        }
+        let def = surface_item_def(&item.def)
+            .ok_or_else(|| GameError::RoomLayoutInvalid("没有这个摆件".into()))?;
+        let support = layout
+            .furniture
+            .iter()
+            .find(|furniture| furniture.id == item.support_id)
+            .ok_or_else(|| GameError::RoomLayoutInvalid("摆件没有支撑家具".into()))?;
+        let support_def = furniture_def(&support.def)
+            .ok_or_else(|| GameError::RoomLayoutInvalid("没有这个支撑家具".into()))?;
+        if !def.support_kinds.contains(&support_def.kind) {
+            return Err(GameError::RoomLayoutInvalid("这个摆件不能放在这件家具上".into()));
+        }
+        if !surface_supports.insert(item.support_id.clone()) {
+            return Err(GameError::RoomLayoutInvalid("同一件家具上摆了太多东西".into()));
         }
     }
     Ok(())

@@ -1,6 +1,6 @@
 use farm_core::{
     default_layout, validate_layout, Action, Game, GameError, RoomDoor, RoomFurniture, RoomLayout,
-    RoomWindow, LIVING_ROOM, LIVING_WIDTH, ROOM_GRID,
+    RoomSurfaceItem, RoomWindow, LIVING_ROOM, LIVING_WIDTH, ROOM_GRID,
 };
 
 fn layout() -> RoomLayout {
@@ -17,6 +17,7 @@ fn layout() -> RoomLayout {
             rot: 0,
             fish: vec![],
         }],
+        surface_items: vec![],
     }
 }
 
@@ -28,7 +29,7 @@ fn default_room_is_valid_and_visible() {
     assert_eq!(room.width, LIVING_WIDTH);
     assert_eq!(room.grid, ROOM_GRID);
     assert!(room.layout.furniture.len() >= 4);
-    assert_eq!(room.catalog.len(), 13);
+    assert_eq!(room.catalog.len(), 16);
     assert!(validate_layout(LIVING_ROOM, &room.layout).is_ok());
 
     let saved = layout();
@@ -67,6 +68,20 @@ fn room_styles_unlock_from_level_achievement_days_and_craft() {
         let style = list.iter().find(|style| style.id == id).unwrap();
         assert!(!style.locked, "{id} should be unlocked");
     }
+}
+
+#[test]
+fn table_lamp_must_sit_on_desk_or_nightstand() {
+    let mut room = default_layout();
+    room.surface_items.push(RoomSurfaceItem {
+        id: "lamp-1".into(),
+        def: "table_lamp".into(),
+        support_id: "starter-desk".into(),
+    });
+    assert!(validate_layout(LIVING_ROOM, &room).is_ok());
+
+    room.surface_items[0].support_id = "starter-chair".into();
+    assert!(validate_layout(LIVING_ROOM, &room).is_err());
 }
 
 #[test]

@@ -6,6 +6,7 @@ import type {
   RoomFurniture,
   RoomFurnitureDefView,
   RoomLayout,
+  RoomSurfaceItem,
   RoomView,
   RoomWindow,
 } from "./types";
@@ -223,6 +224,12 @@ const sorted = computed(() =>
 );
 
 const selected = computed(() => draft.value.furniture.find((item) => item.id === selectedId.value) ?? null);
+const surfaceDefs = computed(() => new Map(props.room.surfaceCatalog.map((def) => [def.id, def])));
+const surfaceForSelected = computed(() =>
+  selectedId.value
+    ? draft.value.surfaceItems.find((item) => item.supportId === selectedId.value) ?? null
+    : null,
+);
 const selectedWindow = computed(() => draft.value.windows.find((item) => item.id === selectedWindowId.value) ?? null);
 const selectedDoor = computed(() =>
   draft.value.door && draft.value.door.id === selectedDoorId.value ? draft.value.door : null,
@@ -396,6 +403,65 @@ function addFurniture(def: RoomFurnitureDefView) {
   selectedWindowId.value = null;
 }
 
+function addSurfaceItem() {
+  const def = props.room.surfaceCatalog[0];
+  if (!def) return;
+  const support =
+    (selected.value &&
+    def.supportKinds.includes(defs.value.get(selected.value.def)?.kind ?? "") &&
+    !surfaceForSelected.value
+      ? selected.value
+      : null) ??
+    draft.value.furniture.find(
+      (item) =>
+        def.supportKinds.includes(defs.value.get(item.def)?.kind ?? "") &&
+        !draft.value.surfaceItems.some((surface) => surface.supportId === item.id),
+    );
+  if (!support) {
+    emit("notice", `先选中一张${def.supportKinds.includes("desk") ? "书桌/床头柜" : "家具"}，或桌面已经摆满了`);
+    return;
+  }
+  const item: RoomSurfaceItem = {
+    id: `s-${Date.now()}-${seq++}`,
+    def: def.id,
+    supportId: support.id,
+  };
+  draft.value.surfaceItems.push(item);
+  selectedId.value = support.id;
+  emit("notice", `把${def.name}放到了${defs.value.get(support.def)?.name ?? "家具"}上`);
+}
+
+function removeSurfaceItem() {
+  if (!surfaceForSelected.value) return;
+  draft.value.surfaceItems = draft.value.surfaceItems.filter(
+    (item) => item.id !== surfaceForSelected.value?.id,
+  );
+}
+
+function surfaceSpritePath(sprite: string, rotations: number, rot: number): string {
+  if (rotations > 1) {
+    return `/sprites/${sprite}_${String(((rot % rotations) + rotations) % rotations).padStart(2, "0")}.png`;
+  }
+  return `/sprites/${sprite}.png`;
+}
+
+function drawSurfaceItems(ctx: CanvasRenderingContext2D) {
+  for (const surface of draft.value.surfaceItems) {
+    const support = draft.value.furniture.find((item) => item.id === surface.supportId);
+    if (!support) continue;
+    const supportBox = itemBox(support);
+    const def = surfaceDefs.value.get(surface.def);
+    if (!supportBox || !def) continue;
+    const img = spriteCache.get(surfaceSpritePath(def.sprite, def.spriteRotations, support.rot));
+    if (!img || !img.complete || img.naturalWidth === 0) continue;
+    const base = iso(supportBox.x + supportBox.w / 2, supportBox.y + supportBox.d);
+    const topOffset = supportBox.def.kind === "desk" ? 39 : 31;
+    const left = Math.round(base.x - img.naturalWidth / 2);
+    const top = Math.round(base.y - topOffset - img.naturalHeight);
+    ctx.drawImage(img, left, top);
+  }
+}
+
 function rotateSelected() {
   const item = selected.value;
   if (!item) return;
@@ -404,7 +470,9 @@ function rotateSelected() {
 
 function storeSelected() {
   if (!selectedId.value) return;
-  draft.value.furniture = draft.value.furniture.filter((item) => item.id !== selectedId.value);
+  const id = selectedId.value;
+  draft.value.furniture = draft.value.furniture.filter((item) => item.id !== id);
+  draft.value.surfaceItems = draft.value.surfaceItems.filter((item) => item.supportId !== id);
   selectedId.value = null;
 }
 
@@ -832,6 +900,18 @@ function preloadSprites() {
       img.onerror = () => {
         spriteCache.delete(path);
       };
+      img.src = path;
+      spriteCache.set(path, img);
+    }
+  }
+  for (const def of props.room.surfaceCatalog) {
+    const rotations = Math.max(1, def.spriteRotations || 1);
+    for (let rot = 0; rot < rotations; rot++) {
+      const path = surfaceSpritePath(def.sprite, rotations, rot);
+      if (spriteCache.has(path)) continue;
+      const img = new Image();
+      img.onload = () => draw();
+      img.onerror = () => spriteCache.delete(path);
       img.src = path;
       spriteCache.set(path, img);
     }
@@ -1353,6 +1433,7 @@ function draw() {
   drawWindows(ctx);
   drawDoor(ctx);
   for (const item of sorted.value) drawItem(ctx, item);
+  drawSurfaceItems(ctx);
   drawPets(ctx);
   ctx.restore();
   if (editing.value) {
@@ -1722,6 +1803,15 @@ onBeforeUnmount(stopPetLoop);
         >
           +{{ def.name }}
         </button>
+        <button
+          v-for="def in room.surfaceCatalog"
+          :key="def.id"
+          class="link"
+          type="button"
+          @click="addSurfaceItem"
+        >
+          +{{ def.name }}
+        </button>
       </div>
       <div class="room-row">
         <span class="muted">窗户 {{ draft.windows.length }}/5</span>
@@ -1755,6 +1845,14 @@ onBeforeUnmount(stopPetLoop);
         <span class="muted">选中：{{ defs.get(selected.def)?.name ?? selected.def }}</span>
         <button class="link" type="button" @click="rotateSelected">[旋转]</button>
         <button class="link" type="button" @click="storeSelected">[收纳]</button>
+        <button
+          v-if="surfaceForSelected"
+          class="link"
+          type="button"
+          @click="removeSurfaceItem"
+        >
+          [移除{{ surfaceDefs.get(surfaceForSelected.def)?.name ?? "摆件" }}]
+        </button>
         <span v-if="isInvalid(selected)" class="warn">位置不合法（红色）</span>
       </div>
       <p class="muted room-tip">

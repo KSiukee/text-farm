@@ -709,6 +709,16 @@ pub struct RoomStyleView {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RoomSurfaceDefView {
+    pub id: String,
+    pub name: String,
+    pub sprite: String,
+    pub sprite_rotations: u8,
+    pub support_kinds: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RoomWindowStyleView {
     pub id: String,
     pub name: String,
@@ -744,6 +754,7 @@ pub struct RoomView {
     pub walls: Vec<RoomStyleView>,
     pub window_styles: Vec<RoomWindowStyleView>,
     pub catalog: Vec<RoomFurnitureDefView>,
+    pub surface_catalog: Vec<RoomSurfaceDefView>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -842,6 +853,19 @@ fn style_views(
         .collect()
 }
 
+fn surface_catalog_views() -> Vec<RoomSurfaceDefView> {
+    crate::room::SURFACE_ITEMS
+        .iter()
+        .map(|def| RoomSurfaceDefView {
+            id: def.id.into(),
+            name: def.name.into(),
+            sprite: def.sprite.into(),
+            sprite_rotations: def.sprite_rotations,
+            support_kinds: def.support_kinds.iter().map(|kind| (*kind).into()).collect(),
+        })
+        .collect()
+}
+
 fn room_view_data(room_id: &str, label: &str, width: u32, height: u32, layout: crate::room::RoomLayout) -> RoomView {
     RoomView {
         room_id: room_id.into(),
@@ -892,6 +916,7 @@ fn room_view_data(room_id: &str, label: &str, width: u32, height: u32, layout: c
                 sprite_rotations: def.sprite_rotations,
             })
             .collect(),
+        surface_catalog: surface_catalog_views(),
     }
 }
 
@@ -944,6 +969,7 @@ fn npc_room_layout(id: &str) -> crate::room::RoomLayout {
             style: "large".into(),
         }],
         furniture,
+        surface_items: vec![],
     }
 }
 
@@ -1006,6 +1032,7 @@ impl Game {
                     sprite_rotations: def.sprite_rotations,
                 })
                 .collect(),
+            surface_catalog: surface_catalog_views(),
         })
     }
 
