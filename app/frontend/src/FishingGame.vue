@@ -99,7 +99,7 @@ let badReversalMs = 0;
 
 const POND_MIN = 16;
 const POND_MAX = 84;
-const GRACE_SECONDS = 0.8;
+const GRACE_SECONDS = 1.2;
 const BITE_WINDOW_MS = 8_000;
 
 /// 把目标点折回池塘内（边界像墙一样反弹），避免目标被夹在边上把鱼钉住。
