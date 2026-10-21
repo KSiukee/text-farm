@@ -33,6 +33,30 @@ const TH = 21;
 const OX = 460;
 const OY = 140;
 const WALL_H = 86;
+const CAMERA_MIN = 0.7;
+const CAMERA_MAX = 2.2;
+const camera = ref({ zoom: 1.05, panX: 0, panY: 0 });
+const panning = ref<{ x: number; y: number; panX: number; panY: number } | null>(null);
+const zoomPct = computed(() => Math.round(camera.value.zoom * 100));
+const sceneCenter = computed(() => {
+  const floorW = ((props.room.width + props.room.height) * TW) / 2;
+  const floorH = ((props.room.width + props.room.height) * TH) / 2;
+  return {
+    x: OX + ((props.room.width - props.room.height) * TW) / 4,
+    y: (OY - WALL_H - 24 + OY + floorH + 12) / 2,
+    floorW,
+    floorH,
+  };
+});
+const fitZoom = computed(() =>
+  Math.max(
+    CAMERA_MIN,
+    Math.min(
+      1.6,
+      Math.min(CW / (sceneCenter.value.floorW + 120), CH / (WALL_H + sceneCenter.value.floorH + 100)),
+    ),
+  ),
+);
 
 const canvas = ref<HTMLCanvasElement | null>(null);
 const editing = ref(false);
@@ -81,6 +105,43 @@ function clone(layout: RoomLayout): RoomLayout {
 
 function iso(x: number, y: number): P {
   return { x: OX + ((x - y) * TW) / 2, y: OY + ((x + y) * TH) / 2 };
+}
+
+function rawPoint(event: PointerEvent): P {
+  const el = canvas.value!;
+  const rect = el.getBoundingClientRect();
+  return {
+    x: ((event.clientX - rect.left) * CW) / rect.width,
+    y: ((event.clientY - rect.top) * CH) / rect.height,
+  };
+}
+
+function screenToWorld(p: P): P {
+  return {
+    x: (p.x - CW / 2 - camera.value.panX) / camera.value.zoom + sceneCenter.value.x,
+    y: (p.y - CH / 2 - camera.value.panY) / camera.value.zoom + sceneCenter.value.y,
+  };
+}
+
+function setZoom(next: number) {
+  camera.value.zoom = Math.max(CAMERA_MIN, Math.min(CAMERA_MAX, next));
+  draw();
+}
+
+function zoomBy(delta: number) {
+  setZoom(camera.value.zoom + delta);
+}
+
+function resetCamera() {
+  camera.value.zoom = fitZoom.value;
+  camera.value.panX = 0;
+  camera.value.panY = 0;
+  draw();
+}
+
+function onWheel(event: WheelEvent) {
+  event.preventDefault();
+  setZoom(camera.value.zoom + (event.deltaY < 0 ? 0.1 : -0.1));
 }
 
 const defs = computed(() => new Map(props.room.catalog.map((def) => [def.id, def])));
@@ -1209,12 +1270,17 @@ function draw() {
   ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = "#f4eee1";
   ctx.fillRect(0, 0, CW, CH);
+  ctx.save();
+  ctx.translate(CW / 2 + camera.value.panX, CH / 2 + camera.value.panY);
+  ctx.scale(camera.value.zoom, camera.value.zoom);
+  ctx.translate(-sceneCenter.value.x, -sceneCenter.value.y);
   drawFloor(ctx);
   drawWalls(ctx);
   drawWindows(ctx);
   drawDoor(ctx);
   for (const item of sorted.value) drawItem(ctx, item);
   drawPets(ctx);
+  ctx.restore();
   if (editing.value) {
     ctx.strokeStyle = "rgba(70,80,60,.65)";
     ctx.lineWidth = 1;
@@ -1250,12 +1316,7 @@ function hitTest(px: number, py: number): RoomFurniture | null {
 }
 
 function canvasPoint(event: PointerEvent): P {
-  const el = canvas.value!;
-  const rect = el.getBoundingClientRect();
-  return {
-    x: ((event.clientX - rect.left) * CW) / rect.width,
-    y: ((event.clientY - rect.top) * CH) / rect.height,
-  };
+  return screenToWorld(rawPoint(event));
 }
 
 function toRoom(px: number, py: number): P {
@@ -1293,6 +1354,18 @@ function windowPointer(wall: "left" | "right", px: number, py: number): P {
 }
 
 function onPointerDown(event: PointerEvent) {
+  if (event.button === 1 || event.button === 2) {
+    event.preventDefault();
+    const p = rawPoint(event);
+    panning.value = {
+      x: p.x,
+      y: p.y,
+      panX: camera.value.panX,
+      panY: camera.value.panY,
+    };
+    canvas.value?.setPointerCapture(event.pointerId);
+    return;
+  }
   if (props.readonly) return;
   const p = canvasPoint(event);
 
@@ -1354,6 +1427,13 @@ function onPointerDown(event: PointerEvent) {
 }
 
 function onPointerMove(event: PointerEvent) {
+  if (panning.value) {
+    const p = rawPoint(event);
+    camera.value.panX = panning.value.panX + (p.x - panning.value.x);
+    camera.value.panY = panning.value.panY + (p.y - panning.value.y);
+    draw();
+    return;
+  }
   if (dragDoor.value) {
     const door = draft.value.door;
     if (!door) return;
@@ -1388,6 +1468,7 @@ function onPointerMove(event: PointerEvent) {
 }
 
 function onPointerUp() {
+  panning.value = null;
   drag.value = null;
   dragWindow.value = null;
   dragDoor.value = null;
@@ -1463,6 +1544,12 @@ onBeforeUnmount(stopPetLoop);
     <div class="room-toolbar">
       <strong>{{ room.label }}</strong>
       <span class="muted">{{ room.width }}×{{ room.height }} · 1/8 格吸附</span>
+      <span class="camera-controls">
+        <button class="link" type="button" title="缩小" @click="zoomBy(-0.1)">[−]</button>
+        <span class="muted">{{ zoomPct }}%</span>
+        <button class="link" type="button" title="放大" @click="zoomBy(0.1)">[+]</button>
+        <button class="link" type="button" title="恢复居中" @click="resetCamera">[居中]</button>
+      </span>
       <template v-if="!editing">
         <button v-if="!readonly" class="link" type="button" @click="startEdit">[装修]</button>
         <button
@@ -1508,8 +1595,14 @@ onBeforeUnmount(stopPetLoop);
         @pointermove="onPointerMove"
         @pointerup="onPointerUp"
         @pointercancel="onPointerUp"
+        @wheel.prevent="onWheel"
+        @contextmenu.prevent
       />
     </div>
+
+    <p class="muted room-tip camera-hint">
+      滚轮缩放；右键或中键拖动平移；[居中] 恢复默认视角。
+    </p>
 
     <p v-if="!editing && !readonly && activePetCount > 0" class="muted room-tip">
       宠物会偶尔自己进屋，最多 3 只；也可以点「呼唤宠物」。装修模式下宠物暂停。
@@ -1609,6 +1702,14 @@ onBeforeUnmount(stopPetLoop);
   align-items: center;
   gap: 10px;
   font-size: 13px;
+}
+.camera-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.camera-hint {
+  margin-top: 2px;
 }
 .room-canvas-wrap {
   width: 100%;

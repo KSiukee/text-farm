@@ -100,9 +100,21 @@ async function main() {
     await clickText("牧村");
     await waitFor(async () => (await evaluate("document.body.innerText")).includes("牧村 · 小屋"));
     await new Promise((r) => setTimeout(r, 700));
-    const capture = await send("Page.captureScreenshot", { format: "png", fromSurface: true });
+    const defaultText = await evaluate("document.body.innerText");
+    console.log(`${defaultText.includes("105%") ? "PASS" : "FAIL"} 默认缩放 105%`);
+    await clickText("[+]");
+    await new Promise((r) => setTimeout(r, 300));
+    const zoomText = await evaluate("document.body.innerText");
+    console.log(`${zoomText.includes("115%") ? "PASS" : "FAIL"} 放大到 115%`);
+    const zoomShot = join(root, "docs", "room-camera-v066.png");
+    let capture = await send("Page.captureScreenshot", { format: "png", fromSurface: true });
+    writeFileSync(zoomShot, Buffer.from(capture.result.data, "base64"));
+    await clickText("[居中]");
+    await new Promise((r) => setTimeout(r, 300));
+    capture = await send("Page.captureScreenshot", { format: "png", fromSurface: true });
     writeFileSync(shot, Buffer.from(capture.result.data, "base64"));
     console.log("PASS 新家具房间截图", shot);
+    console.log("PASS 相机缩放截图", zoomShot);
   } finally {
     if (ws) ws.close();
     if (child) child.kill();
