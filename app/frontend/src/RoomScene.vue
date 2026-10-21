@@ -6,12 +6,12 @@ const props = defineProps<{ room: RoomView; active: boolean }>();
 const emit = defineEmits<{ save: [layout: RoomLayout]; notice: [text: string] }>();
 
 const CW = 900;
-const CH = 520;
-const TW = 34;
-const TH = 17;
-const OX = 520;
-const OY = 150;
-const WALL_H = 104;
+const CH = 480;
+const TW = 42;
+const TH = 21;
+const OX = 460;
+const OY = 140;
+const WALL_H = 86;
 
 const canvas = ref<HTMLCanvasElement | null>(null);
 const editing = ref(false);
@@ -33,15 +33,34 @@ function iso(x: number, y: number): P {
 const defs = computed(() => new Map(props.room.catalog.map((def) => [def.id, def])));
 const floorColor = computed(() => {
   const id = draft.value.floor;
-  if (id === "tile") return { base: "#d8d1c3", alt: "#cdc5b5", line: "rgba(70,60,45,.18)" };
-  if (id === "stone") return { base: "#a8b3ad", alt: "#9aa69f", line: "rgba(40,55,50,.20)" };
-  return { base: "#c9a46b", alt: "#bd965d", line: "rgba(75,50,25,.22)" };
+  if (id === "tile") {
+    return {
+      base: "#d7cfbf",
+      alt: "#d3cbbb",
+      line: "rgba(120,104,82,.18)",
+      grain: "rgba(255,255,255,.10)",
+    };
+  }
+  if (id === "stone") {
+    return {
+      base: "#aab3ab",
+      alt: "#a6afa7",
+      line: "rgba(60,76,68,.20)",
+      grain: "rgba(235,240,230,.12)",
+    };
+  }
+  return {
+    base: "#c79c68",
+    alt: "#c39763",
+    line: "rgba(100,65,35,.20)",
+    grain: "rgba(255,239,205,.13)",
+  };
 });
 const wallColor = computed(() => {
   const id = draft.value.wall;
-  if (id === "sage") return "#b7c4ad";
-  if (id === "sky") return "#b8c9d6";
-  return "#e7dfd0";
+  if (id === "sage") return { top: "#c7d1bc", bottom: "#aebba3", trim: "#8e9b83" };
+  if (id === "sky") return { top: "#cad9e1", bottom: "#b2c5d0", trim: "#8fa6b4" };
+  return { top: "#f0e7d7", bottom: "#ddd2be", trim: "#c5b79e" };
 });
 
 const sorted = computed(() =>
@@ -154,69 +173,183 @@ function drawFloor(ctx: CanvasRenderingContext2D) {
       poly(ctx, [a, b, d, e], (x + y) % 2 === 0 ? c.base : c.alt);
     }
   }
-  ctx.strokeStyle = c.line;
-  ctx.lineWidth = 1;
-  for (let x = 0; x <= props.room.width; x++) {
-    const a = iso(x, 0);
-    const b = iso(x, props.room.height);
-    ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
-    ctx.stroke();
+
+  // 地板纹理：木纹是长条 + 短木纹，砖/石是细缝。
+  if (draft.value.floor === "wood") {
+    ctx.strokeStyle = c.line;
+    ctx.lineWidth = 1;
+    for (let y = 1; y < props.room.height; y += 2) {
+      const a = iso(0, y);
+      const b = iso(props.room.width, y);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = c.grain;
+    for (let y = 0; y < props.room.height; y += 2) {
+      for (let x = 0; x < props.room.width; x += 3) {
+        const p = iso(x + 0.4, y + 0.55);
+        ctx.beginPath();
+        ctx.moveTo(p.x - 10, p.y);
+        ctx.lineTo(p.x + 12, p.y);
+        ctx.stroke();
+      }
+    }
+  } else {
+    ctx.strokeStyle = c.line;
+    ctx.lineWidth = 1;
+    for (let x = 0; x <= props.room.width; x++) {
+      const a = iso(x, 0);
+      const b = iso(x, props.room.height);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+    for (let y = 0; y <= props.room.height; y++) {
+      const a = iso(0, y);
+      const b = iso(props.room.width, y);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+    if (draft.value.floor === "stone") {
+      ctx.strokeStyle = c.grain;
+      for (let y = 0; y < props.room.height; y++) {
+        for (let x = 0; x < props.room.width; x++) {
+          if ((x * 7 + y * 3) % 5 !== 0) continue;
+          const p = iso(x + 0.5, y + 0.5);
+          ctx.beginPath();
+          ctx.moveTo(p.x - 4, p.y);
+          ctx.lineTo(p.x + 6, p.y);
+          ctx.stroke();
+        }
+      }
+    }
   }
-  for (let y = 0; y <= props.room.height; y++) {
-    const a = iso(0, y);
-    const b = iso(props.room.width, y);
-    ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
-    ctx.stroke();
-  }
+
+  // 房间外沿压一圈深色，让地板不飘。
+  const o0 = iso(0, 0);
+  const o1 = iso(props.room.width, 0);
+  const o2 = iso(props.room.width, props.room.height);
+  const o3 = iso(0, props.room.height);
+  poly(ctx, [o0, o1, o2, o3], "rgba(0,0,0,0)", "rgba(83,61,40,.55)", 2);
+}
+
+function wallGradient(ctx: CanvasRenderingContext2D, top: number, bottom: number, colors: { top: string; bottom: string }) {
+  const gradient = ctx.createLinearGradient(0, top, 0, bottom);
+  gradient.addColorStop(0, colors.top);
+  gradient.addColorStop(1, colors.bottom);
+  return gradient;
 }
 
 function drawWalls(ctx: CanvasRenderingContext2D) {
-  const color = wallColor.value;
+  const colors = wallColor.value;
   const top = (p: P): P => ({ x: p.x, y: p.y - WALL_H });
   const left0 = iso(0, 0);
   const left1 = iso(0, props.room.height);
-  poly(ctx, [left0, left1, top(left1), top(left0)], color, "rgba(55,45,35,.35)", 2);
-
-  const right0 = iso(0, 0);
   const right1 = iso(props.room.width, 0);
-  poly(ctx, [right0, right1, top(right1), top(right0)], color, "rgba(55,45,35,.35)", 2);
 
-  // 墙脚/墙顶压线
-  ctx.strokeStyle = "rgba(65,50,35,.35)";
-  ctx.lineWidth = 2;
+  const leftTop = top(left0);
+  const leftBottomTop = top(left1);
+  const rightTop = top(right1);
+
+  // 左墙
   ctx.beginPath();
   ctx.moveTo(left0.x, left0.y);
   ctx.lineTo(left1.x, left1.y);
-  ctx.lineTo(right1.x, right1.y);
-  ctx.stroke();
-  ctx.strokeStyle = "rgba(65,50,35,.22)";
-  ctx.beginPath();
-  ctx.moveTo(top(left0).x, top(left0).y);
-  ctx.lineTo(top(left1).x, top(left1).y);
-  ctx.lineTo(top(right1).x, top(right1).y);
+  ctx.lineTo(leftBottomTop.x, leftBottomTop.y);
+  ctx.lineTo(leftTop.x, leftTop.y);
+  ctx.closePath();
+  ctx.fillStyle = wallGradient(ctx, leftTop.y, left1.y, colors);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(70,52,34,.42)";
+  ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  // 墙纸细纹
+  // 右墙
+  ctx.beginPath();
+  ctx.moveTo(left0.x, left0.y);
+  ctx.lineTo(right1.x, right1.y);
+  ctx.lineTo(rightTop.x, rightTop.y);
+  ctx.lineTo(leftTop.x, leftTop.y);
+  ctx.closePath();
+  ctx.fillStyle = wallGradient(ctx, rightTop.y, right1.y, colors);
+  ctx.fill();
+  ctx.fillStyle = "rgba(54,38,22,.06)";
+  ctx.fill();
+  ctx.stroke();
+
+  // 墙角阴影
+  const corner = ctx.createLinearGradient(left0.x, left0.y, left0.x + 70, left0.y - 35);
+  corner.addColorStop(0, "rgba(60,45,30,.18)");
+  corner.addColorStop(1, "rgba(60,45,30,0)");
+  ctx.fillStyle = corner;
+  ctx.beginPath();
+  ctx.moveTo(left0.x, left0.y);
+  ctx.lineTo(left0.x + 92, left0.y - 46);
+  ctx.lineTo(left0.x + 2, left0.y - WALL_H + 8);
+  ctx.closePath();
+  ctx.fill();
+
+  // 墙纸竖纹
   ctx.strokeStyle = "rgba(255,255,255,.16)";
   ctx.lineWidth = 1;
-  for (let i = 1; i < props.room.height; i++) {
+  for (let i = 0.5; i < props.room.height; i += 0.65) {
     const p = iso(0, i);
     ctx.beginPath();
-    ctx.moveTo(p.x, p.y - WALL_H + 2);
-    ctx.lineTo(p.x, p.y - 2);
+    ctx.moveTo(p.x, p.y - 4);
+    ctx.lineTo(p.x, p.y - WALL_H + 4);
     ctx.stroke();
   }
-  for (let i = 1; i < props.room.width; i++) {
+  for (let i = 0.5; i < props.room.width; i += 0.65) {
     const p = iso(i, 0);
     ctx.beginPath();
-    ctx.moveTo(p.x, p.y - WALL_H + 2);
-    ctx.lineTo(p.x, p.y - 2);
+    ctx.moveTo(p.x, p.y - 4);
+    ctx.lineTo(p.x, p.y - WALL_H + 4);
     ctx.stroke();
   }
+
+  // 踢脚线
+  const base = 7;
+  poly(
+    ctx,
+    [left0, left1, { x: left1.x, y: left1.y - base }, { x: left0.x, y: left0.y - base }],
+    "#9a7650",
+    "rgba(70,48,30,.5)",
+    1,
+  );
+  poly(
+    ctx,
+    [left0, right1, { x: right1.x, y: right1.y - base }, { x: left0.x, y: left0.y - base }],
+    "#a98258",
+    "rgba(70,48,30,.5)",
+    1,
+  );
+  ctx.strokeStyle = "rgba(255,238,205,.35)";
+  ctx.beginPath();
+  ctx.moveTo(left0.x, left0.y - base);
+  ctx.lineTo(left1.x, left1.y - base);
+  ctx.lineTo(right1.x, right1.y - base);
+  ctx.stroke();
+
+  // 墙顶压线
+  ctx.strokeStyle = colors.trim;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(leftTop.x, leftTop.y);
+  ctx.lineTo(leftBottomTop.x, leftBottomTop.y);
+  ctx.lineTo(rightTop.x, rightTop.y);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,.35)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(leftTop.x, leftTop.y + 4);
+  ctx.lineTo(leftBottomTop.x, leftBottomTop.y + 4);
+  ctx.lineTo(rightTop.x, rightTop.y + 4);
+  ctx.stroke();
 }
 
 function box(
@@ -229,7 +362,7 @@ function box(
   topColor: string,
   leftColor: string,
   rightColor: string,
-  stroke = "rgba(62,45,30,.35)",
+  stroke = "rgba(52,36,24,.55)",
 ) {
   const p0 = iso(x, y);
   const p1 = iso(x + w, y);
@@ -239,81 +372,135 @@ function box(
   const t1 = { x: p1.x, y: p1.y - h };
   const t2 = { x: p2.x, y: p2.y - h };
   const t3 = { x: p3.x, y: p3.y - h };
-  poly(ctx, [p0, p3, t3, t0], leftColor, stroke);
-  poly(ctx, [p1, p2, t2, t1], rightColor, stroke);
-  poly(ctx, [t0, t1, t2, t3], topColor, stroke);
+  poly(ctx, [p0, p3, t3, t0], leftColor, stroke, 1.4);
+  poly(ctx, [p1, p2, t2, t1], rightColor, stroke, 1.4);
+  poly(ctx, [t0, t1, t2, t3], topColor, stroke, 1.4);
+}
+
+function contactShadow(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, d: number) {
+  const p = iso(x + w / 2, y + d / 2);
+  ctx.fillStyle = "rgba(54,38,24,.20)";
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y + 4, (w + d) * TW * 0.24, (w + d) * TH * 0.30, 0, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawItem(ctx: CanvasRenderingContext2D, item: RoomFurniture) {
   const boxInfo = itemBox(item);
   if (!boxInfo) return;
   const { x, y, w, d, def } = boxInfo;
-  const outline = selectedId.value === item.id ? "#f0b34a" : isInvalid(item) ? "#d95d4f" : undefined;
-  const line = outline ?? "rgba(62,45,30,.35)";
+  const outline = selectedId.value === item.id ? "#efb14a" : isInvalid(item) ? "#d95d4f" : undefined;
+  const line = outline ?? "rgba(52,36,24,.55)";
 
   if (def.kind === "rug") {
     const p0 = iso(x + 0.08, y + 0.08);
     const p1 = iso(x + w - 0.08, y + 0.08);
     const p2 = iso(x + w - 0.08, y + d - 0.08);
     const p3 = iso(x + 0.08, y + d - 0.08);
-    poly(ctx, [p0, p1, p2, p3], "#cfd7b4", outline ?? "rgba(80,80,55,.35)", outline ? 3 : 1);
+    poly(ctx, [p0, p1, p2, p3], "#c8d3a8", outline ?? "rgba(80,74,48,.55)", outline ? 3 : 1.4);
     const q0 = iso(x + 0.35, y + 0.35);
     const q1 = iso(x + w - 0.35, y + 0.35);
     const q2 = iso(x + w - 0.35, y + d - 0.35);
     const q3 = iso(x + 0.35, y + d - 0.35);
-    poly(ctx, [q0, q1, q2, q3], "#e4e8ca", "rgba(120,125,85,.25)");
+    poly(ctx, [q0, q1, q2, q3], "#e2e7c8", "rgba(110,115,75,.45)", 1);
+    const c = iso(x + w / 2, y + d / 2);
+    ctx.fillStyle = "rgba(170,176,125,.45)";
+    ctx.beginPath();
+    ctx.ellipse(c.x, c.y, TW * 0.28, TH * 0.28, 0, 0, Math.PI * 2);
+    ctx.fill();
     return;
   }
 
+  contactShadow(ctx, x, y, w, d);
+
   if (def.kind === "bed") {
-    box(ctx, x, y, w, d, 14, "#8ea9c6", "#6b829e", "#7d95b0", line);
-    const mx = x + 0.12;
-    const my = y + 0.12;
-    const mw = w - 0.24;
-    const md = d - 0.24;
-    box(ctx, mx, my, mw, md, 8, "#dfe8ee", "#c2d0d9", "#d1dce4", line);
+    // 床架
+    box(ctx, x, y, w, d, 16, "#8f6747", "#6b4b32", "#7b573a", line);
+    // 床垫
+    box(ctx, x + 0.1, y + 0.18, w - 0.2, d - 0.3, 10, "#eee5d4", "#d7cbb7", "#e2d7c5", line);
+    // 蓝色被子（盖下半截）
+    box(ctx, x + 0.12, y + d * 0.38, w - 0.24, d * 0.52, 8, "#86a5c2", "#647f9c", "#7693ae", line);
     // 枕头
-    box(ctx, x + 0.22, y + 0.22, Math.max(0.5, w - 0.44), 0.45, 5, "#f6f1e7", "#ddd5c7", "#e9e1d4", line);
+    box(ctx, x + 0.2, y + 0.2, Math.max(0.5, w - 0.4), 0.42, 5, "#f3ece0", "#d9cdbc", "#e8dece", line);
+    // 床头板
+    box(ctx, x, y - 0.02, w, 0.18, 34, "#a97b55", "#7f593b", "#936747", line);
     return;
   }
 
   if (def.kind === "desk") {
-    box(ctx, x, y, w, d, 23, "#b98753", "#906538", "#a27343", line);
-    box(ctx, x + 0.08, y + 0.08, w - 0.16, d - 0.16, 3, "#d2a66d", "#b07d47", "#c08d55", line);
+    // 桌腿
+    box(ctx, x + 0.08, y + 0.1, 0.18, 0.18, 22, "#7a573c", "#5e422d", "#6b4b34", line);
+    box(ctx, x + w - 0.26, y + 0.1, 0.18, 0.18, 22, "#7a573c", "#5e422d", "#6b4b34", line);
+    // 桌面
+    box(ctx, x, y, w, d, 7, "#d2a66d", "#a97845", "#bd8a53", line);
+    // 桌面下的抽屉/横档
+    box(ctx, x + 0.12, y + 0.22, w - 0.24, d - 0.3, 16, "#b07b4b", "#845a36", "#997044", line);
+    // 书本
+    box(ctx, x + 0.28, y + 0.16, 0.34, 0.22, 6, "#b95f55", "#8f4138", "#a54e45", line);
+    box(ctx, x + 0.64, y + 0.14, 0.3, 0.2, 9, "#5f7f9e", "#45627d", "#52708c", line);
     return;
   }
 
   if (def.kind === "chair") {
-    box(ctx, x + 0.1, y + 0.12, w - 0.2, d - 0.2, 12, "#88b3a2", "#638f7e", "#76a391", line);
-    box(ctx, x + 0.18, y + 0.1, w - 0.36, 0.18, 28, "#7aa795", "#5c8876", "#6c9886", line);
+    // 椅腿
+    box(ctx, x + 0.14, y + 0.18, 0.12, 0.12, 10, "#6e4b32", "#523624", "#60412b", line);
+    box(ctx, x + w - 0.26, y + 0.18, 0.12, 0.12, 10, "#6e4b32", "#523624", "#60412b", line);
+    // 坐垫
+    box(ctx, x + 0.12, y + 0.14, w - 0.24, d - 0.24, 9, "#82a99a", "#5e8577", "#70998a", line);
+    // 靠背
+    box(ctx, x + 0.2, y + 0.08, w - 0.4, 0.16, 30, "#78a190", "#547968", "#668d7b", line);
     return;
   }
 
   if (def.kind === "cabinet") {
-    box(ctx, x, y, w, d, 30, "#d8bc8f", "#ad8c61", "#c5a477", line);
-    ctx.strokeStyle = "rgba(90,65,40,.3)";
+    box(ctx, x, y, w, d, 34, "#dcc198", "#ae8d63", "#c8a679", line);
+    // 三层抽屉
+    ctx.strokeStyle = "rgba(82,57,35,.55)";
+    ctx.lineWidth = 1;
     for (let i = 1; i < 4; i++) {
-      const p = iso(x + w * 0.15, y + (d * i) / 4);
-      const q = iso(x + w * 0.85, y + (d * i) / 4);
+      const p = iso(x + 0.12, y + (d * i) / 4);
+      const q = iso(x + w - 0.12, y + (d * i) / 4);
       ctx.beginPath();
       ctx.moveTo(p.x, p.y - 26);
       ctx.lineTo(q.x, q.y - 26);
       ctx.stroke();
     }
+    for (let i = 0; i < 3; i++) {
+      const p = iso(x + w / 2, y + d * (i + 0.5) / 3);
+      ctx.fillStyle = "#7b5a3a";
+      ctx.beginPath();
+      ctx.arc(p.x, p.y - 12, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
     return;
   }
 
   if (def.kind === "plant") {
-    box(ctx, x + 0.18, y + 0.42, w - 0.36, d - 0.42, 12, "#bb7650", "#8f5437", "#a56545", line);
+    box(ctx, x + 0.2, y + 0.46, w - 0.4, d - 0.46, 14, "#c07b53", "#935538", "#a96945", line);
     const c = iso(x + w / 2, y + d * 0.35);
-    ctx.fillStyle = "#5f8e5b";
+    // 茎
+    ctx.strokeStyle = "#4f7448";
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.ellipse(c.x, c.y - 24, 18, 22, -0.25, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#78a56c";
-    ctx.beginPath();
-    ctx.ellipse(c.x - 8, c.y - 30, 12, 18, 0.35, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.moveTo(c.x, c.y - 8);
+    ctx.lineTo(c.x, c.y - 36);
+    ctx.stroke();
+    // 叶片
+    const leaves = [
+      [-12, -30, 11, 15, -0.5, "#6d9a61"],
+      [10, -28, 10, 14, 0.45, "#7aa96b"],
+      [-4, -40, 9, 12, -0.15, "#86b676"],
+      [14, -40, 7, 11, 0.7, "#5f8b55"],
+    ] as const;
+    for (const [dx, dy, rx, ry, rot, color] of leaves) {
+      ctx.fillStyle = color;
+      ctx.strokeStyle = "rgba(60,48,30,.35)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.ellipse(c.x + dx, c.y + dy, rx, ry, rot, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
     return;
   }
 
@@ -327,6 +514,8 @@ function draw() {
   if (!ctx) return;
   ctx.clearRect(0, 0, CW, CH);
   ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = "#f4eee1";
+  ctx.fillRect(0, 0, CW, CH);
   drawFloor(ctx);
   drawWalls(ctx);
   for (const item of sorted.value) drawItem(ctx, item);
@@ -357,7 +546,7 @@ function hitTest(px: number, py: number): RoomFurniture | null {
     const b = itemBox(item);
     if (!b) continue;
     const points = [iso(b.x, b.y), iso(b.x + b.w, b.y), iso(b.x + b.w, b.y + b.d), iso(b.x, b.y + b.d)];
-    const height = b.def.kind === "rug" ? 2 : 30;
+    const height = b.def.kind === "rug" ? 2 : 40;
     const topPoints = points.map((p) => ({ x: p.x, y: p.y - height }));
     if (pointInPoly(px, py, points) || pointInPoly(px, py, topPoints)) return item;
   }
