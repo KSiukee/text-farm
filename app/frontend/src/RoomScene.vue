@@ -39,6 +39,7 @@ const draft = ref<RoomLayout>(clone(props.room.layout));
 const drag = ref<{ id: string; ox: number; oy: number } | null>(null);
 const dragWindow = ref<{ id: string; ox: number; oy: number } | null>(null);
 const dragDoor = ref<{ id: string; ox: number } | null>(null);
+const spriteCache = new Map<string, HTMLImageElement>();
 let seq = 0;
 
 type P = { x: number; y: number };
@@ -686,6 +687,68 @@ function contactShadow(ctx: CanvasRenderingContext2D, x: number, y: number, w: n
   ctx.fill();
 }
 
+function spritePath(def: RoomFurnitureDefView, rot: number): string | null {
+  if (!def.sprite) return null;
+  if (def.spriteRotations > 1) {
+    const index = ((rot % def.spriteRotations) + def.spriteRotations) % def.spriteRotations;
+    return `/sprites/${def.sprite}_${String(index).padStart(2, "0")}.png`;
+  }
+  return `/sprites/${def.sprite}.png`;
+}
+
+function preloadSprites() {
+  for (const def of props.room.catalog) {
+    const rotations = Math.max(1, def.spriteRotations || 1);
+    for (let rot = 0; rot < rotations; rot++) {
+      const path = spritePath(def, rot);
+      if (!path || spriteCache.has(path)) continue;
+      const img = new Image();
+      img.onload = () => draw();
+      img.onerror = () => {
+        spriteCache.delete(path);
+      };
+      img.src = path;
+      spriteCache.set(path, img);
+    }
+  }
+}
+
+function drawSpriteItem(
+  ctx: CanvasRenderingContext2D,
+  item: RoomFurniture,
+  boxInfo: { x: number; y: number; w: number; d: number; def: RoomFurnitureDefView },
+  outline?: string,
+): boolean {
+  const path = spritePath(boxInfo.def, item.rot);
+  if (!path) return false;
+  const img = spriteCache.get(path);
+  if (!img || !img.complete || img.naturalWidth === 0) return false;
+
+  contactShadow(ctx, boxInfo.x, boxInfo.y, boxInfo.w, boxInfo.d);
+  const base = iso(boxInfo.x + boxInfo.w / 2, boxInfo.y + boxInfo.d);
+  ctx.drawImage(
+    img,
+    Math.round(base.x - img.naturalWidth / 2),
+    Math.round(base.y - img.naturalHeight),
+  );
+
+  if (outline) {
+    const points = [
+      iso(boxInfo.x, boxInfo.y),
+      iso(boxInfo.x + boxInfo.w, boxInfo.y),
+      iso(boxInfo.x + boxInfo.w, boxInfo.y + boxInfo.d),
+      iso(boxInfo.x, boxInfo.y + boxInfo.d),
+    ];
+    ctx.strokeStyle = outline;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+    ctx.closePath();
+    ctx.stroke();
+  }
+  return true;
+}
+
 function drawItem(ctx: CanvasRenderingContext2D, item: RoomFurniture) {
   const boxInfo = itemBox(item);
   if (!boxInfo) return;
@@ -711,6 +774,8 @@ function drawItem(ctx: CanvasRenderingContext2D, item: RoomFurniture) {
     ctx.fill();
     return;
   }
+
+  if (drawSpriteItem(ctx, item, { x, y, w, d, def }, outline)) return;
 
   contactShadow(ctx, x, y, w, d);
 
@@ -1007,7 +1072,10 @@ watch(
   },
   { deep: true },
 );
-onMounted(draw);
+onMounted(() => {
+  preloadSprites();
+  draw();
+});
 </script>
 
 <template>

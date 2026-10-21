@@ -1,10 +1,14 @@
 # 更新日志
 
 > 文字农场 · 版本历史。
-> 本文由 `.codex/state.json` 的 `recent_changes` 生成，共 **89 条 / 70 个版本**；早期记录按当时原文保留，同一版本多条按发生顺序排列。
+> 本文由 `.codex/state.json` 的 `recent_changes` 生成，共 **90 条 / 71 个版本**；早期记录按当时原文保留，同一版本多条按发生顺序排列。
 > 版本号以 `Cargo.toml`、`app/tauri.conf.json`、`app/frontend/package.json`、`README.md` 为准。
 
 ---
+
+## 0.59.0 · 2026-10-21
+
+- 小屋 PNG 精灵（#105）——书桌 4 向 64px、绿植 1 向 40px；bottom-center 锚点、运行时接触影、加载失败回退代码绘制；宠物页 13 品种四足侧视候选；Rust 265、前端 53、小屋冒烟 15；exe 0.59.0。
 
 ## 0.58.0 · 2026-10-21
 

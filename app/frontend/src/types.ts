@@ -830,6 +830,8 @@ export interface RoomFurnitureDefView {
   layer: number;
   collision: boolean;
   kind: string;
+  sprite: string | null;
+  spriteRotations: number;
 }
 
 export interface RoomView {

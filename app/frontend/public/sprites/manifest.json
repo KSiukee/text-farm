@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "assets": [
+    {
+      "id": "furn_desk_wood_00",
+      "category": "furniture.desk",
+      "file": "furn_desk_wood_00.png",
+      "size": [
+        78,
+        64
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "29774d724f908f96fab23b25b1d56c0e646c676d398cbfd5c19952abab708957"
+    },
+    {
+      "id": "furn_desk_wood_01",
+      "category": "furniture.desk",
+      "file": "furn_desk_wood_01.png",
+      "size": [
+        78,
+        64
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "d816fd13a5d28e46d29d50f07794db70c7f84bf541ccc2babcdca6d8961db374"
+    },
+    {
+      "id": "furn_desk_wood_02",
+      "category": "furniture.desk",
+      "file": "furn_desk_wood_02.png",
+      "size": [
+        78,
+        64
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "07bd75dfe1bddadae7eaea3d2255a8a57074009be17a7528672bf8fe23a4b107"
+    },
+    {
+      "id": "furn_desk_wood_03",
+      "category": "furniture.desk",
+      "file": "furn_desk_wood_03.png",
+      "size": [
+        78,
+        64
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 4,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "64ebc9845c34f7085605b96d860beee72441329b5c1212792b0431b06feb1aae"
+    },
+    {
+      "id": "prop_plant_green_01",
+      "category": "prop.plant",
+      "file": "prop_plant_green_01.png",
+      "size": [
+        33,
+        40
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "rotations": 1,
+      "status": "candidate",
+      "license": "in-house",
+      "sha256": "c9533a9eb25a967905c65b8559073be68da7db367aadf9ba95b7b6c4e59b9d8f"
+    }
+  ]
+}

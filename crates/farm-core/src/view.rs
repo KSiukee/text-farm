@@ -724,6 +724,8 @@ pub struct RoomFurnitureDefView {
     pub layer: u32,
     pub collision: bool,
     pub kind: String,
+    pub sprite: Option<String>,
+    pub sprite_rotations: u8,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -843,6 +845,8 @@ impl Game {
                     layer: def.layer,
                     collision: def.collision,
                     kind: def.kind.into(),
+                    sprite: def.sprite.map(|s| s.into()),
+                    sprite_rotations: def.sprite_rotations,
                 })
                 .collect(),
         })

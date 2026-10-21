@@ -30,6 +30,9 @@ pub struct FurnitureDef {
     pub layer: u32,
     pub collision: bool,
     pub kind: &'static str,
+    /// PNG 基名；多向时文件为 `<sprite>_00..03.png`，单向时 `<sprite>.png`。
+    pub sprite: Option<&'static str>,
+    pub sprite_rotations: u8,
 }
 
 pub const FURNITURE: [FurnitureDef; 6] = [
@@ -41,6 +44,8 @@ pub const FURNITURE: [FurnitureDef; 6] = [
         layer: 2,
         collision: true,
         kind: "bed",
+        sprite: None,
+        sprite_rotations: 1,
     },
     FurnitureDef {
         id: "desk",
@@ -50,6 +55,8 @@ pub const FURNITURE: [FurnitureDef; 6] = [
         layer: 2,
         collision: true,
         kind: "desk",
+        sprite: Some("furn_desk_wood"),
+        sprite_rotations: 4,
     },
     FurnitureDef {
         id: "chair",
@@ -59,6 +66,8 @@ pub const FURNITURE: [FurnitureDef; 6] = [
         layer: 2,
         collision: true,
         kind: "chair",
+        sprite: None,
+        sprite_rotations: 1,
     },
     FurnitureDef {
         id: "rug",
@@ -68,6 +77,8 @@ pub const FURNITURE: [FurnitureDef; 6] = [
         layer: 0,
         collision: false,
         kind: "rug",
+        sprite: None,
+        sprite_rotations: 1,
     },
     FurnitureDef {
         id: "cabinet",
@@ -77,6 +88,8 @@ pub const FURNITURE: [FurnitureDef; 6] = [
         layer: 2,
         collision: true,
         kind: "cabinet",
+        sprite: None,
+        sprite_rotations: 1,
     },
     FurnitureDef {
         id: "plant",
@@ -86,6 +99,8 @@ pub const FURNITURE: [FurnitureDef; 6] = [
         layer: 2,
         collision: true,
         kind: "plant",
+        sprite: Some("prop_plant_green_01"),
+        sprite_rotations: 1,
     },
 ];
 
