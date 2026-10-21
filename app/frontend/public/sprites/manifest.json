@@ -7,7 +7,7 @@
       "file": "furn_beanbag_sage_00.png",
       "size": [
         80,
-        60
+        65
       ],
       "anchor": [
         0.5,
@@ -16,7 +16,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "39bc60847dd185c7674bc9a28b083839120ac6ae8623a2b8b50a5b1fc86e7b09"
+      "sha256": "52735905a56d6edaeeb399c4278b23d94c3f866da1779859067aa460babdeba3"
     },
     {
       "id": "furn_beanbag_sage_01",
@@ -24,7 +24,7 @@
       "file": "furn_beanbag_sage_01.png",
       "size": [
         80,
-        60
+        65
       ],
       "anchor": [
         0.5,
@@ -33,7 +33,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "8d20ece1bc8386fc170ce97a01d19f777006ef92df73fba167df37ab52b651a6"
+      "sha256": "b3d982bea29f163acd9862fed9ab00769f628386ec986064270ac002a00377f8"
     },
     {
       "id": "furn_beanbag_sage_02",
@@ -41,7 +41,7 @@
       "file": "furn_beanbag_sage_02.png",
       "size": [
         80,
-        60
+        65
       ],
       "anchor": [
         0.5,
@@ -50,7 +50,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "c059784cc3f0d184d34aaf567769bc679f49cfedec4f3dd4fd845f1a7f268234"
+      "sha256": "fd906cc9e045e9aa13c196dc3cc776fa5cf2ab924e1c68fd2d4bfc14eb97b8ab"
     },
     {
       "id": "furn_beanbag_sage_03",
@@ -58,7 +58,7 @@
       "file": "furn_beanbag_sage_03.png",
       "size": [
         80,
-        60
+        65
       ],
       "anchor": [
         0.5,
@@ -67,7 +67,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "d17e5172c10d300aabbca0d3839ef719394ead86608d5a993cf84b50fc8620dd"
+      "sha256": "c6976dd66771138ad4b1cc42baca8f5ffcad400342ce88dd4907f92e344b1170"
     },
     {
       "id": "furn_bed_wood_00",
