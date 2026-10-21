@@ -11,6 +11,12 @@ pub const LIVING_WIDTH: u32 = 16;
 pub const LIVING_HEIGHT: u32 = 12;
 pub const DEFAULT_FLOOR: &str = "wood";
 pub const DEFAULT_WALL: &str = "cream";
+pub const EXTRA_ROOM: &str = "extra_1";
+pub const EXTRA_WIDTH: u32 = 12;
+pub const EXTRA_HEIGHT: u32 = 9;
+pub const EXTRA_ROOM_COST: u64 = 20_000;
+pub const DOOR_WIDTH: u32 = 16;
+pub const DOOR_HEIGHT: u32 = 32;
 pub const WALL_HEIGHT_TILES: u32 = 6;
 pub const WALL_HEIGHT_UNITS: u32 = WALL_HEIGHT_TILES * ROOM_GRID;
 pub const MAX_WINDOWS: usize = 5;
@@ -101,6 +107,18 @@ pub struct RoomFurniture {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct RoomDoor {
+    pub id: String,
+    pub wall: String,
+    /// 沿墙方向，1/8 格；门从地面起，不能上下移动。
+    pub x: u32,
+    pub w: u32,
+    pub h: u32,
+    pub style: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct RoomWindow {
     pub id: String,
     /// left / right，只有两面可见墙。
@@ -119,6 +137,8 @@ pub struct RoomWindow {
 pub struct RoomLayout {
     pub floor: String,
     pub wall: String,
+    #[serde(default)]
+    pub door: Option<RoomDoor>,
     #[serde(default)]
     pub windows: Vec<RoomWindow>,
     pub furniture: Vec<RoomFurniture>,
@@ -140,8 +160,57 @@ impl Default for RoomState {
 }
 
 impl RoomState {
+    pub fn ensure_defaults(&mut self) {
+        let living = self
+            .rooms
+            .entry(LIVING_ROOM.to_string())
+            .or_insert_with(default_layout);
+        if living.door.is_none() {
+            living.door = default_door(LIVING_ROOM);
+        }
+        if let Some(extra) = self.rooms.get_mut(EXTRA_ROOM) {
+            if extra.door.is_none() {
+                extra.door = default_door(EXTRA_ROOM);
+            }
+        }
+    }
+
+    pub fn is_unlocked(&self, room: &str) -> bool {
+        self.rooms.contains_key(room)
+    }
+
     pub fn layout(&self, room: &str) -> Option<&RoomLayout> {
         self.rooms.get(room)
+    }
+}
+
+pub fn room_size(room: &str) -> Option<(u32, u32)> {
+    match room {
+        LIVING_ROOM => Some((LIVING_WIDTH, LIVING_HEIGHT)),
+        EXTRA_ROOM => Some((EXTRA_WIDTH, EXTRA_HEIGHT)),
+        _ => None,
+    }
+}
+
+pub fn default_door(room: &str) -> Option<RoomDoor> {
+    match room {
+        LIVING_ROOM => Some(RoomDoor {
+            id: "door-living".into(),
+            wall: "right".into(),
+            x: 88,
+            w: DOOR_WIDTH,
+            h: DOOR_HEIGHT,
+            style: "wood".into(),
+        }),
+        EXTRA_ROOM => Some(RoomDoor {
+            id: "door-extra".into(),
+            wall: "left".into(),
+            x: 24,
+            w: DOOR_WIDTH,
+            h: DOOR_HEIGHT,
+            style: "wood".into(),
+        }),
+        _ => None,
     }
 }
 
@@ -149,6 +218,7 @@ pub fn default_layout() -> RoomLayout {
     RoomLayout {
         floor: DEFAULT_FLOOR.into(),
         wall: DEFAULT_WALL.into(),
+        door: default_door(LIVING_ROOM),
         windows: vec![RoomWindow {
             id: "starter-window".into(),
             wall: "right".into(),
@@ -209,6 +279,16 @@ pub fn floor_styles() -> [(&'static str, &'static str); 3] {
     [("wood", "暖木"), ("tile", "浅砖"), ("stone", "青石")]
 }
 
+pub fn default_extra_layout() -> RoomLayout {
+    RoomLayout {
+        floor: DEFAULT_FLOOR.into(),
+        wall: DEFAULT_WALL.into(),
+        door: default_door(EXTRA_ROOM),
+        windows: vec![],
+        furniture: vec![],
+    }
+}
+
 pub fn wall_styles() -> [(&'static str, &'static str); 3] {
     [("cream", "米白"), ("sage", "鼠尾草"), ("sky", "雾蓝")]
 }
@@ -245,9 +325,8 @@ fn overlaps(a: (u32, u32, u32, u32), b: (u32, u32, u32, u32)) -> bool {
 
 /// 校验装修草稿：房间、样式、边界、重复 id、家具碰撞。
 pub fn validate_layout(room: &str, layout: &RoomLayout) -> Result<(), GameError> {
-    if room != LIVING_ROOM {
-        return Err(GameError::RoomLayoutInvalid("这个房间还没开放".into()));
-    }
+    let (width, height) = room_size(room)
+        .ok_or_else(|| GameError::RoomLayoutInvalid("这个房间还没开放".into()))?;
     if !style_valid(&floor_styles(), &layout.floor) {
         return Err(GameError::RoomLayoutInvalid("没有这个地板样式".into()));
     }
@@ -261,6 +340,23 @@ pub fn validate_layout(room: &str, layout: &RoomLayout) -> Result<(), GameError>
         return Err(GameError::RoomLayoutInvalid("窗户最多 5 扇".into()));
     }
 
+    if let Some(door) = &layout.door {
+        let wall_len = match door.wall.as_str() {
+            "left" => height * ROOM_GRID,
+            "right" => width * ROOM_GRID,
+            _ => return Err(GameError::RoomLayoutInvalid("门只能放左/右墙".into())),
+        };
+        if door.id.trim().is_empty() || door.w < 8 || door.h < 8 {
+            return Err(GameError::RoomLayoutInvalid("门尺寸不合法".into()));
+        }
+        if door.style != "wood" {
+            return Err(GameError::RoomLayoutInvalid("没有这个门样式".into()));
+        }
+        if door.x + door.w > wall_len || door.h > WALL_HEIGHT_UNITS {
+            return Err(GameError::RoomLayoutInvalid("门超出墙面范围".into()));
+        }
+    }
+
     let mut window_ids = std::collections::BTreeSet::new();
     let mut window_boxes: Vec<(u32, u32, u32, u32, String)> = Vec::new();
     for window in &layout.windows {
@@ -268,8 +364,8 @@ pub fn validate_layout(room: &str, layout: &RoomLayout) -> Result<(), GameError>
             return Err(GameError::RoomLayoutInvalid("窗户 id 重复或为空".into()));
         }
         let wall_len = match window.wall.as_str() {
-            "left" => LIVING_HEIGHT * ROOM_GRID,
-            "right" => LIVING_WIDTH * ROOM_GRID,
+            "left" => height * ROOM_GRID,
+            "right" => width * ROOM_GRID,
             _ => return Err(GameError::RoomLayoutInvalid("窗户只能放左/右墙".into())),
         };
         if window_style(&window.style).is_none() {
@@ -300,6 +396,19 @@ pub fn validate_layout(room: &str, layout: &RoomLayout) -> Result<(), GameError>
         ));
     }
 
+    if let Some(door) = &layout.door {
+        for (x, y, w, h, wall) in &window_boxes {
+            if wall == &door.wall
+                && door.x < x + w
+                && *x < door.x + door.w
+                && 0 < y + h
+                && *y < door.h
+            {
+                return Err(GameError::RoomLayoutInvalid("门和窗户重叠了".into()));
+            }
+        }
+    }
+
     let mut ids = std::collections::BTreeSet::new();
     let mut boxes: Vec<(String, (u32, u32, u32, u32), bool)> = Vec::new();
     for item in &layout.furniture {
@@ -312,7 +421,7 @@ pub fn validate_layout(room: &str, layout: &RoomLayout) -> Result<(), GameError>
         let def = furniture_def(&item.def)
             .ok_or_else(|| GameError::RoomLayoutInvalid("没有这件家具".into()))?;
         let (w, d) = footprint(def, item.rot);
-        if item.x + w > LIVING_WIDTH * ROOM_GRID || item.y + d > LIVING_HEIGHT * ROOM_GRID {
+        if item.x + w > width * ROOM_GRID || item.y + d > height * ROOM_GRID {
             return Err(GameError::RoomLayoutInvalid("家具超出房间范围".into()));
         }
         if def.collision {

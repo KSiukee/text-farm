@@ -685,9 +685,37 @@ async function act(action: Action) {
 }
 
 async function saveRoom(layout: RoomLayout) {
-  if (!snapshot.value) return;
-  await act({ type: "saveRoomLayout", room: snapshot.value.room.roomId, layout });
+  const room = currentRoom.value;
+  if (!room) return;
+  await act({ type: "saveRoomLayout", room: room.roomId, layout });
 }
+
+const currentRoomId = ref("living");
+const currentRoom = computed(() => {
+  if (currentRoomId.value === "extra_1" && snapshot.value?.extraRoom) return snapshot.value.extraRoom;
+  return snapshot.value?.room ?? null;
+});
+const EXTRA_ROOM_COST = 20_000;
+
+function travelRoom() {
+  if (currentRoomId.value === "living" && snapshot.value?.extraRoom) {
+    currentRoomId.value = "extra_1";
+  } else {
+    currentRoomId.value = "living";
+  }
+}
+
+async function unlockExtraRoom() {
+  await act({ type: "unlockExtraRoom" });
+  if (snapshot.value?.extraRoom) currentRoomId.value = "extra_1";
+}
+
+watch(
+  () => snapshot.value?.extraRoom,
+  (extra) => {
+    if (!extra) currentRoomId.value = "living";
+  },
+);
 
 function plant(plot: PlotView) {
   const cropId = bestSeedId();
@@ -2287,14 +2315,18 @@ onUnmounted(() => {
       <div v-show="activeTab === '牧村'">
         <section class="panel">
           <div class="panel-title">
-            牧村 · 我的小屋
+            牧村 · {{ currentRoom?.label ?? "我的小屋" }}
             <span class="muted">平时家具锁定；进入装修模式才能移动、收纳和换样式</span>
           </div>
           <RoomScene
-            v-if="snapshot"
-            :room="snapshot.room"
+            v-if="currentRoom"
+            :room="currentRoom"
             :active="activeTab === '牧村'"
+            :extra-unlocked="!!snapshot?.extraRoom"
+            :extra-cost="EXTRA_ROOM_COST"
             @save="saveRoom"
+            @travel="travelRoom"
+            @unlock="unlockExtraRoom"
             @notice="notice = $event"
           />
         </section>

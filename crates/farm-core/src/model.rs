@@ -483,7 +483,8 @@ impl Game {
         Self { state, content }
     }
 
-    pub fn from_parts(state: GameState, content: ContentPack) -> Self {
+    pub fn from_parts(mut state: GameState, content: ContentPack) -> Self {
+        state.room.ensure_defaults();
         Self { state, content }
     }
 

@@ -41,10 +41,11 @@ pub use daily::{DailyTaskView, DailyView, DAILY_TASKS};
 pub use engine::{Effect, Outcome};
 pub use error::{GameError, SaveError};
 pub use room::{
-    default_layout, floor_styles, furniture_def, validate_layout, wall_styles, window_style,
-    window_styles, FurnitureDef, RoomFurniture, RoomLayout, RoomState, RoomWindow, FURNITURE,
-    LIVING_HEIGHT, LIVING_ROOM, LIVING_WIDTH, MAX_WINDOWS, ROOM_GRID, WALL_HEIGHT_TILES,
-    WALL_HEIGHT_UNITS,
+    default_extra_layout, default_layout, floor_styles, furniture_def, room_size, validate_layout,
+    wall_styles, window_style, window_styles, FurnitureDef, RoomDoor, RoomFurniture, RoomLayout,
+    RoomState, RoomWindow, DOOR_HEIGHT, DOOR_WIDTH, EXTRA_HEIGHT, EXTRA_ROOM, EXTRA_ROOM_COST,
+    EXTRA_WIDTH, FURNITURE, LIVING_HEIGHT, LIVING_ROOM, LIVING_WIDTH, MAX_WINDOWS, ROOM_GRID,
+    WALL_HEIGHT_TILES, WALL_HEIGHT_UNITS,
 };
 pub use fishing::{
     apply_manual_bonus, auto_interval_ms_with_skill, bait_saver_pct, bait_weight,

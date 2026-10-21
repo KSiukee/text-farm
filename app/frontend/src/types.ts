@@ -790,6 +790,15 @@ export interface RoomFurniture {
   rot: number;
 }
 
+export interface RoomDoor {
+  id: string;
+  wall: "left" | "right";
+  x: number;
+  w: number;
+  h: number;
+  style: string;
+}
+
 export interface RoomWindow {
   id: string;
   wall: "left" | "right";
@@ -803,6 +812,7 @@ export interface RoomWindow {
 export interface RoomLayout {
   floor: string;
   wall: string;
+  door: RoomDoor | null;
   windows: RoomWindow[];
   furniture: RoomFurniture[];
 }
@@ -875,6 +885,7 @@ export interface Snapshot {
   workshop: WorkshopView;
   fishing: FishingView;
   room: RoomView;
+  extraRoom: RoomView | null;
   skills: SkillsView;
   boardingDebt: number;
   expRate: number;
@@ -973,6 +984,7 @@ export type Action =
   | { type: "showGuide" }
   | { type: "dismissGuide" }
   | { type: "saveRoomLayout"; room: string; layout: RoomLayout }
+  | { type: "unlockExtraRoom" }
   | { type: "broadcast"; text: string };
 
 export interface ImportReply {

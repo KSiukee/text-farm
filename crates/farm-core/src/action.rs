@@ -270,4 +270,5 @@ pub enum Action {
         room: String,
         layout: RoomLayout,
     },
+    UnlockExtraRoom,
 }

@@ -776,6 +776,7 @@ pub struct Snapshot {
     pub workshop: WorkshopView,
     pub fishing: FishingView,
     pub room: RoomView,
+    pub extra_room: Option<RoomView>,
     pub skills: SkillsView,
     pub boarding_debt: u64,
     pub exp_rate: u32,
@@ -790,18 +791,23 @@ pub struct Snapshot {
 }
 
 impl Game {
-    fn room_view(&self) -> RoomView {
+    fn room_view(&self, room_id: &str) -> Option<RoomView> {
         let layout = self
             .state
             .room
-            .layout(crate::room::LIVING_ROOM)
+            .layout(room_id)
             .cloned()
-            .unwrap_or_else(crate::room::default_layout);
-        RoomView {
-            room_id: crate::room::LIVING_ROOM.into(),
-            label: "小屋".into(),
-            width: crate::room::LIVING_WIDTH,
-            height: crate::room::LIVING_HEIGHT,
+            .or_else(|| (room_id == crate::room::LIVING_ROOM).then(crate::room::default_layout))?;
+        let (width, height) = crate::room::room_size(room_id)?;
+        Some(RoomView {
+            room_id: room_id.into(),
+            label: if room_id == crate::room::LIVING_ROOM {
+                "小屋".into()
+            } else {
+                "里屋".into()
+            },
+            width,
+            height,
             grid: crate::room::ROOM_GRID,
             layout,
             floors: crate::room::floor_styles()
@@ -839,7 +845,7 @@ impl Game {
                     kind: def.kind.into(),
                 })
                 .collect(),
-        }
+        })
     }
 
     pub fn snapshot(&self, now: i64) -> Snapshot {
@@ -1874,7 +1880,8 @@ impl Game {
             ranch,
             workshop,
             fishing,
-            room: self.room_view(),
+            room: self.room_view(crate::room::LIVING_ROOM).expect("living room"),
+            extra_room: self.room_view(crate::room::EXTRA_ROOM),
             skills: skills_view,
             boarding_debt: self.state.boarding_debt,
             exp_rate: self.state.settings.exp_rate,

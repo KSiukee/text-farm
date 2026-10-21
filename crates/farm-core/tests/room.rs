@@ -1,12 +1,13 @@
 use farm_core::{
-    default_layout, validate_layout, Action, Game, GameError, RoomFurniture, RoomLayout, RoomWindow,
-    LIVING_ROOM, LIVING_WIDTH, ROOM_GRID,
+    default_layout, validate_layout, Action, Game, GameError, RoomDoor, RoomFurniture, RoomLayout,
+    RoomWindow, LIVING_ROOM, LIVING_WIDTH, ROOM_GRID,
 };
 
 fn layout() -> RoomLayout {
     RoomLayout {
         floor: "wood".into(),
         wall: "cream".into(),
+        door: None,
         windows: vec![],
         furniture: vec![RoomFurniture {
             id: "bed-1".into(),
@@ -40,6 +41,38 @@ fn default_room_is_valid_and_visible() {
     .unwrap();
     let after = &game.snapshot(2_000).room;
     assert_eq!(after.layout, saved);
+}
+
+#[test]
+fn extra_room_unlocks_once_with_door_and_cost() {
+    let mut game = Game::new(1_000);
+    game.state_mut().coins = 30_000;
+    assert!(game.snapshot(1_000).extra_room.is_none());
+    game.dispatch(Action::UnlockExtraRoom, 2_000).unwrap();
+    let snap = game.snapshot(2_000);
+    let extra = snap.extra_room.expect("extra room");
+    assert_eq!(extra.width, 12);
+    assert_eq!(extra.height, 9);
+    assert!(extra.layout.door.is_some());
+    assert_eq!(snap.coins, 10_000);
+    assert!(matches!(
+        game.dispatch(Action::UnlockExtraRoom, 3_000),
+        Err(GameError::RoomLayoutInvalid(_))
+    ));
+}
+
+#[test]
+fn door_cannot_overlap_window() {
+    let mut layout = default_layout();
+    layout.door = Some(RoomDoor {
+        id: "door".into(),
+        wall: "right".into(),
+        x: 64,
+        w: 16,
+        h: 32,
+        style: "wood".into(),
+    });
+    assert!(validate_layout(LIVING_ROOM, &layout).is_err());
 }
 
 #[test]

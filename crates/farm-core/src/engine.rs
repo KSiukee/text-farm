@@ -156,6 +156,7 @@ impl Game {
             Action::DismissGuide => self.dismiss_guide(now)?,
             Action::Broadcast { text } => self.broadcast(&text, now)?,
             Action::SaveRoomLayout { room, layout } => self.save_room_layout(&room, layout, now)?,
+            Action::UnlockExtraRoom => self.unlock_extra_room(now)?,
         };
 
         let mut effects = effects;
@@ -4166,6 +4167,34 @@ impl Game {
         room::validate_layout(room_id, &layout)?;
         self.state.room.rooms.insert(room_id.to_string(), layout);
         let text = "你重新布置了小屋。".to_string();
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn unlock_extra_room(&mut self, now: i64) -> Result<Vec<Effect>, GameError> {
+        if self.state.room.is_unlocked(room::EXTRA_ROOM) {
+            return Err(GameError::RoomLayoutInvalid("里屋已经解锁了".into()));
+        }
+        let has_door = self
+            .state
+            .room
+            .layout(room::LIVING_ROOM)
+            .and_then(|layout| layout.door.as_ref())
+            .is_some();
+        if !has_door {
+            return Err(GameError::RoomLayoutInvalid("先在小屋装一扇门".into()));
+        }
+        if self.state.coins < room::EXTRA_ROOM_COST {
+            return Err(GameError::NotEnoughCoins {
+                need: room::EXTRA_ROOM_COST,
+            });
+        }
+        self.state.coins -= room::EXTRA_ROOM_COST;
+        self.state
+            .room
+            .rooms
+            .insert(room::EXTRA_ROOM.to_string(), room::default_extra_layout());
+        let text = format!("你推开门，里屋亮了起来（花费 {}）", room::EXTRA_ROOM_COST);
         self.push_log(now, text.clone());
         Ok(vec![Effect::Log { text }])
     }

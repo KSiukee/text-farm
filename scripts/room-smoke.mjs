@@ -122,13 +122,20 @@ try {
   await send("Page.enable");
   await send("Runtime.enable");
   await waitFor(async () => (await evaluate("document.readyState")) === "complete");
-  await waitFor(async () => (await bodyText()).includes("我的农场"));
+  await waitFor(async () => {
+    try {
+      return (await bodyText()).includes("我的农场");
+    } catch {
+      return false;
+    }
+  });
 
   await clickText("牧村", true, 0);
-  await waitFor(async () => (await bodyText()).includes("我的小屋"));
+  await waitFor(async () => (await bodyText()).includes("牧村 · 小屋"));
   check("牧村页出现小屋", true);
   check("小屋画布存在", !!(await evaluate("!!document.querySelector('.room-canvas')")));
   check("普通模式有装修按钮", (await bodyText()).includes("装修"));
+  check("普通模式有解锁里屋按钮", (await bodyText()).includes("解锁里屋"));
   await screenshot(shot);
 
   await clickText("装修", false);
