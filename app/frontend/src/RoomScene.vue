@@ -690,18 +690,6 @@ function drawWalls(ctx: CanvasRenderingContext2D) {
   ctx.fill();
   ctx.stroke();
 
-  // 墙角阴影
-  const corner = ctx.createLinearGradient(left0.x, left0.y, left0.x + 70, left0.y - 35);
-  corner.addColorStop(0, "rgba(60,45,30,.18)");
-  corner.addColorStop(1, "rgba(60,45,30,0)");
-  ctx.fillStyle = corner;
-  ctx.beginPath();
-  ctx.moveTo(left0.x, left0.y);
-  ctx.lineTo(left0.x + 92, left0.y - 46);
-  ctx.lineTo(left0.x + 2, left0.y - WALL_H + 8);
-  ctx.closePath();
-  ctx.fill();
-
   // 墙纸竖纹
   ctx.strokeStyle = "rgba(255,255,255,.16)";
   ctx.lineWidth = 1;
@@ -1193,19 +1181,27 @@ function drawSpriteItem(
   const base = iso(boxInfo.x + boxInfo.w / 2, boxInfo.y + boxInfo.d);
   const left = Math.round(base.x - img.naturalWidth / 2);
   const top = Math.round(base.y - img.naturalHeight);
-  const color = outline ?? "rgba(54,36,22,.92)";
+  const color = outline ?? "rgba(62,42,26,.38)";
   const silhouette = spriteSilhouette(path, img, color);
   const spread = outline ? 2 : 1;
-  for (const [dx, dy] of [
-    [-spread, 0],
-    [spread, 0],
-    [0, -spread],
-    [0, spread],
-    [-spread, -spread],
-    [spread, -spread],
-    [-spread, spread],
-    [spread, spread],
-  ]) {
+  const offsets = outline
+    ? [
+        [-spread, 0],
+        [spread, 0],
+        [0, -spread],
+        [0, spread],
+        [-spread, -spread],
+        [spread, -spread],
+        [-spread, spread],
+        [spread, spread],
+      ]
+    : [
+        [-spread, 0],
+        [spread, 0],
+        [0, -spread],
+        [0, spread],
+      ];
+  for (const [dx, dy] of offsets) {
     ctx.drawImage(silhouette, left + dx, top + dy);
   }
   ctx.drawImage(img, left, top);

@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/farm-core", "crates/farm-cli", "app"]
 
 [workspace.package]
-version = "0.66.4"
+version = "0.66.5"
 edition = "2021"
 license = "MIT"
 
