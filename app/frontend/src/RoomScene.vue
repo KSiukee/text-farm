@@ -802,11 +802,26 @@ function softShadow(
   ctx.restore();
 }
 
+function footprintShadow(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, d: number) {
+  const quad = (expand: number, alpha: number) => {
+    const points = [
+      iso(x - expand, y - expand),
+      iso(x + w + expand, y - expand),
+      iso(x + w + expand, y + d + expand),
+      iso(x - expand, y + d + expand),
+    ];
+    ctx.fillStyle = `rgba(45,30,18,${alpha})`;
+    ctx.beginPath();
+    points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+    ctx.closePath();
+    ctx.fill();
+  };
+  quad(0.12, 0.06);
+  quad(0.04, 0.08);
+}
+
 function contactShadow(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, d: number) {
-  const p = iso(x + w / 2, y + d);
-  const rx = Math.max(12, Math.min(78, (w + d) * TW * 0.22));
-  const ry = Math.max(3, Math.min(16, (w + d) * TH * 0.22));
-  softShadow(ctx, p.x, p.y - 1, rx, ry, 0.18);
+  footprintShadow(ctx, x, y, w, d);
 }
 
 function spritePath(def: RoomFurnitureDefView, rot: number): string | null {
@@ -1110,7 +1125,7 @@ function drawPets(ctx: CanvasRenderingContext2D) {
     const footScale = PET_HEIGHT / img.naturalHeight;
     const footX = base.x + (foot.x - img.naturalWidth / 2) * footScale;
     const footY = base.y - (img.naturalHeight - foot.y) * footScale;
-    softShadow(ctx, footX, footY - 1, Math.max(14, foot.width * footScale * 1.2), 6, 0.6);
+    softShadow(ctx, footX, footY - 1, Math.max(10, foot.width * footScale * 0.8), 3.5, 0.12);
 
     const bob = actor.state === "walk" ? Math.sin(actor.phase * 9) * 1.5 : 0;
     const squash = actor.state === "sit" ? 0.9 : actor.state === "sleep" ? 0.82 : 1;
@@ -1176,16 +1191,6 @@ function drawSpriteItem(
   if (!img || !img.complete || img.naturalWidth === 0) return false;
 
   const base = iso(boxInfo.x + boxInfo.w / 2, boxInfo.y + boxInfo.d);
-  if (boxInfo.def.kind !== "rug") {
-    softShadow(
-      ctx,
-      base.x,
-      base.y - 1,
-      Math.max(12, img.naturalWidth * 0.38),
-      Math.max(4, img.naturalWidth * 0.07),
-      0.38,
-    );
-  }
   const left = Math.round(base.x - img.naturalWidth / 2);
   const top = Math.round(base.y - img.naturalHeight);
   const color = outline ?? "rgba(54,36,22,.92)";
@@ -1237,8 +1242,6 @@ function drawItem(ctx: CanvasRenderingContext2D, item: RoomFurniture) {
     ctx.fill();
     return;
   }
-
-  contactShadow(ctx, x, y, w, d);
 
   if (def.kind === "bed") {
     // 床架
