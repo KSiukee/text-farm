@@ -102,6 +102,30 @@ const floorColor = computed(() => {
       grain: "rgba(235,240,230,.12)",
     };
   }
+  if (id === "terracotta") {
+    return {
+      base: "#b9785d",
+      alt: "#b37258",
+      line: "rgba(92,50,34,.22)",
+      grain: "rgba(255,226,196,.12)",
+    };
+  }
+  if (id === "tatami") {
+    return {
+      base: "#c8b47b",
+      alt: "#c2ae75",
+      line: "rgba(100,86,48,.20)",
+      grain: "rgba(255,247,210,.14)",
+    };
+  }
+  if (id === "cafe") {
+    return {
+      base: "#8f6a4a",
+      alt: "#896446",
+      line: "rgba(48,30,18,.25)",
+      grain: "rgba(230,205,175,.12)",
+    };
+  }
   return {
     base: "#c79c68",
     alt: "#c39763",
@@ -113,8 +137,13 @@ const wallColor = computed(() => {
   const id = draft.value.wall;
   if (id === "sage") return { top: "#c7d1bc", bottom: "#aebba3", trim: "#8e9b83" };
   if (id === "sky") return { top: "#cad9e1", bottom: "#b2c5d0", trim: "#8fa6b4" };
+  if (id === "dusk") return { top: "#c4b4bd", bottom: "#a997a4", trim: "#887783" };
+  if (id === "linen") return { top: "#e4d6c2", bottom: "#d2c0a6", trim: "#b8a58a" };
   return { top: "#f0e7d7", bottom: "#ddd2be", trim: "#c5b79e" };
 });
+const lockedStyles = computed(() =>
+  [...props.room.floors, ...props.room.walls].filter((style) => style.locked),
+);
 const WALL_HEIGHT_UNITS = 48;
 const WALL_HEIGHT_TILES = 6;
 
@@ -1490,15 +1519,32 @@ onBeforeUnmount(stopPetLoop);
       <div class="room-row">
         <label>地板
           <select v-model="draft.floor">
-            <option v-for="style in room.floors" :key="style.id" :value="style.id">{{ style.name }}</option>
+            <option
+              v-for="style in room.floors"
+              :key="style.id"
+              :value="style.id"
+              :disabled="style.locked"
+            >
+              {{ style.name }}{{ style.locked ? " 🔒" : "" }}
+            </option>
           </select>
         </label>
         <label>墙纸
           <select v-model="draft.wall">
-            <option v-for="style in room.walls" :key="style.id" :value="style.id">{{ style.name }}</option>
+            <option
+              v-for="style in room.walls"
+              :key="style.id"
+              :value="style.id"
+              :disabled="style.locked"
+            >
+              {{ style.name }}{{ style.locked ? " 🔒" : "" }}
+            </option>
           </select>
         </label>
       </div>
+      <p v-if="lockedStyles.length" class="muted room-tip">
+        未解锁：{{ lockedStyles.map((style) => `${style.name}（${style.unlockHint}）`).join("；") }}
+      </p>
       <div class="room-row room-palette">
         <button
           v-for="def in room.catalog"

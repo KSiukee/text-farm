@@ -703,6 +703,8 @@ pub struct FishingView {
 pub struct RoomStyleView {
     pub id: String,
     pub name: String,
+    pub locked: bool,
+    pub unlock_hint: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -806,6 +808,40 @@ pub struct Snapshot {
     pub content_crops: usize,
 }
 
+fn style_views(
+    styles: &[(&'static str, &'static str)],
+    level: u32,
+    achievements: &std::collections::BTreeMap<String, bool>,
+    days: u32,
+    inventory: &std::collections::BTreeMap<String, u32>,
+) -> Vec<RoomStyleView> {
+    styles
+        .iter()
+        .map(|(id, name)| {
+            let (locked, hint) = match *id {
+                "terracotta" => (level < 10, "农场 10 级"),
+                "tatami" => (
+                    !achievements.get("harvest_100").copied().unwrap_or(false),
+                    "成就「百次收获」",
+                ),
+                "cafe" => (
+                    inventory.get("craft:coffee_powder").copied().unwrap_or(0) == 0,
+                    "制造屋：咖啡粉 ×1",
+                ),
+                "dusk" => (level < 20, "农场 20 级"),
+                "linen" => (days < 60, "开垦满 60 天"),
+                _ => (false, ""),
+            };
+            RoomStyleView {
+                id: (*id).into(),
+                name: (*name).into(),
+                locked,
+                unlock_hint: if locked { hint.into() } else { String::new() },
+            }
+        })
+        .collect()
+}
+
 fn room_view_data(room_id: &str, label: &str, width: u32, height: u32, layout: crate::room::RoomLayout) -> RoomView {
     RoomView {
         room_id: room_id.into(),
@@ -819,6 +855,8 @@ fn room_view_data(room_id: &str, label: &str, width: u32, height: u32, layout: c
             .map(|(id, name)| RoomStyleView {
                 id: (*id).into(),
                 name: (*name).into(),
+                locked: false,
+                unlock_hint: String::new(),
             })
             .collect(),
         walls: crate::room::wall_styles()
@@ -826,6 +864,8 @@ fn room_view_data(room_id: &str, label: &str, width: u32, height: u32, layout: c
             .map(|(id, name)| RoomStyleView {
                 id: (*id).into(),
                 name: (*name).into(),
+                locked: false,
+                unlock_hint: String::new(),
             })
             .collect(),
         window_styles: crate::room::window_styles()
@@ -908,7 +948,7 @@ fn npc_room_layout(id: &str) -> crate::room::RoomLayout {
 }
 
 impl Game {
-    fn room_view(&self, room_id: &str) -> Option<RoomView> {
+    fn room_view(&self, room_id: &str, now: i64) -> Option<RoomView> {
         let layout = self
             .state
             .room
@@ -916,6 +956,7 @@ impl Game {
             .cloned()
             .or_else(|| (room_id == crate::room::LIVING_ROOM).then(crate::room::default_layout))?;
         let (width, height) = crate::room::room_size(room_id)?;
+        let days = ((now - self.state.created_at).max(0) / 86_400_000) as u32;
         Some(RoomView {
             room_id: room_id.into(),
             label: if room_id == crate::room::LIVING_ROOM {
@@ -927,20 +968,20 @@ impl Game {
             height,
             grid: crate::room::ROOM_GRID,
             layout,
-            floors: crate::room::floor_styles()
-                .iter()
-                .map(|(id, name)| RoomStyleView {
-                    id: (*id).into(),
-                    name: (*name).into(),
-                })
-                .collect(),
-            walls: crate::room::wall_styles()
-                .iter()
-                .map(|(id, name)| RoomStyleView {
-                    id: (*id).into(),
-                    name: (*name).into(),
-                })
-                .collect(),
+            floors: style_views(
+                &crate::room::floor_styles(),
+                self.state.level,
+                &self.state.achievements,
+                days,
+                &self.state.inventory,
+            ),
+            walls: style_views(
+                &crate::room::wall_styles(),
+                self.state.level,
+                &self.state.achievements,
+                days,
+                &self.state.inventory,
+            ),
             window_styles: crate::room::window_styles()
                 .iter()
                 .map(|(id, name, width, height)| RoomWindowStyleView {
@@ -2000,8 +2041,8 @@ impl Game {
             ranch,
             workshop,
             fishing,
-            room: self.room_view(crate::room::LIVING_ROOM).expect("living room"),
-            extra_room: self.room_view(crate::room::EXTRA_ROOM),
+            room: self.room_view(crate::room::LIVING_ROOM, now).expect("living room"),
+            extra_room: self.room_view(crate::room::EXTRA_ROOM, now),
             npc_rooms: self.state.npcs.iter().map(|entry| {
                 let threshold = npc_threshold(&entry.id);
                 NpcRoomView {

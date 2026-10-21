@@ -391,8 +391,15 @@ pub fn default_layout() -> RoomLayout {
     }
 }
 
-pub fn floor_styles() -> [(&'static str, &'static str); 3] {
-    [("wood", "暖木"), ("tile", "浅砖"), ("stone", "青石")]
+pub fn floor_styles() -> [(&'static str, &'static str); 6] {
+    [
+        ("wood", "暖木"),
+        ("tile", "浅砖"),
+        ("stone", "青石"),
+        ("terracotta", "陶土"),
+        ("tatami", "榻榻米"),
+        ("cafe", "咖啡木"),
+    ]
 }
 
 pub fn default_extra_layout() -> RoomLayout {
@@ -405,8 +412,14 @@ pub fn default_extra_layout() -> RoomLayout {
     }
 }
 
-pub fn wall_styles() -> [(&'static str, &'static str); 3] {
-    [("cream", "米白"), ("sage", "鼠尾草"), ("sky", "雾蓝")]
+pub fn wall_styles() -> [(&'static str, &'static str); 5] {
+    [
+        ("cream", "米白"),
+        ("sage", "鼠尾草"),
+        ("sky", "雾蓝"),
+        ("dusk", "暮色"),
+        ("linen", "亚麻"),
+    ]
 }
 
 /// 窗户预设：id / 名称 / 宽 / 高（1/8 格；墙高 48）。

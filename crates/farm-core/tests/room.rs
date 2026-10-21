@@ -45,6 +45,31 @@ fn default_room_is_valid_and_visible() {
 }
 
 #[test]
+fn room_styles_unlock_from_level_achievement_days_and_craft() {
+    let mut game = Game::new(1_000);
+    let now = 1_000;
+    let before = game.snapshot(now);
+    assert!(before.room.floors.iter().find(|style| style.id == "terracotta").unwrap().locked);
+    assert!(before.room.floors.iter().find(|style| style.id == "tatami").unwrap().locked);
+
+    game.state_mut().level = 20;
+    game.state_mut().achievements.insert("harvest_100".into(), true);
+    game.state_mut().inventory.insert("craft:coffee_powder".into(), 1);
+    game.state_mut().created_at = now - 60 * 86_400_000;
+    let after = game.snapshot(now);
+    for (list, id) in [
+        (&after.room.floors, "terracotta"),
+        (&after.room.floors, "tatami"),
+        (&after.room.floors, "cafe"),
+        (&after.room.walls, "dusk"),
+        (&after.room.walls, "linen"),
+    ] {
+        let style = list.iter().find(|style| style.id == id).unwrap();
+        assert!(!style.locked, "{id} should be unlocked");
+    }
+}
+
+#[test]
 fn npc_rooms_are_read_only_views_with_thresholds() {
     let game = Game::new(1_000);
     let snap = game.snapshot(1_000);

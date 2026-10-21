@@ -831,6 +831,8 @@ export interface RoomLayout {
 export interface RoomStyleView {
   id: string;
   name: string;
+  locked: boolean;
+  unlockHint: string;
 }
 
 export interface RoomFurnitureDefView {
