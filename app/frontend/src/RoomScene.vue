@@ -32,7 +32,7 @@ const TW = 42;
 const TH = 21;
 const OX = 460;
 const OY = 140;
-const WALL_H = 86;
+const WALL_H = 112;
 const CAMERA_MIN = 0.7;
 const CAMERA_MAX = 2.2;
 const camera = ref({ zoom: 1.05, panX: 0, panY: 0 });
@@ -618,7 +618,7 @@ function drawWindows(ctx: CanvasRenderingContext2D) {
     poly(ctx, points, sky, outline ?? "rgba(48,34,22,.65)", selected || invalid ? 3 : 1.6);
 
     // 窗框
-    const frame = 5;
+    const frame = 3;
     ctx.save();
     ctx.beginPath();
     points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
@@ -626,9 +626,6 @@ function drawWindows(ctx: CanvasRenderingContext2D) {
     ctx.clip();
     ctx.strokeStyle = "#a57a50";
     ctx.lineWidth = frame * 2;
-    ctx.stroke();
-    ctx.strokeStyle = "#e3d3b8";
-    ctx.lineWidth = 2;
     ctx.stroke();
 
     // 玻璃反光 + 中梃
@@ -652,21 +649,6 @@ function drawWindows(ctx: CanvasRenderingContext2D) {
     ctx.lineTo(points[1].x, c.y);
     ctx.stroke();
     ctx.restore();
-
-    // 窗台
-    const sillTop = Math.max(points[0].y, points[1].y);
-    ctx.strokeStyle = "#8f6440";
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(points[0].x - 4, sillTop + 2);
-    ctx.lineTo(points[1].x + 4, sillTop + 2);
-    ctx.stroke();
-    ctx.strokeStyle = "rgba(255,235,200,.45)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(points[0].x - 3, sillTop);
-    ctx.lineTo(points[1].x + 3, sillTop);
-    ctx.stroke();
   }
 }
 
