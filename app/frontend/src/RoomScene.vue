@@ -751,32 +751,20 @@ function drawWindows(ctx: CanvasRenderingContext2D) {
 
     const backdrop = windowBackdrop.value;
     if (backdrop && backdrop.complete && backdrop.naturalWidth > 0) {
-      const minX = Math.min(...points.map((p) => p.x));
-      const maxX = Math.max(...points.map((p) => p.x));
-      const minY = Math.min(...points.map((p) => p.y));
-      const maxY = Math.max(...points.map((p) => p.y));
-      const targetW = maxX - minX;
-      const targetH = maxY - minY;
-      const imageAspect = backdrop.naturalWidth / backdrop.naturalHeight;
-      const targetAspect = targetW / targetH;
-      let sx = 0;
-      let sy = 0;
-      let sw = backdrop.naturalWidth;
-      let sh = backdrop.naturalHeight;
-      if (imageAspect > targetAspect) {
-        sw = backdrop.naturalHeight * targetAspect;
-        sx = (backdrop.naturalWidth - sw) / 2;
-      } else {
-        sh = backdrop.naturalWidth / targetAspect;
-        sy = (backdrop.naturalHeight - sh) / 2;
-      }
       ctx.save();
       ctx.beginPath();
       points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
       ctx.closePath();
       ctx.clip();
-      ctx.globalAlpha = 0.92;
-      ctx.drawImage(backdrop, sx, sy, sw, sh, minX, minY, targetW, targetH);
+      const w = backdrop.naturalWidth;
+      const h = backdrop.naturalHeight;
+      const topX = (points[1].x - points[0].x) / w;
+      const topY = (points[1].y - points[0].y) / w;
+      const leftX = (points[3].x - points[0].x) / h;
+      const leftY = (points[3].y - points[0].y) / h;
+      ctx.transform(topX, topY, leftX, leftY, points[0].x, points[0].y);
+      ctx.globalAlpha = 0.95;
+      ctx.drawImage(backdrop, 0, 0);
       ctx.restore();
     }
 
@@ -1353,28 +1341,30 @@ function drawSpriteItem(
   const base = iso(boxInfo.x + boxInfo.w / 2, boxInfo.y + boxInfo.d);
   const left = Math.round(base.x - img.naturalWidth / 2);
   const top = Math.round(base.y - img.naturalHeight);
-  const color = outline ?? "rgba(62,42,26,.38)";
-  const silhouette = spriteSilhouette(path, img, color);
-  const spread = outline ? 2 : 1;
-  const offsets = outline
-    ? [
-        [-spread, 0],
-        [spread, 0],
-        [0, -spread],
-        [0, spread],
-        [-spread, -spread],
-        [spread, -spread],
-        [-spread, spread],
-        [spread, spread],
-      ]
-    : [
-        [-spread, 0],
-        [spread, 0],
-        [0, -spread],
-        [0, spread],
-      ];
-  for (const [dx, dy] of offsets) {
-    ctx.drawImage(silhouette, left + dx, top + dy);
+  if (outline) {
+    const silhouette = spriteSilhouette(path, img, outline);
+    for (const [dx, dy] of [
+      [-2, 0],
+      [2, 0],
+      [0, -2],
+      [0, 2],
+      [-2, -2],
+      [2, -2],
+      [-2, 2],
+      [2, 2],
+    ]) {
+      ctx.drawImage(silhouette, left + dx, top + dy);
+    }
+  } else {
+    const silhouette = spriteSilhouette(path, img, "rgba(88,64,44,.18)");
+    for (const [dx, dy] of [
+      [-1, 0],
+      [1, 0],
+      [0, -1],
+      [0, 1],
+    ]) {
+      ctx.drawImage(silhouette, left + dx, top + dy);
+    }
   }
   ctx.drawImage(img, left, top);
   return true;

@@ -6,8 +6,8 @@
       "category": "furniture.beanbag",
       "file": "furn_beanbag_sage_00.png",
       "size": [
-        46,
-        38
+        52,
+        37
       ],
       "anchor": [
         0.5,
@@ -16,15 +16,15 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "fe913f69383e844880ccc6b758c2c8de1d05789cf952080c9dd33999f6ff0c96"
+      "sha256": "aa26fcf3102869011c7e77f3364677d592310b007413bf654662bc0e1b5c827e"
     },
     {
       "id": "furn_beanbag_sage_01",
       "category": "furniture.beanbag",
       "file": "furn_beanbag_sage_01.png",
       "size": [
-        46,
-        38
+        52,
+        43
       ],
       "anchor": [
         0.5,
@@ -33,15 +33,15 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "13662c0797bc8be4b06e18a7f2f55b55b6911e42c5fba9f6c63b8aac428a50dd"
+      "sha256": "e8d4ca755c923031e67e5c5dcfd3fc2590074ca532e9751a874c54d9589be7fa"
     },
     {
       "id": "furn_beanbag_sage_02",
       "category": "furniture.beanbag",
       "file": "furn_beanbag_sage_02.png",
       "size": [
-        46,
-        38
+        52,
+        43
       ],
       "anchor": [
         0.5,
@@ -50,15 +50,15 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "838b5275a68e80e49596c93a6b035ffe4dc0038d8d9fbb76a2d85464b60139f5"
+      "sha256": "1741880cd0a473daff5b33b8d3c82cdfdbca7afe7490a8a89fb66be218264d8c"
     },
     {
       "id": "furn_beanbag_sage_03",
       "category": "furniture.beanbag",
       "file": "furn_beanbag_sage_03.png",
       "size": [
-        46,
-        38
+        52,
+        37
       ],
       "anchor": [
         0.5,
@@ -67,7 +67,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "d16b46c03f28baaa40f841138699b8618e0a87a03596a961a25de24ad0ed6bce"
+      "sha256": "79c7998bc5dca723d2fb22d5d8f28acb00ad7369db8712bca2f1cc486ca3b61e"
     },
     {
       "id": "furn_bed_wood_00",
@@ -84,7 +84,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "cb9f452d902b09e741b74c9a97bb1bbe3f167f32f982c1e6136af57db690134a"
+      "sha256": "3fd9d300682d990aa5a9d57828288c5320df83ca5ff7ed30c4c160bb700f993b"
     },
     {
       "id": "furn_bed_wood_01",
@@ -101,7 +101,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "4de023a42b4629bcba849af0650a85cddeac43dc30aebcb1c7089e7dbecc000d"
+      "sha256": "f5d769c1af20676e830918f0934bcac86bd9c5983d6fc184ddb665d6ec315604"
     },
     {
       "id": "furn_bed_wood_02",
@@ -118,7 +118,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "35442ea0bdb7acd358c02f38c8e107e062076a304dcd2c35df1c0799a8fa3a09"
+      "sha256": "26fa0ed0855107458167f6510072d29a5b1bd03ac620b1beef3442f4b95b4670"
     },
     {
       "id": "furn_bed_wood_03",
@@ -135,7 +135,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "8de4a2c9f637c35cc2eee076b0681755be0caa67b5ba5248f5a7cbb3a2754e84"
+      "sha256": "456de3bb599a152c7ad5f9a4392853c02188d0ccffd23aaa0481db87bd24ac9b"
     },
     {
       "id": "furn_bookshelf_wood_00",
@@ -152,7 +152,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "f5d52ae7d9a6817fa2b856415a3d1ce971f993ec385092171c35dc342cac59e6"
+      "sha256": "2471998a557385d14e7f551ab9df09d4426c90aaef4cec53b69d00b78ca1c539"
     },
     {
       "id": "furn_bookshelf_wood_01",
@@ -169,7 +169,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "6a83c5f7c3e62ca7000497e7f89f59f7b4cdd6ffddda6af03a6fe15a39210cf5"
+      "sha256": "a1f4593ac35b9b97595be348f57230f7ec29b433e97b04c1b17718b720d7b302"
     },
     {
       "id": "furn_bookshelf_wood_02",
@@ -186,7 +186,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "6d5434216f3034c5adbb18358d0f435e627e4db55b0e72e7d4f1e44a94486c1b"
+      "sha256": "7e8983bcdb6c3c65f9ab8e4b16adfff8930bc6e4dfbf154d8d0ea37bff156c76"
     },
     {
       "id": "furn_bookshelf_wood_03",
@@ -203,7 +203,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "e47494bb5ef7f594669873029b2fb775032af91f6599611b1ef03135491b5d02"
+      "sha256": "fef2a4ce507e816d3532c02de8aa1a694efa66880b48d6215dde7cf86a9c2fd5"
     },
     {
       "id": "furn_cabinet_wood_00",
@@ -220,7 +220,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "0e417e11bdaca7c02b8d40711a262a896e6f846f716b9286a5f652aa027f2367"
+      "sha256": "f5bae0c6e2e71d1945023f33343dc5b038cfbbe216577d6e7a162df3256fc642"
     },
     {
       "id": "furn_cabinet_wood_01",
@@ -237,7 +237,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "4190d0e12463c473b3ec2a729b2348d06b03ba53daf37f873ecdaa229399ddd6"
+      "sha256": "aa33334c4e4386a4b80be61fb3065faed6f9da964fbdcfd69b555984a69fa830"
     },
     {
       "id": "furn_cabinet_wood_02",
@@ -254,7 +254,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "0e417e11bdaca7c02b8d40711a262a896e6f846f716b9286a5f652aa027f2367"
+      "sha256": "f5bae0c6e2e71d1945023f33343dc5b038cfbbe216577d6e7a162df3256fc642"
     },
     {
       "id": "furn_cabinet_wood_03",
@@ -271,7 +271,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "4190d0e12463c473b3ec2a729b2348d06b03ba53daf37f873ecdaa229399ddd6"
+      "sha256": "aa33334c4e4386a4b80be61fb3065faed6f9da964fbdcfd69b555984a69fa830"
     },
     {
       "id": "furn_chair_wood_00",
@@ -288,7 +288,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "ab288e3bba066c2e436f71f0af0bc9f503e39744f5336ccf76cdd6615f8517f4"
+      "sha256": "1390f6fd17733f3bddecc405353c8f1ea2916e63fcee5bf4d7341d87f6d00727"
     },
     {
       "id": "furn_chair_wood_01",
@@ -305,7 +305,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "a4e918e0b906e1f1cf0340eebb09f7875f3926e600a1212e109730bdce288a28"
+      "sha256": "51add9235243a7136cf1b945ee28718229a50e7f1b993d9c7af7089173a62f0f"
     },
     {
       "id": "furn_chair_wood_02",
@@ -322,7 +322,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "8de0c3cff5b53f0f66d0b65654edb8a27755fcf6ee7b46820491ebf9223a6bd6"
+      "sha256": "4131ddb87ece5de4f0c3c6ee1e85cd0b1dbaf8122d9658d373b9aafdcaaa7189"
     },
     {
       "id": "furn_chair_wood_03",
@@ -339,7 +339,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "7dbc46df52e594e6ba05b15955dfec3501d019d9a882f3815241c08dcedd802f"
+      "sha256": "52799e072c622928bdfff616a4668445ad969b0ea5d8dd02504ed7eca3699ad0"
     },
     {
       "id": "furn_desk_wood_00",
@@ -356,7 +356,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "a4d8233a8f203f9a51d49032c7e11a47443582e0b0e68d518ae4cf10d71c7ce7"
+      "sha256": "cae28017cae7ceed4100dbaa9caab0e15b81d56b3c4d736cb6e53dcfb3bb6b2e"
     },
     {
       "id": "furn_desk_wood_01",
@@ -373,7 +373,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "4dfda6884a37a7e816f876c0140c863fc84e4417990ea30c970e38e4ee6fede7"
+      "sha256": "2d94e933fbf435d0c81a145a625b3d77db162d68cb6ce7918eddb7670d4afdf8"
     },
     {
       "id": "furn_desk_wood_02",
@@ -390,7 +390,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "d52b1b966422214aee2da55a73e3819de8977531cf6cfc2ec7c35b57570478e7"
+      "sha256": "9fa9b51a49501c3af80625ff2ff08963e6ec8f5ace2df711c4b55991a9329cb4"
     },
     {
       "id": "furn_desk_wood_03",
@@ -407,7 +407,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "a5fcba2c91699426dac5de6a52cb08ae48beeb37e61133ea43ca964dc75544c1"
+      "sha256": "fba95354361b05bd436bb428267e8cabf947797b6c98a75d2fd6f6d6e4d2a952"
     },
     {
       "id": "furn_lamp_floor_00",
@@ -424,7 +424,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "6b2aca3db48c6ef0b43414ada54729b9b837e5d36d4ef0fa8dd56754fdcee10e"
+      "sha256": "95508ce86c1af0ff0146c75be79c22cb3de523189fd399eaced19bc2b0604ed7"
     },
     {
       "id": "furn_lamp_floor_01",
@@ -441,7 +441,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "6b2aca3db48c6ef0b43414ada54729b9b837e5d36d4ef0fa8dd56754fdcee10e"
+      "sha256": "95508ce86c1af0ff0146c75be79c22cb3de523189fd399eaced19bc2b0604ed7"
     },
     {
       "id": "furn_lamp_floor_02",
@@ -458,7 +458,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "6b2aca3db48c6ef0b43414ada54729b9b837e5d36d4ef0fa8dd56754fdcee10e"
+      "sha256": "95508ce86c1af0ff0146c75be79c22cb3de523189fd399eaced19bc2b0604ed7"
     },
     {
       "id": "furn_lamp_floor_03",
@@ -475,7 +475,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "6b2aca3db48c6ef0b43414ada54729b9b837e5d36d4ef0fa8dd56754fdcee10e"
+      "sha256": "95508ce86c1af0ff0146c75be79c22cb3de523189fd399eaced19bc2b0604ed7"
     },
     {
       "id": "furn_nightstand_wood_00",
@@ -492,7 +492,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "616e00d679da80b8734f44e1a947466260d560d4163d45eae6a81222a8eecff6"
+      "sha256": "0a2e195dd3c0dfe95e55d6d4e9788dd4b8c19873d14bc0b8aab72ce5eab63c2c"
     },
     {
       "id": "furn_nightstand_wood_01",
@@ -509,7 +509,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "ab9be765818cb7c58c88dde8aef6c71738332dfcc826e75f296bfc8a71f315bc"
+      "sha256": "3c1c98921fee65a2f77fca31b9ae3f9db17da83ed2a0f554ba0f70f3c7029171"
     },
     {
       "id": "furn_nightstand_wood_02",
@@ -526,7 +526,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "79ff7b61ba15c42b2e1df5a29f1854115d29eadcce2098f09f824297db6b53bc"
+      "sha256": "2536163f8b92c30614daa34f0664b6664980d41bbf80906a3bd5cbf783be2827"
     },
     {
       "id": "furn_nightstand_wood_03",
@@ -543,7 +543,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "ab778d7e3ad4e8e815b7b99830e0ea5fe26512a59e346db43f03bf54d55aa161"
+      "sha256": "8a9d49d257bef11f95343445610f1e4eb76d6be937b2a49acd213a81e644bf5b"
     },
     {
       "id": "furn_rug_sage_01",
@@ -560,7 +560,7 @@
       "rotations": 1,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "5b356db19b166a1c3b733c3c4c6ca81acf462c3515f83854da9d09fc1fbfb885"
+      "sha256": "dbbef82126b994873ee1ca91240142d9c26ae24706e0d38d7ca5c5a8da75ab8e"
     },
     {
       "id": "furn_sofa_green_00",
@@ -577,7 +577,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "b7357af4096dba5eb5df89c8dba57a4dc7462f7f85b601ee20fc453e88ec5f7e"
+      "sha256": "90c17fde49ae136857a7c8ded9dde7c05995f0cf136195f8fc85263df3b9edff"
     },
     {
       "id": "furn_sofa_green_01",
@@ -594,7 +594,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "8a747702a2ec80ba8d0d03c0c848448136c8e05a3fdc5f7606588ffdd56c8558"
+      "sha256": "0ecbc8e0d1e6e5a098d24cbaea0d4bfceb0be6c6659ef2b6f89a559ade7bd577"
     },
     {
       "id": "furn_sofa_green_02",
@@ -611,7 +611,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "8c78568e4578942806b969280ac2c64eb22cb79c0c9e204e77c2ca9320eaa1ce"
+      "sha256": "a7b31fbb1668466feb7ba1e4b173e59ecd03402f5598362fa6da9b7eb84342fb"
     },
     {
       "id": "furn_sofa_green_03",
@@ -628,7 +628,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "f301e6c384dd85a2e7cf8b9f0eb6ec911ec9baf3a0c6c0c86ae4fa79bc65fc6b"
+      "sha256": "86c34eda6bf016ffe3ec47c6e27a3c201aa35e128172b668fdf97a0a402685ae"
     },
     {
       "id": "furn_tv_wood_00",
@@ -645,7 +645,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "e382d29781e49b8d3c25ffe5af404310d7525526e0d8b1960328380f1e7f7e05"
+      "sha256": "11935b5f0ed9342ee5b9ad96396ff172434f8b3f7f5a289dd37ae65d7d316c4a"
     },
     {
       "id": "furn_tv_wood_01",
@@ -662,7 +662,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "57cd1ae94fbef91b7c67e49690bc3628902fc78ab4898ca2e690c29658a70d16"
+      "sha256": "d0872eec2a4a7710668db979cdf78c340579b1e4368f4baa8459747f021efe23"
     },
     {
       "id": "furn_tv_wood_02",
@@ -679,7 +679,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "02e3dc27ad0676b8badc552d8e5ca3b14e42e3b824ab76a2269632be12655d6e"
+      "sha256": "476c162d60b339c3d7041d9d2820566c652e5bd9b4ab588f0816962944b28fd0"
     },
     {
       "id": "furn_tv_wood_03",
@@ -696,7 +696,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "aef716b829dc7c2e6d9a313082eb3be5b93e4c11e734e7915de275a712f03c30"
+      "sha256": "4cae4fba764db5a210db95b780cb6ea735690823c5f59ea91e334b56c002cce4"
     },
     {
       "id": "prop_aquarium_large_01",
@@ -713,7 +713,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "cc25d2218302decdb36b2bed687bcc3257b30c90d917e4da03c995c03a185ae5"
+      "sha256": "6835eadd89f28f26537bfd56c426fb4f503465f73556e50c219a06ea6572dcca"
     },
     {
       "id": "prop_aquarium_large_01_00",
@@ -730,7 +730,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "d5d5072be8a1b766abfe6fb0ea155a97a507f34f70a093df6c12058c4581e7fc"
+      "sha256": "746d53c8aa31e40efdf40c72850078f2bdaf606ecafbcc085e746b592c035265"
     },
     {
       "id": "prop_aquarium_large_01_01",
@@ -747,7 +747,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "a2ee33925abf9ed3be794d0646b0d0ceff18d33d7467c761f34c4aefddb68b4e"
+      "sha256": "190769b541d52c6f82b21b5d0eae184e68ee56b932a4aeb865583f2bb31e49cb"
     },
     {
       "id": "prop_aquarium_large_01_02",
@@ -764,7 +764,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "9a538261901be62928074c8a009e3a7c63c0bc215996155100fde6c22e468e0c"
+      "sha256": "d99626f89bdb9af0f1f46c9deb08d29b59148bdb4f9e3dffc819647278c7a019"
     },
     {
       "id": "prop_aquarium_large_01_03",
@@ -781,7 +781,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "f8223c92890ce68d41559838311da46f4c774b02cd478379e147d3cc8be74e21"
+      "sha256": "c14b1f36552423b6c47b3ebea661814fc4aa9fe8029d247b1ce0532b61ba3f23"
     },
     {
       "id": "prop_aquarium_small_01",
@@ -798,7 +798,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "0f643d6319f85787e10186edd1285ff4434eff9fbdbaf08c8c0873dc3e64aff0"
+      "sha256": "5300867a572fd1e51d029a28af0099afab77759035e9d2a6b489ec7055d4cc11"
     },
     {
       "id": "prop_aquarium_small_01_00",
@@ -815,7 +815,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "4bafc7cd2f191caf124fffae4259c1593fdb851270564b1f6fb415c27b2d5bff"
+      "sha256": "e8f533f3e081c59a9eedd8dd7bfea29b033b096d181e66f2006cb982e136ec18"
     },
     {
       "id": "prop_aquarium_small_01_01",
@@ -832,7 +832,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "0ac89cc1f524359ba0f899cf1cb964a93daf307c643a5f837e66683f95ef0a83"
+      "sha256": "2c489c3ada6a3d8efac589570988c9cd84c95c357b013a17872c69d38ee984fd"
     },
     {
       "id": "prop_aquarium_small_01_02",
@@ -849,7 +849,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "4bafc7cd2f191caf124fffae4259c1593fdb851270564b1f6fb415c27b2d5bff"
+      "sha256": "e8f533f3e081c59a9eedd8dd7bfea29b033b096d181e66f2006cb982e136ec18"
     },
     {
       "id": "prop_aquarium_small_01_03",
@@ -866,7 +866,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "0ac89cc1f524359ba0f899cf1cb964a93daf307c643a5f837e66683f95ef0a83"
+      "sha256": "2c489c3ada6a3d8efac589570988c9cd84c95c357b013a17872c69d38ee984fd"
     },
     {
       "id": "prop_flower_vase_01",
@@ -883,7 +883,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "8c7acd00ec9f9c562c45a78fc5a5113032ef354c12fd3e5c5e36d29108ef76ec"
+      "sha256": "47c367a637cd75e52047b0418a5a131a3935f00795c6465f1278c1ec57e97644"
     },
     {
       "id": "prop_flower_vase_01_00",
@@ -900,7 +900,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "7ec16a0239705243fe47388419d27f56e0ea06a013652300754f06927bc025ee"
+      "sha256": "4e8814646076cf057ed7a2c776df0093cb88a101bfc5c201e070d09cfa1ffc79"
     },
     {
       "id": "prop_flower_vase_01_01",
@@ -917,7 +917,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "defe5c7b20706274308ab720ff76dedd2926691fbe6b5d051992793f24b3aec8"
+      "sha256": "bb6167cb5577098b7c101d3ba34780b77c2b1263d53e1f998757ef80a259eeb3"
     },
     {
       "id": "prop_flower_vase_01_02",
@@ -934,7 +934,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "202d352d4a68306699d902e7d6b057750ad9eb1c04cb9066d604ddee32a1fd3e"
+      "sha256": "9ec65f5a839131182037f0fe32d40411d46158b8301ebb3497b711feb0007768"
     },
     {
       "id": "prop_flower_vase_01_03",
@@ -951,7 +951,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "10ba882f82e9fcbda9148d26d1843413d987fc99213dda5fe92e512f55b8d2b5"
+      "sha256": "ceac0d95f96f94773befd97b43f90aadbf34d9c3bb7eafd25fbe93379f1d70f4"
     },
     {
       "id": "prop_plant_green_01",
@@ -968,7 +968,7 @@
       "rotations": 1,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "c9533a9eb25a967905c65b8559073be68da7db367aadf9ba95b7b6c4e59b9d8f"
+      "sha256": "34ead513a2c8387e34d46d25778aae938d88a475d4d2e58571d07515997e1787"
     },
     {
       "id": "prop_planter_01",
@@ -985,7 +985,7 @@
       "rotations": 1,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "6f54c5b1af5833ab1dc0046a5c31323eb70d8da5a9555efcae893268fdc1a881"
+      "sha256": "2aff561749350500f7521b680fb11cc47d5e519d14699c1ac951045d48b62002"
     },
     {
       "id": "prop_planter_01_00",
@@ -1002,7 +1002,7 @@
       "rotations": 1,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "5e1e9a359e2d2e043bc6575c8e2450b2009d1d24552781e1e620888e90314e65"
+      "sha256": "f6794c648b0faeaf913e7a99b7d66f1e898efbf981e6956d9612100b0e380b89"
     },
     {
       "id": "prop_planter_01_01",
@@ -1019,7 +1019,7 @@
       "rotations": 1,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "62042d164bbc3c197e7c28f56a84e069b2f013485ccd6ec62e05b51379231841"
+      "sha256": "24d1dbf9a1dac966a63d6b26f60a3d4a002cb6e33835ba023a9e852c8bb91b15"
     },
     {
       "id": "prop_planter_01_02",
@@ -1036,7 +1036,7 @@
       "rotations": 1,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "3be9dc7b4d46f01847794df37004ffcb46541463d26aef4aba51e96c7a083e8d"
+      "sha256": "a719f5d09038ec83da9c50e162a32421ac3075aef4afbf9a27d50fdf5c66023d"
     },
     {
       "id": "prop_planter_01_03",
@@ -1053,7 +1053,7 @@
       "rotations": 1,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "79420b7ba83ce84e38c7fd40f9383b3012800e39a48fc3570e47f28ce5d30ff2"
+      "sha256": "a68f607c13c0205409ae8d1254cdc3263d674423b14b5f032fc1c3f1c1046aa5"
     },
     {
       "id": "prop_table_lamp_00",
@@ -1070,7 +1070,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "af2900df8ae4d8499fabf7670bb348bd7323c66862b7e3cf3c4321125b78f95b"
+      "sha256": "671fbcdd0dea5f2a770aa62928632596ba8d8e695ec111cb085158e7a8042c65"
     },
     {
       "id": "prop_table_lamp_01",
@@ -1087,7 +1087,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "d461e25e84072ba66cf20926d3f5bbbf9a617dc8541d529d64d9ef026b9f9b3f"
+      "sha256": "508b794ebeb9721ad0d09de68b98d323a2a1683545597a70f1c471570e6c0106"
     },
     {
       "id": "prop_table_lamp_02",
@@ -1104,7 +1104,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "af2900df8ae4d8499fabf7670bb348bd7323c66862b7e3cf3c4321125b78f95b"
+      "sha256": "671fbcdd0dea5f2a770aa62928632596ba8d8e695ec111cb085158e7a8042c65"
     },
     {
       "id": "prop_table_lamp_03",
@@ -1121,7 +1121,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "d461e25e84072ba66cf20926d3f5bbbf9a617dc8541d529d64d9ef026b9f9b3f"
+      "sha256": "508b794ebeb9721ad0d09de68b98d323a2a1683545597a70f1c471570e6c0106"
     }
   ]
 }
