@@ -221,7 +221,7 @@ pub const FURNITURE: [FurnitureDef; 16] = [
     FurnitureDef {
         id: "beanbag",
         name: "懒人沙发",
-        width: 2,
+        width: 1,
         depth: 1,
         layer: 2,
         collision: true,

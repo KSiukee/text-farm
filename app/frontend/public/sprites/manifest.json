@@ -6,8 +6,8 @@
       "category": "furniture.beanbag",
       "file": "furn_beanbag_sage_00.png",
       "size": [
-        80,
-        65
+        46,
+        38
       ],
       "anchor": [
         0.5,
@@ -16,15 +16,15 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "52735905a56d6edaeeb399c4278b23d94c3f866da1779859067aa460babdeba3"
+      "sha256": "fe913f69383e844880ccc6b758c2c8de1d05789cf952080c9dd33999f6ff0c96"
     },
     {
       "id": "furn_beanbag_sage_01",
       "category": "furniture.beanbag",
       "file": "furn_beanbag_sage_01.png",
       "size": [
-        80,
-        65
+        46,
+        38
       ],
       "anchor": [
         0.5,
@@ -33,15 +33,15 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "b3d982bea29f163acd9862fed9ab00769f628386ec986064270ac002a00377f8"
+      "sha256": "13662c0797bc8be4b06e18a7f2f55b55b6911e42c5fba9f6c63b8aac428a50dd"
     },
     {
       "id": "furn_beanbag_sage_02",
       "category": "furniture.beanbag",
       "file": "furn_beanbag_sage_02.png",
       "size": [
-        80,
-        65
+        46,
+        38
       ],
       "anchor": [
         0.5,
@@ -50,15 +50,15 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "fd906cc9e045e9aa13c196dc3cc776fa5cf2ab924e1c68fd2d4bfc14eb97b8ab"
+      "sha256": "838b5275a68e80e49596c93a6b035ffe4dc0038d8d9fbb76a2d85464b60139f5"
     },
     {
       "id": "furn_beanbag_sage_03",
       "category": "furniture.beanbag",
       "file": "furn_beanbag_sage_03.png",
       "size": [
-        80,
-        65
+        46,
+        38
       ],
       "anchor": [
         0.5,
@@ -67,7 +67,7 @@
       "rotations": 4,
       "status": "candidate",
       "license": "in-house",
-      "sha256": "c6976dd66771138ad4b1cc42baca8f5ffcad400342ce88dd4907f92e344b1170"
+      "sha256": "d16b46c03f28baaa40f841138699b8618e0a87a03596a961a25de24ad0ed6bce"
     },
     {
       "id": "furn_bed_wood_00",

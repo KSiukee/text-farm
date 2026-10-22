@@ -38,6 +38,25 @@ const CANVAS_SCALE = 2;
 const CAMERA_MIN = 0.7;
 const CAMERA_MAX = 2.2;
 const camera = ref({ zoom: 1.05, panX: 0, panY: 0 });
+const windowBackdrop = ref<HTMLImageElement | null>(null);
+const windowBackdropPath = computed(() => {
+  if (props.room.roomId === "extra_1") return "/windows/extra.png";
+  if (props.room.roomId === "living") return "/windows/living.png";
+  return "/windows/garden.png";
+});
+
+function loadWindowBackdrop() {
+  const path = windowBackdropPath.value;
+  const img = new Image();
+  img.onload = () => {
+    windowBackdrop.value = img;
+    draw();
+  };
+  img.onerror = () => {
+    windowBackdrop.value = null;
+  };
+  img.src = path;
+}
 const panning = ref<{ x: number; y: number; panX: number; panY: number } | null>(null);
 const zoomPct = computed(() => Math.round(camera.value.zoom * 100));
 const sceneCenter = computed(() => {
@@ -66,6 +85,7 @@ const selectedId = ref<string | null>(null);
 const selectedWindowId = ref<string | null>(null);
 const selectedDoorId = ref<string | null>(null);
 const draft = ref<RoomLayout>(clone(props.room.layout));
+const undoStack = ref<RoomLayout[]>([]);
 const drag = ref<{ id: string; ox: number; oy: number } | null>(null);
 const dragWindow = ref<{ id: string; ox: number; oy: number } | null>(null);
 const dragDoor = ref<{ id: string; ox: number } | null>(null);
@@ -303,6 +323,34 @@ function findWindowSpot(wall: "left" | "right", w: number, h: number): { x: numb
   return null;
 }
 
+function pushUndo() {
+  undoStack.value.push(clone(draft.value));
+  if (undoStack.value.length > 30) undoStack.value.shift();
+}
+
+function changeFloor(event: Event) {
+  pushUndo();
+  draft.value.floor = (event.target as HTMLSelectElement).value;
+}
+
+function changeWall(event: Event) {
+  pushUndo();
+  draft.value.wall = (event.target as HTMLSelectElement).value;
+}
+
+function undo() {
+  const previous = undoStack.value.pop();
+  if (!previous) return;
+  draft.value = previous;
+  selectedId.value = null;
+  selectedWindowId.value = null;
+  selectedDoorId.value = null;
+  drag.value = null;
+  dragWindow.value = null;
+  dragDoor.value = null;
+  draw();
+}
+
 function addWindow(styleId: string) {
   if (draft.value.windows.length >= 5) {
     emit("notice", "每间房最多 5 扇窗");
@@ -310,6 +358,7 @@ function addWindow(styleId: string) {
   }
   const style = windowStyles.value.get(styleId);
   if (!style) return;
+  pushUndo();
   const wall: "left" | "right" = "right";
   const spot = findWindowSpot(wall, style.width, style.height);
   if (!spot) {
@@ -333,6 +382,7 @@ function addWindow(styleId: string) {
 function moveWindowWall(wall: "left" | "right") {
   const item = selectedWindow.value;
   if (!item) return;
+  pushUndo();
   item.wall = wall;
   item.x = Math.max(0, Math.min(item.x, wallLength(wall) - item.w));
 }
@@ -340,6 +390,7 @@ function moveWindowWall(wall: "left" | "right") {
 function moveDoorWall(wall: "left" | "right") {
   const door = selectedDoor.value;
   if (!door) return;
+  pushUndo();
   door.wall = wall;
   door.x = Math.max(0, Math.min(door.x, wallLength(wall) - door.w));
 }
@@ -347,18 +398,21 @@ function moveDoorWall(wall: "left" | "right") {
 function resizeWindow(dw: number, dh: number) {
   const item = selectedWindow.value;
   if (!item) return;
+  pushUndo();
   item.w = Math.max(8, Math.min(wallLength(item.wall) - item.x, item.w + dw));
   item.h = Math.max(8, Math.min(WALL_HEIGHT_UNITS - item.y, item.h + dh));
 }
 
 function storeWindow() {
   if (!selectedWindowId.value) return;
+  pushUndo();
   draft.value.windows = draft.value.windows.filter((item) => item.id !== selectedWindowId.value);
   selectedWindowId.value = null;
 }
 
 function startEdit() {
   if (props.readonly) return;
+  undoStack.value = [];
   draft.value = clone(props.room.layout);
   editing.value = true;
   selectedId.value = null;
@@ -367,6 +421,7 @@ function startEdit() {
 }
 
 function cancelEdit() {
+  undoStack.value = [];
   draft.value = clone(props.room.layout);
   editing.value = false;
   selectedId.value = null;
@@ -376,6 +431,7 @@ function cancelEdit() {
 }
 
 function saveEdit() {
+  undoStack.value = [];
   editing.value = false;
   drag.value = null;
   dragWindow.value = null;
@@ -387,6 +443,7 @@ function saveEdit() {
 }
 
 function addFurniture(def: RoomFurnitureDefView) {
+  pushUndo();
   const g = props.room.grid;
   const w = def.width * g;
   const d = def.depth * g;
@@ -406,6 +463,7 @@ function addFurniture(def: RoomFurnitureDefView) {
 function addSurfaceItem() {
   const def = props.room.surfaceCatalog[0];
   if (!def) return;
+  pushUndo();
   const support =
     (selected.value &&
     def.supportKinds.includes(defs.value.get(selected.value.def)?.kind ?? "") &&
@@ -433,6 +491,7 @@ function addSurfaceItem() {
 
 function removeSurfaceItem() {
   if (!surfaceForSelected.value) return;
+  pushUndo();
   draft.value.surfaceItems = draft.value.surfaceItems.filter(
     (item) => item.id !== surfaceForSelected.value?.id,
   );
@@ -465,11 +524,13 @@ function drawSurfaceItems(ctx: CanvasRenderingContext2D) {
 function rotateSelected() {
   const item = selected.value;
   if (!item) return;
+  pushUndo();
   item.rot = (item.rot + 1) % 4;
 }
 
 function storeSelected() {
   if (!selectedId.value) return;
+  pushUndo();
   const id = selectedId.value;
   draft.value.furniture = draft.value.furniture.filter((item) => item.id !== id);
   draft.value.surfaceItems = draft.value.surfaceItems.filter((item) => item.supportId !== id);
@@ -687,6 +748,37 @@ function drawWindows(ctx: CanvasRenderingContext2D) {
     sky.addColorStop(0.65, "#e7efe8");
     sky.addColorStop(1, "#c9d9bd");
     poly(ctx, points, sky, outline ?? "rgba(48,34,22,.65)", selected || invalid ? 3 : 1.6);
+
+    const backdrop = windowBackdrop.value;
+    if (backdrop && backdrop.complete && backdrop.naturalWidth > 0) {
+      const minX = Math.min(...points.map((p) => p.x));
+      const maxX = Math.max(...points.map((p) => p.x));
+      const minY = Math.min(...points.map((p) => p.y));
+      const maxY = Math.max(...points.map((p) => p.y));
+      const targetW = maxX - minX;
+      const targetH = maxY - minY;
+      const imageAspect = backdrop.naturalWidth / backdrop.naturalHeight;
+      const targetAspect = targetW / targetH;
+      let sx = 0;
+      let sy = 0;
+      let sw = backdrop.naturalWidth;
+      let sh = backdrop.naturalHeight;
+      if (imageAspect > targetAspect) {
+        sw = backdrop.naturalHeight * targetAspect;
+        sx = (backdrop.naturalWidth - sw) / 2;
+      } else {
+        sh = backdrop.naturalWidth / targetAspect;
+        sy = (backdrop.naturalHeight - sh) / 2;
+      }
+      ctx.save();
+      ctx.beginPath();
+      points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+      ctx.closePath();
+      ctx.clip();
+      ctx.globalAlpha = 0.92;
+      ctx.drawImage(backdrop, sx, sy, sw, sh, minX, minY, targetW, targetH);
+      ctx.restore();
+    }
 
     // 窗框
     const frame = 3;
@@ -1532,6 +1624,7 @@ function onPointerDown(event: PointerEvent) {
       return;
     }
     event.preventDefault();
+    pushUndo();
     selectedDoorId.value = door.id;
     selectedId.value = null;
     selectedWindowId.value = null;
@@ -1545,6 +1638,7 @@ function onPointerDown(event: PointerEvent) {
     const win = hitWindow(p.x, p.y);
     if (win) {
       event.preventDefault();
+      pushUndo();
       selectedWindowId.value = win.id;
       selectedId.value = null;
       selectedDoorId.value = null;
@@ -1572,6 +1666,7 @@ function onPointerDown(event: PointerEvent) {
   selectedWindowId.value = null;
   selectedDoorId.value = null;
   event.preventDefault();
+  pushUndo();
   const room = toRoom(p.x, p.y);
   drag.value = {
     id: hit.id,
@@ -1672,6 +1767,7 @@ watch(
   () => {
     petActors.value = [];
     nextEntryAt = Date.now() + 15_000;
+    loadWindowBackdrop();
     ensurePetLoop();
     draw();
   },
@@ -1687,6 +1783,7 @@ onMounted(() => {
   preloadSprites();
   preloadPetImages();
   preloadFishImages();
+  loadWindowBackdrop();
   nextEntryAt = Date.now() + 18_000 + Math.random() * 20_000;
   ensurePetLoop();
   draw();
@@ -1737,6 +1834,9 @@ onBeforeUnmount(stopPetLoop);
       <template v-else>
         <button class="link" type="button" @click="saveEdit">[完成]</button>
         <button class="link" type="button" @click="cancelEdit">[取消]</button>
+        <button class="link" type="button" :disabled="undoStack.length === 0" @click="undo">
+          [撤销]
+        </button>
       </template>
     </div>
 
@@ -1766,7 +1866,7 @@ onBeforeUnmount(stopPetLoop);
     <div v-if="editing" class="room-editor">
       <div class="room-row">
         <label>地板
-          <select v-model="draft.floor">
+          <select :value="draft.floor" @change="changeFloor">
             <option
               v-for="style in room.floors"
               :key="style.id"
@@ -1778,7 +1878,7 @@ onBeforeUnmount(stopPetLoop);
           </select>
         </label>
         <label>墙纸
-          <select v-model="draft.wall">
+          <select :value="draft.wall" @change="changeWall">
             <option
               v-for="style in room.walls"
               :key="style.id"

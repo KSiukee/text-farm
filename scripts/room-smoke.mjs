@@ -149,6 +149,11 @@ try {
   await clickText("+小窗", true);
   await new Promise((r) => setTimeout(r, 200));
   check("加窗后 2/5", (await bodyText()).includes("窗户 2/5"));
+  await clickText("[撤销]", true);
+  await new Promise((r) => setTimeout(r, 200));
+  check("撤销后回到 1/5", (await bodyText()).includes("窗户 1/5"));
+  await clickText("+小窗", true);
+  await new Promise((r) => setTimeout(r, 200));
   await evaluate(`(() => {
     const select = document.querySelectorAll('.room-editor select')[0];
     if (!select) return false;
