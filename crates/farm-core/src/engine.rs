@@ -25,8 +25,8 @@ use crate::npc::{
     RANCH_STEAL_DAILY_LIMIT, STEAL_DAILY_LIMIT,
 };
 use crate::pet::{
-    day_seed, guard_result_with_bonus, job_roll, ActiveSkillKind, PetBreed, PetLocation,
-    PetSpecies, PetState, PetSupplyKind, PetTrainingKind, PET_ACTIVE_LIMIT,
+    day_seed, guard_result_full, job_roll, ActiveSkillKind, PetBreed, PetLocation, PetSpecies,
+    PetState, PetSupplyKind, PetTalent, PetTrainingKind, PET_ACTIVE_LIMIT,
     PET_BOARD_FEE_PER_MONTH, PET_PLAY_COOLDOWN_MS, PET_TOUCH_COOLDOWN_MS,
 };
 use crate::planting;
@@ -147,6 +147,9 @@ impl Game {
             Action::UsePetMedicine { pet_id } => self.use_pet_medicine(&pet_id, now)?,
             Action::UsePetSkill { pet_id } => self.use_pet_skill(&pet_id, now)?,
             Action::TrainPet { pet_id, kind } => self.train_pet(&pet_id, kind, now)?,
+            Action::ChoosePetTalent { pet_id, talent } => {
+                self.choose_pet_talent(&pet_id, talent, now)?
+            }
             Action::BuySeed { crop_id, qty } => self.buy_seed(&crop_id, qty, now)?,
             Action::Sell { key, qty } => self.sell(&key, qty, now)?,
             Action::BuyFacility { kind } => self.buy_facility(kind, now)?,
@@ -1864,7 +1867,9 @@ impl Game {
             return Err(GameError::UnknownCrop);
         }
         let found = pool[(roll as usize) % pool.len()].clone();
-        let qty = if pet.level >= 10 && roll % 100 < 12 + u64::from(pet.dig_bonus()) {
+        let qty = if pet.level >= 10
+            && roll % 100 < 12 + u64::from(pet.dig_bonus()) + u64::from(pet.talent_dig_double())
+        {
             2
         } else {
             1
@@ -2056,6 +2061,30 @@ impl Game {
             pet.training_spent(),
             pet.training_cap()
         );
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn choose_pet_talent(
+        &mut self,
+        pet_id: &str,
+        talent: PetTalent,
+        now: i64,
+    ) -> Result<Vec<Effect>, GameError> {
+        let pos = self.pet_pos(pet_id)?;
+        let pet = &mut self.state.pets[pos];
+        if talent.species() != pet.species {
+            return Err(GameError::PetTalentInvalid);
+        }
+        if pet.level < talent.level_need() {
+            return Err(GameError::PetTalentLocked {
+                need: talent.level_need(),
+            });
+        }
+        if !pet.talents.pick(talent) {
+            return Ok(Vec::new());
+        }
+        let text = format!("{}学会了天赋「{}」", pet.name, talent.label());
         self.push_log(now, text.clone());
         Ok(vec![Effect::Log { text }])
     }
@@ -2973,14 +3002,14 @@ impl Game {
             }
             pet.last_job_day = today.to_string();
             let before = pet.job.level;
-            pet.job.gain(8);
+            pet.job.gain(pet.talent_job_exp());
             let level = pet.job.level;
             pet.bond = (pet.bond + 1).min(100);
             pet.mood = (pet.mood + 1).min(100);
             let name = pet.name.clone();
             let roll = job_roll(day_seed(today) as i64, &name);
             let chance = match pet.species {
-                PetSpecies::Dog => 50 + (level - 1) * 6,
+                PetSpecies::Dog => 50 + (level - 1) * 6 + pet.talent_ranch_chance(),
                 PetSpecies::Cat => 20 + (level - 1) * 5,
             };
             if roll % 100 < u64::from(chance) {
@@ -3044,7 +3073,8 @@ impl Game {
             return false;
         }
         let fishing_level = self.state.skills.fishing.level;
-        let pool = fishing::pet_fish_pool(&self.state.fishing, fishing_level);
+        let pool = fishing::pet_fish_pool(&self.state.fishing, fishing_level, 70);
+        let pool_keen = fishing::pet_fish_pool(&self.state.fishing, fishing_level, 120);
         let mut rewards: Vec<(String, Option<FishingJobReward>)> = Vec::new();
         for pet in &mut self.state.pets {
             if pet.boarded || pet.location != PetLocation::Fishing || pet.sickness.is_some() {
@@ -3055,7 +3085,7 @@ impl Game {
             }
             pet.last_job_day = today.to_string();
             let before = pet.fishing_job.level;
-            pet.fishing_job.gain(8);
+            pet.fishing_job.gain(pet.talent_job_exp());
             let job_level = pet.fishing_job.level;
             pet.bond = (pet.bond + 1).min(100);
             pet.mood = (pet.mood + 1).min(100);
@@ -3082,9 +3112,14 @@ impl Game {
                     }
                 }
                 PetSpecies::Cat => {
-                    let chance = 45 + (job_level - 1) * 6;
+                    let chance = 45 + (job_level - 1) * 6 + pet.talent_fishing_chance();
+                    let pool = if pet.talents.has(PetTalent::KeenEye) {
+                        &pool_keen
+                    } else {
+                        &pool
+                    };
                     let fish = if roll % 100 < u64::from(chance) {
-                        fishing::pick_from_pool(&pool, roll >> 8)
+                        fishing::pick_from_pool(pool, roll >> 8)
                     } else {
                         None
                     };
@@ -3498,7 +3533,7 @@ impl Game {
             })
             .cloned();
         if let Some(mut pet) = best {
-            let (scared, reduced) = guard_result_with_bonus(
+            let (scared, reduced) = guard_result_full(
                 pet.species,
                 pet.bond,
                 pet.energy,
@@ -3506,6 +3541,7 @@ impl Game {
                 base_loss,
                 roll >> 17,
                 pet.guard_bonus(),
+                pet.talent_loss_cut(),
             );
             pet.add_skill_exp(false, 5);
             if scared {

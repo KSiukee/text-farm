@@ -13,7 +13,7 @@ use crate::model::{
 };
 use crate::npc::{self, NpcMessageView, NpcView};
 use crate::pet::{
-    PetBreed, PetJob, PetLocation, PetSpecies, PetStage, PetState, PetSupplyKind,
+    PetBreed, PetJob, PetLocation, PetSpecies, PetStage, PetState, PetSupplyKind, PetTalent,
     PET_BOARD_FEE_PER_MONTH, PET_PLAY_COOLDOWN_MS, PET_TOUCH_COOLDOWN_MS,
 };
 use crate::ranch::{RanchAnimalKind, RanchRecipe, RANCH_MAX_PENS};
@@ -159,6 +159,24 @@ pub struct CodexView {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct PetTalentView {
+    pub id: PetTalent,
+    pub label: String,
+    pub description: String,
+    pub selected: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PetTalentTierView {
+    pub tier: u8,
+    pub threshold: u32,
+    pub unlocked: bool,
+    pub options: Vec<PetTalentView>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PetView {
     pub id: String,
     pub name: String,
@@ -198,6 +216,7 @@ pub struct PetView {
     pub training_spent: u32,
     pub training_cap: u32,
     pub training_center: bool,
+    pub talent_tiers: Vec<PetTalentTierView>,
     pub boarded: bool,
     pub boarding_fee: u64,
     pub stage: PetStage,
@@ -2242,6 +2261,28 @@ fn pet_view(pet: &PetState, now: i64) -> PetView {
     let dig_remaining = (pet.dig_cooldown_ms() - (now - pet.last_dig_at)).max(0);
     let remaining = pet.skill_remaining_ms(now);
     let activity = pet.activity(now);
+    let talent_tiers: Vec<PetTalentTierView> = (1..=3u8)
+        .map(|tier| {
+            let threshold = PetTalent::TIER_LEVELS[(tier - 1) as usize];
+            let options = PetTalent::ALL
+                .iter()
+                .copied()
+                .filter(|talent| talent.tier() == tier && talent.species() == pet.species)
+                .map(|talent| PetTalentView {
+                    id: talent,
+                    label: talent.label().into(),
+                    description: talent.description().into(),
+                    selected: pet.talents.has(talent),
+                })
+                .collect();
+            PetTalentTierView {
+                tier,
+                threshold,
+                unlocked: pet.level >= threshold,
+                options,
+            }
+        })
+        .collect();
     PetView {
         id: pet.id.clone(),
         name: pet.name.clone(),
@@ -2281,6 +2322,7 @@ fn pet_view(pet: &PetState, now: i64) -> PetView {
         training_spent: pet.training_spent(),
         training_cap: pet.training_cap(),
         training_center: false,
+        talent_tiers,
         boarded: pet.boarded,
         boarding_fee: PET_BOARD_FEE_PER_MONTH,
         stage: pet.stage(now),

@@ -41,6 +41,7 @@ import type {
   NpcView,
   PetBreed,
   PetLocation,
+  PetTalent,
   PlotView,
   RanchAnimalKind,
   RanchRecipe,
@@ -540,6 +541,12 @@ function repairPetSupply(kind: "dog_bed" | "cat_bed" | "dog_toy" | "cat_toy") {
 function trainPet(kind: "guard" | "dig" | "mischief" | "companion") {
   if (selectedPet.value) {
     void act({ type: "trainPet", petId: selectedPet.value.id, kind });
+  }
+}
+
+function choosePetTalent(talent: PetTalent) {
+  if (selectedPet.value) {
+    void act({ type: "choosePetTalent", petId: selectedPet.value.id, talent });
   }
 }
 
@@ -3807,6 +3814,35 @@ onUnmounted(() => {
           <div v-else-if="pet" class="pet-training">
             <div class="pet-care-title">训练中心</div>
             <p class="muted">农场 12 级可建设训练中心（20,000 金币），之后才能训练守护/挖掘/拆家/陪伴。</p>
+          </div>
+
+          <div v-if="pet" class="pet-training pet-talents">
+            <div class="pet-care-title">
+              天赋
+              <span class="muted">按等级解锁：Lv5 / Lv12 / Lv20；每层二选一，可随时改选</span>
+            </div>
+            <div class="pet-talent-grid">
+              <div v-for="tier in pet.talentTiers" :key="tier.tier" class="pet-talent-tier">
+                <div class="pet-talent-tier-title">
+                  Lv{{ tier.threshold }} 天赋
+                  <span v-if="!tier.unlocked" class="muted">· 还差 {{ tier.threshold - pet.level }} 级</span>
+                </div>
+                <div class="pet-talent-options">
+                  <button
+                    v-for="talent in tier.options"
+                    :key="talent.id"
+                    class="pet-talent-btn"
+                    :class="{ active: talent.selected }"
+                    type="button"
+                    :disabled="acting || !tier.unlocked"
+                    @click="choosePetTalent(talent.id)"
+                  >
+                    <strong>{{ talent.label }}</strong>
+                    <span class="muted">{{ talent.description }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       </div>

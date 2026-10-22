@@ -470,6 +470,21 @@ try {
   check("钓鱼页显示岸边帮忙的宠物", (await bodyText()).includes("在岸边帮忙"));
   await clickText("宠物", true);
   await waitFor(async () => (await bodyText()).includes("宠物用品"));
+  const talentPet = saveState().pets.find((pet) => !pet.boarded);
+  if (talentPet) {
+    await clickText(talentPet.name);
+    await new Promise((r) => setTimeout(r, 250));
+    const talentText = await bodyText();
+    check("天赋面板已显示", talentText.includes("天赋") && talentText.includes("Lv5 天赋"));
+    const talentLabel = talentPet.species === "dog" ? "守门" : "利爪";
+    await clickText(talentLabel, false);
+    await waitFor(async () => {
+      const current = saveState().pets.find((pet) => pet.id === talentPet.id);
+      return Boolean(current?.talents?.tier1);
+    });
+    const picked = saveState().pets.find((pet) => pet.id === talentPet.id)?.talents?.tier1;
+    check(`选择天赋（${talentLabel}）`, Boolean(picked), String(picked));
+  }
   const moodBeforeSkill = saveState().pets[0].mood;
   const activeLabel = personalityText.match(/\[主动 · ([^\]]+)\]/)?.[1] || "主动技能";
   await clickText("主动 ·", false);

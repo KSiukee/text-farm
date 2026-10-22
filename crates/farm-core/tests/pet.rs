@@ -1,6 +1,6 @@
 use farm_core::{
-    guard_result, Action, ContentPack, FishCodexEntry, Game, GameError, PetBreed, PetLocation,
-    PetSickness, PetSicknessKind, PetSpecies, PetState,
+    guard_result, guard_result_full, Action, ContentPack, FishCodexEntry, Game, GameError,
+    PetBreed, PetLocation, PetSickness, PetSicknessKind, PetSpecies, PetState, PetTalent,
 };
 
 fn bait_total(game: &Game) -> u32 {
@@ -635,4 +635,114 @@ fn offline_time_does_not_kill_the_pet() {
     let pet = game.snapshot(24 * 60 * 60 * 1000).pet.unwrap();
     assert!(pet.satiety < 80);
     assert!(pet.health > 0);
+}
+
+#[test]
+fn pet_talents_unlock_by_level_and_species() {
+    let mut game = game_with_pet(PetSpecies::Dog);
+    assert!(matches!(
+        game.dispatch(
+            Action::ChoosePetTalent {
+                pet_id: "pet_1".into(),
+                talent: PetTalent::Gatekeeper,
+            },
+            0
+        ),
+        Err(GameError::PetTalentLocked { need: 5 })
+    ));
+
+    game.state_mut().pets[0].level = 20;
+    assert!(matches!(
+        game.dispatch(
+            Action::ChoosePetTalent {
+                pet_id: "pet_1".into(),
+                talent: PetTalent::SharpClaw,
+            },
+            0
+        ),
+        Err(GameError::PetTalentInvalid)
+    ));
+
+    for talent in [PetTalent::Gatekeeper, PetTalent::NightWatch, PetTalent::IronWall] {
+        game.dispatch(
+            Action::ChoosePetTalent {
+                pet_id: "pet_1".into(),
+                talent,
+            },
+            0,
+        )
+        .unwrap();
+    }
+    let pet = &game.state().pets[0];
+    assert_eq!(pet.talents.tier1, Some(PetTalent::Gatekeeper));
+    assert_eq!(pet.talents.tier2, Some(PetTalent::NightWatch));
+    assert_eq!(pet.talents.tier3, Some(PetTalent::IronWall));
+
+    // 同层可以改选；不花钱、不占训练点。
+    game.dispatch(
+        Action::ChoosePetTalent {
+            pet_id: "pet_1".into(),
+            talent: PetTalent::Fetch,
+        },
+        0,
+    )
+    .unwrap();
+    assert_eq!(game.state().pets[0].talents.tier1, Some(PetTalent::Fetch));
+
+    // 视角里三层各两个选项，20 级全解锁。
+    let view = game.snapshot(0).pet.unwrap();
+    assert_eq!(view.talent_tiers.len(), 3);
+    assert!(view.talent_tiers.iter().all(|tier| tier.unlocked));
+    assert!(view
+        .talent_tiers
+        .iter()
+        .all(|tier| tier.options.len() == 2));
+    assert!(view.talent_tiers[0]
+        .options
+        .iter()
+        .any(|option| option.id == PetTalent::Fetch && option.selected));
+}
+
+#[test]
+fn pet_talent_effects_apply() {
+    let mut dog = PetState::new_breed("豆豆".into(), PetBreed::Corgi, 0);
+    let mut plain = dog.clone();
+    dog.level = 20;
+    plain.level = 20;
+    dog.dig_skill = 1;
+    plain.dig_skill = 1;
+    let base_guard = plain.guard_bonus();
+    dog.talents.pick(PetTalent::NightWatch);
+    assert_eq!(dog.talent_guard_bonus(), 5);
+    assert_eq!(dog.guard_bonus(), base_guard + 5);
+
+    dog.talents.pick(PetTalent::Fetch);
+    assert_eq!(
+        dog.dig_cooldown_ms(),
+        8 * 60 * 60 * 1000 - 30 * 60 * 1000
+    );
+    dog.talents.pick(PetTalent::Leader);
+    assert_eq!(dog.talent_job_exp(), 12);
+    assert_eq!(dog.talent_loss_cut(), 0);
+
+    let mut cat = PetState::new_breed("雪球".into(), PetBreed::Ragdoll, 0);
+    cat.level = 20;
+    let mut plain_cat = cat.clone();
+    cat.mood = 50;
+    plain_cat.mood = 50;
+    cat.talents.pick(PetTalent::Clingy);
+    cat.touch(0);
+    plain_cat.touch(0);
+    assert!(cat.mood > plain_cat.mood);
+
+    cat.talents.pick(PetTalent::FishingEye);
+    assert_eq!(cat.talent_fishing_chance(), 10);
+    cat.talents.pick(PetTalent::KeenEye);
+    assert_eq!(cat.talent_fish_price_cap(), 120);
+    assert_eq!(plain_cat.talent_fish_price_cap(), 70);
+
+    // 铁壁：守卫失败时再减 1 点损失。
+    let (scared, loss) = guard_result_full(PetSpecies::Dog, 10, 80, false, 4, 999, 0, 1);
+    assert!(!scared);
+    assert_eq!(loss, 1);
 }

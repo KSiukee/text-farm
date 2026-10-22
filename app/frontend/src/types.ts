@@ -26,6 +26,34 @@ export type PetBreed =
   | "coffee_cat";
 export type PetStage = "baby" | "adult" | "senior";
 export type PetLocation = "farm" | "ranch" | "pond" | "fishing";
+
+export type PetTalent =
+  | "gatekeeper"
+  | "fetch"
+  | "night_watch"
+  | "herding"
+  | "iron_wall"
+  | "leader"
+  | "sharp_claw"
+  | "clingy"
+  | "sly"
+  | "fishing_eye"
+  | "treasure_nose"
+  | "keen_eye";
+
+export interface PetTalentView {
+  id: PetTalent;
+  label: string;
+  description: string;
+  selected: boolean;
+}
+
+export interface PetTalentTierView {
+  tier: number;
+  threshold: number;
+  unlocked: boolean;
+  options: PetTalentView[];
+}
 export type PetSupplyKind = "dog_bed" | "cat_bed" | "bowl" | "dog_toy" | "cat_toy" | "medicine";
 export type PetTrainingKind = "guard" | "dig" | "mischief" | "companion";
 
@@ -293,6 +321,7 @@ export interface PetView {
   fishingJobLevel: number;
   fishingJobExp: number;
   fishingJobNeed: number;
+  talentTiers: PetTalentTierView[];
   canFeed: boolean;
   canTouch: boolean;
   canPlay: boolean;
@@ -1005,6 +1034,7 @@ export type Action =
   | { type: "usePetMedicine"; petId: string }
   | { type: "usePetSkill"; petId: string }
   | { type: "trainPet"; petId: string; kind: PetTrainingKind }
+  | { type: "choosePetTalent"; petId: string; talent: PetTalent }
   | { type: "buySeed"; cropId: string; qty: number }
   | { type: "sell"; key: string; qty: number }
   | { type: "buyFacility"; kind: FacilityKind }

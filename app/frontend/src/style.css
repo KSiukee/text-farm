@@ -296,6 +296,54 @@ textarea {
   font-size: 13px;
 }
 
+.pet-talent-grid {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.pet-talent-tier {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pet-talent-tier-title {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.pet-talent-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 6px;
+}
+
+.pet-talent-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pet-talent-btn.active {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  background: var(--accent-soft);
+}
+
+.pet-talent-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .breed-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));

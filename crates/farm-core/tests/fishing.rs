@@ -262,7 +262,7 @@ fn v26_fish_inventory_backfills_batches() {
         .unwrap()
         .remove("fishBatches");
     let migrated = farm_core::migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], serde_json::json!(33));
+    assert_eq!(migrated["schema"], serde_json::json!(34));
     let save: farm_core::SaveFile = serde_json::from_value(migrated).unwrap();
     let game = Game::from_save(save).unwrap();
     let batch = game.state().fishing.fish_batches.get("white_bait").unwrap();
@@ -853,7 +853,7 @@ fn catch_exp_scales_with_rarity_and_quality() {
 #[test]
 fn pet_fish_pool_only_returns_lit_unlocked_cheap_fish() {
     let mut fishing = farm_core::FishingState::new();
-    for id in ["white_bait", "carp", "creek_king", "eel"] {
+    for id in ["white_bait", "carp", "creek_king", "eel", "jiang_tuan"] {
         fishing.codex.insert(
             id.into(),
             FishCodexEntry {
@@ -864,7 +864,7 @@ fn pet_fish_pool_only_returns_lit_unlocked_cheap_fish() {
     }
 
     // 1 级只解锁小溪；河王是鱼王，即使点亮也不进池。
-    let pool = farm_core::pet_fish_pool(&fishing, 1);
+    let pool = farm_core::pet_fish_pool(&fishing, 1, 70);
     assert_eq!(pool.len(), 1);
     assert_eq!(pool[0].id, "white_bait");
     assert_eq!(
@@ -873,15 +873,20 @@ fn pet_fish_pool_only_returns_lit_unlocked_cheap_fish() {
     );
 
     // 5 级解锁河流；江面的鳗鲡仍被钓点门槛挡住。
-    let pool = farm_core::pet_fish_pool(&fishing, 5);
+    let pool = farm_core::pet_fish_pool(&fishing, 5, 70);
     let ids: Vec<&str> = pool.iter().map(|def| def.id).collect();
     assert!(ids.contains(&"carp"));
     assert!(!ids.contains(&"eel"));
     assert!(!ids.contains(&"creek_king"));
     assert!(farm_core::pick_from_pool(&pool, 99).is_some());
 
-    // 12 级解锁江面，但鳗鲡单价 160，超出宠物能叼回的上限。
-    let pool = farm_core::pet_fish_pool(&fishing, 12);
+    // 12 级解锁江面，但鳗鲡单价 160，超出默认 70 的上限；120 的江团正好能进慧眼池。
+    let pool = farm_core::pet_fish_pool(&fishing, 12, 70);
     assert!(!pool.iter().any(|def| def.id == "eel"));
+    assert!(!pool.iter().any(|def| def.id == "jiang_tuan"));
+    let keen = farm_core::pet_fish_pool(&fishing, 12, 120);
+    assert!(keen.iter().any(|def| def.id == "jiang_tuan"));
+    assert!(!keen.iter().any(|def| def.id == "eel"));
+    assert!(!keen.iter().any(|def| def.id == "creek_king"));
     assert!(farm_core::pick_from_pool(&[], 1).is_none());
 }

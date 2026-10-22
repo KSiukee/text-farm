@@ -13,7 +13,7 @@ use crate::room::RoomState;
 use crate::skills::PlayerSkills;
 use crate::workshop::WorkshopState;
 
-pub const SAVE_SCHEMA: u32 = 33;
+pub const SAVE_SCHEMA: u32 = 34;
 pub const MAX_LEVEL: u32 = 30;
 pub const PLOT_COUNT: usize = 8;
 pub const PLOT_MAX_TIER: u8 = 3;

@@ -212,6 +212,10 @@ pub enum GameError {
     TrainingLocked,
     #[error("训练点不够或这项已满级")]
     TrainingMax,
+    #[error("这只宠物不能学这个天赋")]
+    PetTalentInvalid,
+    #[error("天赋还没解锁，需要宠物 {need} 级")]
+    PetTalentLocked { need: u32 },
     #[error("设施需要 {need} 级")]
     FacilityLocked { need: u32 },
     #[error("内容包不合法：{0}")]
@@ -329,6 +333,8 @@ impl GameError {
             GameError::PetSkillCooldown => "pet_skill_cooldown",
             GameError::TrainingLocked => "training_locked",
             GameError::TrainingMax => "training_max",
+            GameError::PetTalentInvalid => "pet_talent_invalid",
+            GameError::PetTalentLocked { .. } => "pet_talent_locked",
             GameError::FacilityLocked { .. } => "facility_locked",
             GameError::InvalidContent(_) => "invalid_content",
             GameError::ContentRemovesUsedCrop(_) => "content_removes_used_crop",

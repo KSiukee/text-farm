@@ -214,6 +214,11 @@ pub enum Action {
         pet_id: String,
         kind: crate::pet::PetTrainingKind,
     },
+    ChoosePetTalent {
+        #[serde(rename = "petId")]
+        pet_id: String,
+        talent: crate::pet::PetTalent,
+    },
     BuySeed {
         #[serde(rename = "cropId")]
         crop_id: String,

@@ -1647,11 +1647,15 @@ impl FishBatch {
     }
 }
 
-/// 宠物能从钓鱼地带回的鱼：已点亮图鉴、钓点已解锁、非鱼王、单价不超过 70。
+/// 宠物能从钓鱼地带回的鱼：已点亮图鉴、钓点已解锁、非鱼王、单价不超过 `max_price`。
 /// 先算池子再抽，避免引擎在借用宠物时再去借 fishing 状态。
-pub fn pet_fish_pool(state: &FishingState, level: u32) -> Vec<&'static FishDef> {
+pub fn pet_fish_pool(
+    state: &FishingState,
+    level: u32,
+    max_price: u64,
+) -> Vec<&'static FishDef> {
     FISH.iter()
-        .filter(|def| def.rarity != FishRarity::King && def.price <= 70)
+        .filter(|def| def.rarity != FishRarity::King && def.price <= max_price)
         .filter(|def| state.spot_unlocked(level, def.spot))
         .filter(|def| {
             state

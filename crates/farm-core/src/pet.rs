@@ -105,6 +105,154 @@ impl PetSupplyKind {
     }
 }
 
+/// 宠物天赋：狗、猫各三层，每层二选一；按宠物等级解锁，可随时改选。
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum PetTalent {
+    // 狗
+    Gatekeeper,
+    Fetch,
+    NightWatch,
+    Herding,
+    IronWall,
+    Leader,
+    // 猫
+    SharpClaw,
+    Clingy,
+    Sly,
+    FishingEye,
+    TreasureNose,
+    KeenEye,
+}
+
+impl PetTalent {
+    pub const ALL: [PetTalent; 12] = [
+        PetTalent::Gatekeeper,
+        PetTalent::Fetch,
+        PetTalent::NightWatch,
+        PetTalent::Herding,
+        PetTalent::IronWall,
+        PetTalent::Leader,
+        PetTalent::SharpClaw,
+        PetTalent::Clingy,
+        PetTalent::Sly,
+        PetTalent::FishingEye,
+        PetTalent::TreasureNose,
+        PetTalent::KeenEye,
+    ];
+    /// 三层的解锁等级。
+    pub const TIER_LEVELS: [u32; 3] = [5, 12, 20];
+
+    pub fn species(self) -> PetSpecies {
+        match self {
+            PetTalent::Gatekeeper
+            | PetTalent::Fetch
+            | PetTalent::NightWatch
+            | PetTalent::Herding
+            | PetTalent::IronWall
+            | PetTalent::Leader => PetSpecies::Dog,
+            PetTalent::SharpClaw
+            | PetTalent::Clingy
+            | PetTalent::Sly
+            | PetTalent::FishingEye
+            | PetTalent::TreasureNose
+            | PetTalent::KeenEye => PetSpecies::Cat,
+        }
+    }
+
+    pub fn tier(self) -> u8 {
+        match self {
+            PetTalent::Gatekeeper
+            | PetTalent::Fetch
+            | PetTalent::SharpClaw
+            | PetTalent::Clingy => 1,
+            PetTalent::NightWatch
+            | PetTalent::Herding
+            | PetTalent::Sly
+            | PetTalent::FishingEye => 2,
+            PetTalent::IronWall
+            | PetTalent::Leader
+            | PetTalent::TreasureNose
+            | PetTalent::KeenEye => 3,
+        }
+    }
+
+    pub fn level_need(self) -> u32 {
+        Self::TIER_LEVELS[(self.tier() - 1) as usize]
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            PetTalent::Gatekeeper => "守门",
+            PetTalent::Fetch => "寻回",
+            PetTalent::NightWatch => "守夜",
+            PetTalent::Herding => "牧群",
+            PetTalent::IronWall => "铁壁",
+            PetTalent::Leader => "领头",
+            PetTalent::SharpClaw => "利爪",
+            PetTalent::Clingy => "黏人",
+            PetTalent::Sly => "潜行",
+            PetTalent::FishingEye => "鱼鹰",
+            PetTalent::TreasureNose => "寻宝",
+            PetTalent::KeenEye => "慧眼",
+        }
+    }
+
+    pub fn description(self) -> &'static str {
+        match self {
+            PetTalent::Gatekeeper => "守卫吓跑概率 +3%",
+            PetTalent::Fetch => "挖种子冷却 -30 分钟",
+            PetTalent::NightWatch => "守卫吓跑概率 +5%",
+            PetTalent::Herding => "牧场岗位产出概率 +8%",
+            PetTalent::IronWall => "守卫失败时再多减 1 点损失",
+            PetTalent::Leader => "牧场/钓鱼地岗位经验 +50%",
+            PetTalent::SharpClaw => "挖种子双倍概率 +5%",
+            PetTalent::Clingy => "摸摸心情 +15%",
+            PetTalent::Sly => "挖种子冷却 -45 分钟",
+            PetTalent::FishingEye => "钓鱼地叼鱼概率 +10%",
+            PetTalent::TreasureNose => "挖种子双倍概率再 +10%",
+            PetTalent::KeenEye => "钓鱼地可叼单价 ≤120 的鱼",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", default)]
+pub struct PetTalents {
+    pub tier1: Option<PetTalent>,
+    pub tier2: Option<PetTalent>,
+    pub tier3: Option<PetTalent>,
+}
+
+impl PetTalents {
+    pub fn get(self, tier: u8) -> Option<PetTalent> {
+        match tier {
+            1 => self.tier1,
+            2 => self.tier2,
+            3 => self.tier3,
+            _ => None,
+        }
+    }
+
+    pub fn has(self, talent: PetTalent) -> bool {
+        self.get(talent.tier()) == Some(talent)
+    }
+
+    /// 记下这一层的选择；返回是否真的变了。
+    pub fn pick(&mut self, talent: PetTalent) -> bool {
+        let slot = match talent.tier() {
+            1 => &mut self.tier1,
+            2 => &mut self.tier2,
+            _ => &mut self.tier3,
+        };
+        if *slot == Some(talent) {
+            return false;
+        }
+        *slot = Some(talent);
+        true
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum PetBreed {
@@ -1141,6 +1289,8 @@ pub struct PetState {
     #[serde(default)]
     pub training: PetTraining,
     #[serde(default)]
+    pub talents: PetTalents,
+    #[serde(default)]
     pub personality: PetPersonality,
     #[serde(default)]
     pub last_mischief_day: String,
@@ -1189,6 +1339,7 @@ impl Default for PetState {
             guard_skill: 1,
             guard_exp: 0,
             training: PetTraining::default(),
+            talents: PetTalents::default(),
             personality: PetPersonality::default(),
             last_mischief_day: String::new(),
             last_activity_day: String::new(),
@@ -1314,11 +1465,83 @@ impl PetState {
             + self.training.guard * 3
             + self.personality.guard_bonus()
             + self.breed.signature().guard_bonus.max(0) as u32
+            + self.talent_guard_bonus()
+    }
+
+    pub fn talent_guard_bonus(&self) -> u32 {
+        let mut bonus = 0;
+        if self.talents.has(PetTalent::Gatekeeper) {
+            bonus += 3;
+        }
+        if self.talents.has(PetTalent::NightWatch) {
+            bonus += 5;
+        }
+        bonus
+    }
+
+    pub fn talent_dig_double(&self) -> u32 {
+        let mut bonus = 0;
+        if self.talents.has(PetTalent::SharpClaw) {
+            bonus += 5;
+        }
+        if self.talents.has(PetTalent::TreasureNose) {
+            bonus += 10;
+        }
+        bonus
+    }
+
+    pub fn talent_dig_cut_ms(&self) -> i64 {
+        let mut cut = 0;
+        if self.talents.has(PetTalent::Fetch) {
+            cut += 30 * 60 * 1000;
+        }
+        if self.talents.has(PetTalent::Sly) {
+            cut += 45 * 60 * 1000;
+        }
+        cut
+    }
+
+    pub fn talent_loss_cut(&self) -> u32 {
+        u32::from(self.talents.has(PetTalent::IronWall))
+    }
+
+    pub fn talent_job_exp(&self) -> u64 {
+        if self.talents.has(PetTalent::Leader) {
+            12
+        } else {
+            8
+        }
+    }
+
+    pub fn talent_ranch_chance(&self) -> u32 {
+        if self.talents.has(PetTalent::Herding) {
+            8
+        } else {
+            0
+        }
+    }
+
+    pub fn talent_fishing_chance(&self) -> u32 {
+        if self.talents.has(PetTalent::FishingEye) {
+            10
+        } else {
+            0
+        }
+    }
+
+    pub fn talent_fish_price_cap(&self) -> u64 {
+        if self.talents.has(PetTalent::KeenEye) {
+            120
+        } else {
+            70
+        }
     }
 
     pub fn dig_cooldown_ms(&self) -> i64 {
-        (PET_DIG_COOLDOWN_MS - i64::from(self.dig_skill.saturating_sub(1)) * PET_DIG_SKILL_STEP_MS)
-            .max(4 * 60 * 60 * 1000)
+        (PET_DIG_COOLDOWN_MS
+            - i64::from(self.dig_skill.saturating_sub(1)) * PET_DIG_SKILL_STEP_MS
+            - self.talent_dig_cut_ms())
+        .max(4 * 60 * 60 * 1000)
     }
 
     pub fn active_skill(&self) -> BreedActive {
@@ -1622,7 +1845,10 @@ impl PetState {
     pub fn touch(&mut self, now: i64) -> u64 {
         let base = (self.breed.profile().touch_pct + self.training.companion * 5) as i32
             + self.breed.signature().touch_pct;
-        let pct = (base.max(50) as u32) * self.personality.touch_pct() / 100;
+        let mut pct = (base.max(50) as u32) * self.personality.touch_pct() / 100;
+        if self.talents.has(PetTalent::Clingy) {
+            pct = pct * 115 / 100;
+        }
         self.mood = (self.mood + (8 * pct / 100).max(1)).min(100);
         self.bond = (self.bond + 1).min(100);
         self.last_pet_at = now;
@@ -1705,6 +1931,21 @@ pub fn guard_result_with_bonus(
     roll: u64,
     bonus: u32,
 ) -> (bool, u32) {
+    guard_result_full(species, bond, energy, sick, loss, roll, bonus, 0)
+}
+
+/// 带天赋「铁壁」的版本：吓跑失败后还能再减 `loss_cut` 点损失。
+#[allow(clippy::too_many_arguments)]
+pub fn guard_result_full(
+    species: PetSpecies,
+    bond: u32,
+    energy: u32,
+    sick: bool,
+    loss: u32,
+    roll: u64,
+    bonus: u32,
+    loss_cut: u32,
+) -> (bool, u32) {
     if sick || energy < 20 {
         return (false, loss);
     }
@@ -1713,5 +1954,5 @@ pub fn guard_result_with_bonus(
     if roll % 100 < u64::from(scare_chance) {
         return (true, 0);
     }
-    (false, loss.div_ceil(2).max(1))
+    (false, loss.div_ceil(2).max(1).saturating_sub(loss_cut))
 }

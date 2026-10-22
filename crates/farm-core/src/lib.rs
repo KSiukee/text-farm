@@ -76,10 +76,11 @@ pub use npc::{
     NPC_VISIT_CAP, STEAL_DAILY_LIMIT,
 };
 pub use pet::{
-    guard_result, PetActivity, PetBreed, PetCare, PetLocation, PetPersonality, PetQuirk,
-    PetSickness, PetSicknessKind, PetSpecies, PetStage, PetState, PetSupplyKind, PetTraining,
-    PetTrainingKind, PetTrait, PET_ACTIVE_LIMIT, PET_BOARD_FEE_PER_MONTH, PET_DIG_COOLDOWN_MS,
-    PET_MAX_LEVEL, PET_PLAY_COOLDOWN_MS, PET_TOUCH_COOLDOWN_MS,
+    guard_result, guard_result_full, PetActivity, PetBreed, PetCare, PetLocation, PetPersonality,
+    PetQuirk, PetSickness, PetSicknessKind, PetSpecies, PetStage, PetState, PetSupplyKind,
+    PetTalent, PetTalents, PetTraining, PetTrainingKind, PetTrait, PET_ACTIVE_LIMIT,
+    PET_BOARD_FEE_PER_MONTH, PET_DIG_COOLDOWN_MS, PET_MAX_LEVEL, PET_PLAY_COOLDOWN_MS,
+    PET_TOUCH_COOLDOWN_MS,
 };
 pub use planting::{
     growth_pct as planting_growth_pct, harvest_exp, seed_return_pct, water_extra_pct, yield_bonus,
@@ -111,7 +112,8 @@ pub use specimen::{recipe as specimen_recipe, SpecimenRecipe};
 pub use view::{
     BaitRecipeView, BaitTypeView, BuffItemView, BuffView, CodexView, CropView, DisasterView,
     DisciplineView, FacilityView, FishRecipeView, ItemKind, ItemStack, KingTrophyView, PestView,
-    NpcRoomView, PetView, PlotEffectsView, PlotStatus, PlotView, RoomView, RoomWindowStyleView,
+    NpcRoomView, PetTalentTierView, PetTalentView, PetView, PlotEffectsView, PlotStatus, PlotView,
+    RoomView, RoomWindowStyleView,
     SkillView, SkillsView, Snapshot, SpecimenView, SpotProgressView,
 };
 pub use workshop::{
