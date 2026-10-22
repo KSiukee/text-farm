@@ -758,11 +758,11 @@ function drawWindows(ctx: CanvasRenderingContext2D) {
       ctx.clip();
       const w = backdrop.naturalWidth;
       const h = backdrop.naturalHeight;
-      const topX = (points[1].x - points[0].x) / w;
-      const topY = (points[1].y - points[0].y) / w;
-      const leftX = (points[3].x - points[0].x) / h;
-      const leftY = (points[3].y - points[0].y) / h;
-      ctx.transform(topX, topY, leftX, leftY, points[0].x, points[0].y);
+      const topX = (points[2].x - points[3].x) / w;
+      const topY = (points[2].y - points[3].y) / w;
+      const leftX = (points[0].x - points[3].x) / h;
+      const leftY = (points[0].y - points[3].y) / h;
+      ctx.transform(topX, topY, leftX, leftY, points[3].x, points[3].y);
       ctx.globalAlpha = 0.95;
       ctx.drawImage(backdrop, 0, 0);
       ctx.restore();
