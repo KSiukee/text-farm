@@ -122,6 +122,18 @@ async function main() {
     await new Promise((r) => setTimeout(r, 1200));
     const text = await bodyText();
     check("呼唤后 3/3", text.includes("3/3"), text.match(/呼唤宠物[^\n]*/)?.[0] ?? "");
+    const sampleFrame = async () =>
+      evaluate(`(() => {
+        const c = document.querySelector('.room-canvas');
+        const data = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+        let hash = 0;
+        for (let i = 0; i < data.length; i += 97) hash = (hash * 31 + data[i]) >>> 0;
+        return hash;
+      })()`);
+    const frameA = await sampleFrame();
+    await new Promise((r) => setTimeout(r, 800));
+    const frameB = await sampleFrame();
+    check("房间画面逐帧变化（宠物动画）", frameA !== frameB, `${frameA} -> ${frameB}`);
     await screenshot(shot);
     check("宠物房间截图", true, shot);
   } finally {

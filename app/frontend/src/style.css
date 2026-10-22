@@ -388,11 +388,119 @@ textarea {
   text-align: center;
 }
 
+.pet-portrait-stage {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
 .pet-portrait-img {
   width: min(240px, 100%);
   height: auto;
   image-rendering: pixelated;
   background: transparent;
+  animation: pet-idle-bob 2.6s steps(1, end) infinite;
+  transform-origin: 50% 100%;
+}
+
+.pet-portrait-img.pet-still {
+  animation: none;
+}
+
+.pet-portrait-img.happy {
+  animation: pet-happy 0.9s ease-out;
+}
+
+.pet-portrait-img.play {
+  animation: pet-play 0.9s ease-in-out;
+}
+
+.pet-portrait-img.eat {
+  animation: pet-eat 0.9s ease-in-out;
+}
+
+.pet-emote {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  font-size: 30px;
+  line-height: 1;
+  pointer-events: none;
+  animation: pet-emote-rise 0.9s ease-out forwards;
+}
+
+@keyframes pet-idle-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes pet-happy {
+  0% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(-16px);
+  }
+  70% {
+    transform: translateY(2px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes pet-play {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-12px);
+  }
+  40% {
+    transform: translateX(12px);
+  }
+  60% {
+    transform: translateX(-8px);
+  }
+  80% {
+    transform: translateX(6px);
+  }
+}
+
+@keyframes pet-eat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(5px);
+  }
+  60% {
+    transform: translateY(-2px);
+  }
+  80% {
+    transform: translateY(4px);
+  }
+}
+
+@keyframes pet-emote-rise {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 10px) scale(0.7);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -30px) scale(1.1);
+  }
 }
 
 .pet-name {
@@ -491,6 +599,29 @@ textarea {
   height: 64px;
   object-fit: contain;
   image-rendering: pixelated;
+  animation: farm-pet-bob 3.2s steps(1, end) infinite;
+}
+
+@keyframes farm-pet-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pet-portrait-img,
+  .farm-pet-strip img {
+    animation: none !important;
+  }
+  .pet-emote {
+    animation: none;
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 .farm-pet-strip span {

@@ -343,6 +343,20 @@ const selectedPet = computed(
 );
 const pet = computed(() => selectedPet.value ?? snapshot.value?.pet ?? null);
 const petCare = computed(() => snapshot.value?.petCare ?? null);
+const petAnim = ref<"" | "happy" | "play" | "eat">("");
+const petEmote = ref("");
+let petAnimTimer: number | undefined;
+
+function playPetAnim(kind: "happy" | "play" | "eat", emote: string) {
+  petAnim.value = kind;
+  petEmote.value = emote;
+  if (petAnimTimer !== undefined) window.clearTimeout(petAnimTimer);
+  petAnimTimer = window.setTimeout(() => {
+    petAnim.value = "";
+    petEmote.value = "";
+    petAnimTimer = undefined;
+  }, 900);
+}
 const boardingTotal = computed(() => boardedPets.value.length * 3_000);
 const nextBoardingMonth = computed(() => {
   const date = new Date();
@@ -499,18 +513,29 @@ function feedPet() {
   const target = selectedPet.value;
   const cropId = feedCropId.value || produce.value[0]?.key.replace("crop:", "");
   if (target && cropId) {
+    playPetAnim("eat", "🍖");
     void act({ type: "feedPet", petId: target.id, cropId });
   }
 }
 
 function petAction(action: "petCompanion" | "playWithPet" | "healPet" | "digWithPet") {
   if (selectedPet.value) {
+    if (action === "petCompanion") {
+      playPetAnim("happy", "❤️");
+    } else if (action === "playWithPet") {
+      playPetAnim("play", "🎾");
+    } else if (action === "healPet") {
+      playPetAnim("happy", "💊");
+    } else {
+      playPetAnim("happy", "🌱");
+    }
     void act({ type: action, petId: selectedPet.value.id });
   }
 }
 
 function usePetSkill() {
   if (selectedPet.value) {
+    playPetAnim("happy", "✨");
     void act({ type: "usePetSkill", petId: selectedPet.value.id });
   }
 }
@@ -3480,7 +3505,15 @@ onUnmounted(() => {
 
             <div v-if="pet" class="pet-layout">
             <div class="pet-portrait">
-              <img class="pet-portrait-img" :src="pet.image" :alt="pet.species" />
+              <div class="pet-portrait-stage">
+                <img
+                  class="pet-portrait-img"
+                  :class="[petAnim, { 'pet-still': pet.boarded || pet.sickness }]"
+                  :src="pet.image"
+                  :alt="pet.species"
+                />
+                <span v-if="petEmote" class="pet-emote">{{ petEmote }}</span>
+              </div>
               <div class="pet-name">{{ pet.speciesEmoji }} {{ pet.name }}</div>
               <div class="muted">
                 {{ pet.breedLabel }} · {{ pet.temperamentLabel }} · {{ pet.stageLabel }} · Lv{{ pet.level }} ·

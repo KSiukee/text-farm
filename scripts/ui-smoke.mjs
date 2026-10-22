@@ -1,5 +1,5 @@
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -10,6 +10,7 @@ const shadowDir = join(root, "shadow", "ui-smoke");
 const savePath = join(shadowDir, "save.json");
 const reportPath = join(root, "docs", "ui-smoke-report.md");
 const screenshotPath = join(root, "docs", "v0210-ui-smoke.png");
+const animationScreenshotPath = join(root, "docs", "pet-anim-v071.png");
 const trainingScreenshotPath = join(root, "docs", "v0210-ui-smoke-training.png");
 const ranchScreenshotPath = join(root, "docs", "ranch-v028.png");
 const workshopScreenshotPath = join(root, "docs", "workshop-v031.png");
@@ -75,6 +76,8 @@ function seedSave() {
     pet.mood = 20;
     pet.health = 100;
     pet.sickness = null;
+    pet.lastTickAt = Date.now();
+    pet.lastSickDay = "2099-01-01";
     pet.training = { guard: 0, dig: 0, mischief: 0, companion: 0 };
     pet.lastMischiefDay = "2026-10-18";
     pet.lastActivityDay = "2026-10-18";
@@ -122,6 +125,9 @@ function seedSave() {
   state.boardingDebt = 0;
   state.lastBoardingMonth = "2026-09";
   mkdirSync(shadowDir, { recursive: true });
+  rmSync(savePath, { force: true });
+  rmSync(`${savePath}.bak`, { force: true });
+  rmSync(join(shadowDir, "backups"), { recursive: true, force: true });
   writeFileSync(savePath, JSON.stringify(save, null, 2), "utf8");
 }
 
@@ -223,6 +229,19 @@ async function clickText(text, exact = true, nth = 0) {
   await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: found.x, y: found.y, button: "left", clickCount: 1 });
   await new Promise((r) => setTimeout(r, 260));
   return found.text;
+}
+
+async function clickDom(selector, text) {
+  const clicked = await evaluate(`(() => {
+    const el = [...document.querySelectorAll(${JSON.stringify(selector)})].find(
+      (item) => (item.innerText || '').trim() === ${JSON.stringify(text)}
+    );
+    if (!el) return false;
+    el.click();
+    return true;
+  })()`);
+  if (!clicked) throw new Error(`找不到 ${selector} 里的「${text}」`);
+  await new Promise((r) => setTimeout(r, 250));
 }
 
 async function pressKey(key, code, vk) {
@@ -354,6 +373,36 @@ try {
     `pets=${before.pets.length}`,
   );
   check("狗窝初始为损坏", before.petCare.dogBedBroken === true);
+  const animCards = await evaluate(
+    `[...document.querySelectorAll('.pet-select-card')].map((el) => el.innerText.trim()).filter((text) => !text.includes('寄养'))`,
+  );
+  for (const name of animCards) {
+    await clickDom(".pet-select-card", name);
+    const still = await evaluate(
+      `document.querySelector('.pet-portrait-img')?.className.includes('pet-still')`,
+    );
+    if (!still) break;
+  }
+  const idleState = await evaluate(`({
+    reduce: matchMedia('(prefers-reduced-motion: reduce)').matches,
+    name: getComputedStyle(document.querySelector('.pet-portrait-img')).animationName,
+    classes: document.querySelector('.pet-portrait-img').className,
+  })`);
+  check(
+    "宠物头像有待机动画",
+    !idleState.classes.includes("pet-still") &&
+      (idleState.reduce
+        ? idleState.name === "none"
+        : idleState.name.includes("pet-idle-bob")),
+    JSON.stringify(idleState),
+  );
+  await clickText("[喂食]", false);
+  await new Promise((r) => setTimeout(r, 120));
+  const petEmote = await evaluate(`document.querySelector('.pet-emote')?.textContent || ''`);
+  check("互动触发宠物动画和表情", petEmote.includes("🍖"), petEmote);
+  await screenshot(animationScreenshotPath);
+  check("宠物动画截图已保存", existsSync(animationScreenshotPath), animationScreenshotPath);
+  await new Promise((r) => setTimeout(r, 900));
   await clickText("畜牧场", false);
   const ranchText = await bodyText();
   check("畜牧场 3 个畜栏", ranchText.includes("畜栏 1") && ranchText.includes("畜栏 3"));

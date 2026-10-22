@@ -1260,6 +1260,36 @@ function updatePets(dt: number) {
   }
 }
 
+function drawPetSteps(
+  ctx: CanvasRenderingContext2D,
+  actor: PetActor,
+  footX: number,
+  footY: number,
+) {
+  const dir = actor.dir === "right" ? 1 : -1;
+  ctx.save();
+  ctx.fillStyle = "#8a7a63";
+  for (let i = 0; i < 2; i++) {
+    const t = (actor.phase * 1.7 + i * 0.5) % 1;
+    ctx.globalAlpha = (1 - t) * 0.16;
+    ctx.beginPath();
+    ctx.arc(footX - dir * (4 + t * 9), footY - 1 - t * 2, 1.2 + t * 1.1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawPetSnooze(ctx: CanvasRenderingContext2D, base: P, phase: number) {
+  const lift = 1.5 + Math.sin(phase * 1.5) * 1.5;
+  ctx.save();
+  ctx.fillStyle = `rgba(96,112,86,${0.32 + 0.18 * (0.5 + 0.5 * Math.sin(phase * 1.5))})`;
+  ctx.font = "7px 'Segoe UI', sans-serif";
+  ctx.fillText("z", base.x + 9, base.y - PET_HEIGHT - 2 + lift);
+  ctx.font = "5px 'Segoe UI', sans-serif";
+  ctx.fillText("z", base.x + 14, base.y - PET_HEIGHT - 8 + lift);
+  ctx.restore();
+}
+
 function drawPets(ctx: CanvasRenderingContext2D) {
   if (editing.value || props.readonly) return;
   const actors = [...petActors.value].sort((a, b) => a.y - b.y);
@@ -1275,10 +1305,24 @@ function drawPets(ctx: CanvasRenderingContext2D) {
     const footY = base.y - (img.naturalHeight - foot.y) * footScale;
     softShadow(ctx, footX, footY - 1, Math.max(10, foot.width * footScale * 0.8), 3.5, 0.12);
 
-    const bob = actor.state === "walk" ? Math.sin(actor.phase * 9) * 1.5 : 0;
-    const squash = actor.state === "sit" ? 0.9 : actor.state === "sleep" ? 0.82 : 1;
+    const walking = actor.state === "walk";
+    const breath = Math.sin(actor.phase * 2.2);
+    let bob = 0;
+    let squash = 1;
+    if (walking) {
+      bob = Math.sin(actor.phase * 9) * 1.5;
+      drawPetSteps(ctx, actor, footX, footY);
+    } else if (actor.state === "idle") {
+      bob = breath > 0.55 ? -1 : 0;
+    } else if (actor.state === "sit") {
+      bob = breath > 0.7 ? -0.5 : 0;
+      squash = 0.9;
+    } else if (actor.state === "sleep") {
+      squash = 0.82 + Math.sin(actor.phase * 1.4) * 0.012;
+    }
+
     ctx.save();
-    ctx.translate(base.x, base.y + bob);
+    ctx.translate(base.x, Math.round(base.y + bob));
     if (actor.dir === "right") ctx.scale(-1, 1);
     ctx.scale(1, squash);
     if (actor.state === "sleep") ctx.globalAlpha = 0.9;
@@ -1286,6 +1330,8 @@ function drawPets(ctx: CanvasRenderingContext2D) {
     ctx.imageSmoothingQuality = "high";
     ctx.drawImage(img, -width / 2, -PET_HEIGHT, width, PET_HEIGHT);
     ctx.restore();
+
+    if (actor.state === "sleep") drawPetSnooze(ctx, base, actor.phase);
   }
 }
 
