@@ -40,6 +40,7 @@ import type {
   ItemStack,
   NpcView,
   PetBreed,
+  PetLocation,
   PlotView,
   RanchAnimalKind,
   RanchRecipe,
@@ -328,6 +329,9 @@ const activeBaitTypeLabel = computed(
 const pets = computed(() => snapshot.value?.pets ?? []);
 const activePets = computed(() => pets.value.filter((item) => !item.boarded));
 const boardedPets = computed(() => pets.value.filter((item) => item.boarded));
+const fishingPet = computed(
+  () => activePets.value.find((item) => item.location === "fishing") ?? null,
+);
 const selectedPetId = ref("");
 const selectedPet = computed(
   () =>
@@ -992,7 +996,7 @@ function collectCraft(slot: number) {
   void act({ type: "collectCraft", slot });
 }
 
-function setPetLocation(petId: string, location: "farm" | "ranch") {
+function setPetLocation(petId: string, location: PetLocation) {
   void act({ type: "setPetLocation", petId, location });
 }
 
@@ -2905,6 +2909,10 @@ onUnmounted(() => {
                 {{ currentSpot?.emoji }} {{ currentSpot?.label }} · {{ fishing.rodLabel }} ·
                 {{ activeBaitTypeLabel }}{{ activeBaitInfo?.label }} ×{{ activeBaitInfo?.count ?? 0 }}
               </div>
+              <div v-if="fishingPet" class="fish-hero-meta">
+                🐾 {{ fishingPet.name }}在岸边帮忙 · 钓鱼地岗位 Lv{{ fishingPet.fishingJobLevel }}
+                <span class="muted">（每天结算一次）</span>
+              </div>
             </div>
             <div class="fish-hero-side">
               <span class="fish-auto-pill" :class="{ on: fishing.auto.enabled }">
@@ -3435,7 +3443,7 @@ onUnmounted(() => {
                   [取消]
                 </button>
               </div>
-              <p class="muted">不会死亡；生病可治疗。先只开放农场，牧场/鱼塘/钓鱼地留给以后。</p>
+              <p class="muted">不会死亡；生病可治疗。可派去牧场或钓鱼地；鱼塘等扩展位以后再做。</p>
             </div>
           </div>
 
@@ -3489,7 +3497,14 @@ onUnmounted(() => {
                 牧场岗位 Lv{{ pet.jobLevel }}
                 <span class="muted">（{{ pet.jobExp }}/{{ pet.jobNeed }}）· 每天结算一次看护收益</span>
               </div>
-              <div v-else class="pet-job muted">牧场岗位 Lv{{ pet.jobLevel }} · 派去牧场后每天有收益</div>
+              <div v-else-if="pet.location === 'fishing'" class="pet-job">
+                钓鱼地岗位 Lv{{ pet.fishingJobLevel }}
+                <span class="muted">（{{ pet.fishingJobExp }}/{{ pet.fishingJobNeed }}）· 每天结算一次岸边收益</span>
+              </div>
+              <div v-else class="pet-job muted">
+                牧场岗位 Lv{{ pet.jobLevel }} · 钓鱼地岗位 Lv{{ pet.fishingJobLevel }} ·
+                派去对应地点后每天有收益
+              </div>
             </div>
             <div class="pet-info">
               <div v-if="pet.boarded" class="warn">
@@ -3615,8 +3630,8 @@ onUnmounted(() => {
                 <span class="muted">地点：</span>
                 <button class="rate-btn" :class="{ active: pet.location === 'farm' }" type="button" :disabled="acting" @click="setPetLocation(pet.id, 'farm')">农场</button>
                 <button class="rate-btn" :class="{ active: pet.location === 'ranch' }" type="button" :disabled="acting" @click="setPetLocation(pet.id, 'ranch')">牧场</button>
+                <button class="rate-btn" :class="{ active: pet.location === 'fishing' }" type="button" :disabled="acting" @click="setPetLocation(pet.id, 'fishing')">钓鱼地</button>
                 <button class="rate-btn" type="button" disabled>鱼塘（以后）</button>
-                <button class="rate-btn" type="button" disabled>钓鱼地（以后）</button>
               </div>
 
               <div class="row">
@@ -3635,6 +3650,7 @@ onUnmounted(() => {
               </div>
               <p class="muted">
                 挖到的种子直接进仓库；守卫会减少偷菜损失，狗狗有低概率把偷菜贼吓跑。
+                钓鱼地岗位：猫有概率叼回一条已点亮图鉴的鱼，狗会找鱼饵；每天只结算一个岗位。
               </p>
             </div>
           </div>

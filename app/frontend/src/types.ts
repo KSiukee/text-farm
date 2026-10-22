@@ -290,6 +290,9 @@ export interface PetView {
   jobLevel: number;
   jobExp: number;
   jobNeed: number;
+  fishingJobLevel: number;
+  fishingJobExp: number;
+  fishingJobNeed: number;
   canFeed: boolean;
   canTouch: boolean;
   canPlay: boolean;

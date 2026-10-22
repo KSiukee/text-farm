@@ -63,6 +63,13 @@ enum RanchJobReward {
     Feed,
 }
 
+/// 宠物钓鱼地岗位的日结奖励：猫叼鱼 / 狗找饵，兜底金币或面团饵。
+enum FishingJobReward {
+    Coins(u64),
+    Bait(fishing::BaitType, u32),
+    Fish(&'static fishing::FishDef, u32, u64),
+}
+
 impl Game {
     pub fn dispatch(&mut self, action: Action, now: i64) -> Result<Outcome, GameError> {
         let effects = match action {
@@ -3032,6 +3039,114 @@ impl Game {
         changed
     }
 
+    fn fishing_job_tick(&mut self, now: i64, today: &str) -> bool {
+        if self.state.pets.is_empty() {
+            return false;
+        }
+        let fishing_level = self.state.skills.fishing.level;
+        let pool = fishing::pet_fish_pool(&self.state.fishing, fishing_level);
+        let mut rewards: Vec<(String, Option<FishingJobReward>)> = Vec::new();
+        for pet in &mut self.state.pets {
+            if pet.boarded || pet.location != PetLocation::Fishing || pet.sickness.is_some() {
+                continue;
+            }
+            if pet.last_job_day == today {
+                continue;
+            }
+            pet.last_job_day = today.to_string();
+            let before = pet.fishing_job.level;
+            pet.fishing_job.gain(8);
+            let job_level = pet.fishing_job.level;
+            pet.bond = (pet.bond + 1).min(100);
+            pet.mood = (pet.mood + 1).min(100);
+            let name = pet.name.clone();
+            // 牧场岗位用当天同一个种子；这里加盐，免得同一只宠物在两个岗位摇出同样结果。
+            let roll = job_roll(day_seed(today) as i64 ^ 0x4649_5348, &name);
+            match pet.species {
+                PetSpecies::Dog => {
+                    let chance = 50 + (job_level - 1) * 5;
+                    if roll % 100 < u64::from(chance) {
+                        let kinds = [
+                            fishing::BaitType::Dough,
+                            fishing::BaitType::Corn,
+                            fishing::BaitType::Worm,
+                        ];
+                        let kind = kinds[((roll >> 8) % 3) as usize];
+                        let qty = 1 + ((roll >> 16) % 2) as u32;
+                        let text = format!("{name}在钓鱼地刨了刨，叼回 {qty} 份{}", kind.label());
+                        rewards.push((text, Some(FishingJobReward::Bait(kind, qty))));
+                    } else {
+                        let coins = 40 + u64::from(job_level) * 5;
+                        let text = format!("{name}在岸边守了一天鱼护，帮你省下 {coins} 金币");
+                        rewards.push((text, Some(FishingJobReward::Coins(coins))));
+                    }
+                }
+                PetSpecies::Cat => {
+                    let chance = 45 + (job_level - 1) * 6;
+                    let fish = if roll % 100 < u64::from(chance) {
+                        fishing::pick_from_pool(&pool, roll >> 8)
+                    } else {
+                        None
+                    };
+                    match fish {
+                        Some(def) => {
+                            let weight = 8 + ((roll >> 24) % 5) as u32;
+                            let value = fishing::price_for(def, weight, 1, 100);
+                            let text = format!(
+                                "{name}在钓鱼地蹲了半天，叼回一条{}（{:.1}kg）",
+                                def.name,
+                                f64::from(weight) / 10.0
+                            );
+                            rewards.push((text, Some(FishingJobReward::Fish(def, weight, value))));
+                        }
+                        None => {
+                            let text = format!("{name}在岸边扒拉了半天，带回 2 份面团饵");
+                            rewards.push((
+                                text,
+                                Some(FishingJobReward::Bait(fishing::BaitType::Dough, 2)),
+                            ));
+                        }
+                    }
+                }
+            }
+            if job_level > before {
+                let text = format!("{name}的钓鱼地岗位升到 {job_level} 级");
+                rewards.push((text, None));
+            }
+        }
+        let changed = !rewards.is_empty();
+        for (text, reward) in rewards {
+            match reward {
+                Some(FishingJobReward::Coins(coins)) => {
+                    self.state.coins = self.state.coins.saturating_add(coins);
+                    self.state.stats.coins_earned =
+                        self.state.stats.coins_earned.saturating_add(coins);
+                }
+                Some(FishingJobReward::Bait(kind, qty)) => {
+                    self.state
+                        .fishing
+                        .add_bait_of(kind, fishing::BaitQuality::Normal, qty);
+                }
+                Some(FishingJobReward::Fish(def, weight, value)) => {
+                    *self
+                        .state
+                        .inventory
+                        .entry(format!("fish:{}", def.id))
+                        .or_insert(0) += 1;
+                    self.state
+                        .fishing
+                        .fish_batches
+                        .entry(def.id.to_string())
+                        .or_default()
+                        .add(weight, 1, value);
+                }
+                None => {}
+            }
+            self.push_log(now, text);
+        }
+        changed
+    }
+
     fn ranch_tick(&mut self, now: i64) -> bool {
         let guarded = self
             .state
@@ -4095,6 +4210,9 @@ impl Game {
             changed = true;
         }
         if !self.state.pets.is_empty() && self.ranch_job_tick(now, today) {
+            changed = true;
+        }
+        if !self.state.pets.is_empty() && self.fishing_job_tick(now, today) {
             changed = true;
         }
         if self.boarding_charge(now, today) {

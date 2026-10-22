@@ -1647,6 +1647,42 @@ impl FishBatch {
     }
 }
 
+/// 宠物能从钓鱼地带回的鱼：已点亮图鉴、钓点已解锁、非鱼王、单价不超过 70。
+/// 先算池子再抽，避免引擎在借用宠物时再去借 fishing 状态。
+pub fn pet_fish_pool(state: &FishingState, level: u32) -> Vec<&'static FishDef> {
+    FISH.iter()
+        .filter(|def| def.rarity != FishRarity::King && def.price <= 70)
+        .filter(|def| state.spot_unlocked(level, def.spot))
+        .filter(|def| {
+            state
+                .codex
+                .get(def.id)
+                .map(|entry| entry.count > 0)
+                .unwrap_or(false)
+        })
+        .collect()
+}
+
+/// 在给定池子里按钓点内权重抽一条；池子为空时返回 None。
+pub fn pick_from_pool(pool: &[&'static FishDef], roll: u64) -> Option<&'static FishDef> {
+    if pool.is_empty() {
+        return None;
+    }
+    let total: u64 = pool.iter().map(|def| u64::from(def.weight)).sum();
+    if total == 0 {
+        return pool.first().copied();
+    }
+    let mut point = roll % total;
+    for def in pool {
+        let weight = u64::from(def.weight);
+        if point < weight {
+            return Some(def);
+        }
+        point -= weight;
+    }
+    pool.first().copied()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FishCatchResult {

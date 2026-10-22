@@ -1,7 +1,18 @@
 use farm_core::{
-    guard_result, Action, ContentPack, Game, GameError, PetBreed, PetLocation, PetSickness,
-    PetSicknessKind, PetSpecies, PetState,
+    guard_result, Action, ContentPack, FishCodexEntry, Game, GameError, PetBreed, PetLocation,
+    PetSickness, PetSicknessKind, PetSpecies, PetState,
 };
+
+fn bait_total(game: &Game) -> u32 {
+    let fishing = &game.state().fishing;
+    fishing.bait
+        + fishing.bait_fine
+        + fishing.bait_prime
+        + fishing.bait_master
+        + fishing.bait_corn.iter().sum::<u32>()
+        + fishing.bait_worm.iter().sum::<u32>()
+        + fishing.bait_lure.iter().sum::<u32>()
+}
 
 fn game_with_pet(species: PetSpecies) -> Game {
     let mut state = Game::new(0).state().clone();
@@ -481,7 +492,7 @@ fn dog_digs_a_seed_and_has_cooldown() {
 }
 
 #[test]
-fn ranch_is_available_but_pond_is_locked() {
+fn ranch_and_fishing_are_available_but_pond_is_locked() {
     let mut game = game_with_pet(PetSpecies::Dog);
     game.dispatch(
         Action::SetPetLocation {
@@ -491,6 +502,15 @@ fn ranch_is_available_but_pond_is_locked() {
         0,
     )
     .unwrap();
+    game.dispatch(
+        Action::SetPetLocation {
+            pet_id: "pet_1".into(),
+            location: PetLocation::Fishing,
+        },
+        0,
+    )
+    .unwrap();
+    assert_eq!(game.state().pets[0].location, PetLocation::Fishing);
     assert!(matches!(
         game.dispatch(
             Action::SetPetLocation {
@@ -501,6 +521,83 @@ fn ranch_is_available_but_pond_is_locked() {
         ),
         Err(GameError::PetLocationLocked)
     ));
+}
+
+#[test]
+fn pet_fishing_job_settles_once_per_day_and_levels_up() {
+    let mut game = game_with_pet(PetSpecies::Dog);
+    game.state_mut().pets[0].location = PetLocation::Fishing;
+    game.state_mut().pets[0].fishing_job.exp = 32;
+    let coins_before = game.state().coins;
+    let baits_before = bait_total(&game);
+
+    game.sync(1_000_000, "2026-10-19");
+    let pet = &game.state().pets[0];
+    assert_eq!(pet.last_job_day, "2026-10-19");
+    // 32 + 8 = 40，正好升到 2 级并清零
+    assert_eq!(pet.fishing_job.level, 2);
+    assert_eq!(pet.fishing_job.exp, 0);
+    // 狗要么叼回鱼饵，要么省下金币
+    assert!(bait_total(&game) > baits_before || game.state().coins > coins_before);
+
+    let coins_after = game.state().coins;
+    let baits_after = bait_total(&game);
+    game.sync(1_000_000, "2026-10-19");
+    assert_eq!(game.state().coins, coins_after);
+    assert_eq!(bait_total(&game), baits_after);
+    assert_eq!(game.state().pets[0].fishing_job.level, 2);
+}
+
+#[test]
+fn pet_fishing_job_cat_brings_fish_or_bait() {
+    let mut game = game_with_pet(PetSpecies::Cat);
+    game.state_mut().fishing.codex.insert(
+        "white_bait".into(),
+        FishCodexEntry {
+            count: 1,
+            ..Default::default()
+        },
+    );
+    game.state_mut().pets[0].location = PetLocation::Fishing;
+    let fish_before = game
+        .state()
+        .fishing
+        .fish_batches
+        .get("white_bait")
+        .map(|batch| batch.count)
+        .unwrap_or(0);
+    let baits_before = bait_total(&game);
+
+    game.sync(1_000_000, "2026-10-19");
+    let fish_after = game
+        .state()
+        .fishing
+        .fish_batches
+        .get("white_bait")
+        .map(|batch| batch.count)
+        .unwrap_or(0);
+    assert!(fish_after > fish_before || bait_total(&game) > baits_before);
+    if fish_after > fish_before {
+        assert_eq!(game.state().inventory.get("fish:white_bait"), Some(&1));
+    }
+    assert_eq!(game.state().pets[0].last_job_day, "2026-10-19");
+}
+
+#[test]
+fn pet_fishing_job_skips_boarded_and_sick() {
+    let mut game = game_with_pet(PetSpecies::Cat);
+    game.state_mut().pets[0].location = PetLocation::Fishing;
+    game.state_mut().pets[0].boarded = true;
+    game.sync(1_000_000, "2026-10-19");
+    assert!(game.state().pets[0].last_job_day.is_empty());
+
+    game.state_mut().pets[0].boarded = false;
+    game.state_mut().pets[0].sickness = Some(PetSickness {
+        kind: PetSicknessKind::Cold,
+        since: 0,
+    });
+    game.sync(2_000_000, "2026-10-20");
+    assert!(game.state().pets[0].last_job_day.is_empty());
 }
 
 #[test]

@@ -46,8 +46,8 @@ fn v1_save_migrates_to_v25_with_defaults() {
     state.insert("schema".into(), json!(1));
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
-    assert_eq!(migrated["state"]["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
+    assert_eq!(migrated["state"]["schema"], json!(33));
     assert_eq!(migrated["state"]["settings"]["expRate"], json!(1));
     assert_eq!(migrated["state"]["daily"]["day"], json!(""));
     assert_eq!(migrated["state"]["daily"]["steals"], json!(0));
@@ -94,7 +94,7 @@ fn v2_save_migrates_to_v25_with_pest_null_and_daily() {
     state.insert("schema".into(), json!(2));
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
     assert_eq!(migrated["state"]["stats"]["pestsCleared"], json!(0));
     assert_eq!(migrated["state"]["daily"]["harvests"], json!(0));
 
@@ -119,7 +119,7 @@ fn v4_save_migrates_to_v25_with_plot_tiers() {
     state.insert("schema".into(), json!(4));
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
     assert_eq!(migrated["state"]["plots"][0]["tier"], json!(0));
     let save: SaveFile = serde_json::from_value(migrated).unwrap();
     assert_eq!(Game::from_save(save).unwrap().state().plots[0].tier, 0);
@@ -141,7 +141,7 @@ fn v5_save_migrates_to_v25_with_disaster_null() {
     state.insert("schema".into(), json!(5));
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
     let save: SaveFile = serde_json::from_value(migrated).unwrap();
     let restored = Game::from_save(save).unwrap();
     assert!(restored.state().plots.iter().all(|plot| plot
@@ -168,7 +168,7 @@ fn v6_save_migrates_to_v25_with_season_and_off_season() {
     state.insert("schema".into(), json!(6));
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
     assert_eq!(migrated["state"]["season"], json!("spring"));
     let save: SaveFile = serde_json::from_value(migrated).unwrap();
     assert_eq!(
@@ -200,7 +200,7 @@ fn v7_save_migrates_to_v25_with_region_and_greenhouse() {
     state.insert("schema".into(), json!(7));
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
     assert_eq!(migrated["state"]["settings"]["region"], json!("north"));
     let save: SaveFile = serde_json::from_value(migrated).unwrap();
     let restored = Game::from_save(save).unwrap();
@@ -218,7 +218,7 @@ fn v22_save_migrates_to_v25_with_ranch() {
     state.insert("schema".into(), json!(22));
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
     assert!(migrated["state"]["ranch"]["pens"].is_array());
 }
 
@@ -244,7 +244,7 @@ fn v24_save_migrates_to_v25_with_workshop() {
     state.insert("schema".into(), json!(24));
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
     assert_eq!(migrated["state"]["workshop"]["built"], json!(true));
     assert_eq!(
         migrated["state"]["workshop"]["equipment"][0],
@@ -275,7 +275,7 @@ fn v21_save_migrates_to_v25_with_activity_streak() {
     state.insert("schema".into(), json!(21));
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
     assert_eq!(migrated["state"]["pets"][0]["activityStreak"], json!(0));
     assert!(migrated["state"]["pets"][0]["lastActivity"].is_null());
 }
@@ -293,7 +293,7 @@ fn v20_save_migrates_to_v25_with_activity_day() {
     state.insert("schema".into(), json!(20));
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
     assert_eq!(migrated["state"]["pets"][0]["lastActivityDay"], json!(""));
 }
 
@@ -310,7 +310,7 @@ fn v19_save_migrates_to_v25_with_skill_clock() {
     state.insert("schema".into(), json!(19));
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
     assert_eq!(migrated["state"]["pets"][0]["lastSkillAt"], json!(0));
 }
 
@@ -327,7 +327,7 @@ fn v18_save_migrates_to_v25_with_pet_personality() {
     state.insert("schema".into(), json!(18));
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
     assert!(migrated["state"]["pets"][0]["personality"]["primary"].is_string());
     assert!(migrated["state"]["pets"][0]["personality"]["quirk"].is_string());
 }
@@ -345,7 +345,7 @@ fn v16_save_migrates_to_v25_with_split_care() {
     state.insert("schema".into(), json!(16));
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
     assert_eq!(migrated["state"]["petCare"]["dogBed"], json!(true));
     assert_eq!(migrated["state"]["petCare"]["catToy"], json!(true));
     assert_eq!(migrated["state"]["petCare"]["bowls"], json!(3));
@@ -361,7 +361,7 @@ fn v15_save_migrates_to_v25_with_pet_care() {
     state.insert("schema".into(), json!(15));
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
     assert_eq!(migrated["state"]["petCare"]["dogBed"], json!(false));
     assert_eq!(migrated["state"]["petCare"]["medicine"], json!(0));
 }
@@ -379,7 +379,7 @@ fn v14_save_migrates_to_v25_with_skills() {
     state.insert("schema".into(), json!(14));
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
     assert_eq!(migrated["state"]["pets"][0]["digSkill"], json!(1));
     assert_eq!(migrated["state"]["pets"][0]["guardSkill"], json!(1));
 }
@@ -398,7 +398,7 @@ fn v13_save_migrates_to_v25_with_pet_array() {
     state.insert("schema".into(), json!(13));
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
     assert_eq!(migrated["state"]["pets"].as_array().unwrap().len(), 1);
     assert_eq!(migrated["state"]["pets"][0]["id"], json!("pet_1"));
     assert_eq!(migrated["state"]["pets"][0]["boarded"], json!(false));
@@ -417,7 +417,7 @@ fn v12_save_migrates_to_v25_with_breed() {
     state.insert("schema".into(), json!(12));
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
     assert_eq!(migrated["state"]["pets"][0]["breed"], json!("domestic_cat"));
 }
 
@@ -432,7 +432,7 @@ fn v11_save_migrates_to_v25_with_empty_pet() {
     state.insert("schema".into(), json!(11));
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
     assert!(migrated["state"]["pet"].is_null());
     assert_eq!(migrated["state"]["lastRaidDay"], json!(""));
 }
@@ -453,7 +453,7 @@ fn v10_save_migrates_to_v25_with_facility_counts() {
     state.insert("schema".into(), json!(10));
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
     assert_eq!(migrated["state"]["facilities"]["windmills"], json!(1));
     assert_eq!(migrated["state"]["facilities"]["greenhouses"], json!(1));
 }
@@ -474,7 +474,7 @@ fn v9_save_migrates_to_v25_with_plot_kind() {
     state.insert("schema".into(), json!(9));
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
     assert_eq!(migrated["state"]["plots"][0]["kind"], json!("field"));
 }
 
@@ -494,7 +494,7 @@ fn v8_save_migrates_to_v25_with_withered_false() {
     state.insert("schema".into(), json!(8));
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
     let save: SaveFile = serde_json::from_value(migrated).unwrap();
     assert!(Game::from_save(save)
         .unwrap()
@@ -524,10 +524,33 @@ fn v3_save_migrates_to_v25_with_empty_neighbors() {
     state.insert("schema".into(), json!(3));
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
     assert_eq!(migrated["state"]["npcs"], json!([]));
     let save: SaveFile = serde_json::from_value(migrated).unwrap();
     assert!(Game::from_save(save).unwrap().state().npcs.is_empty());
+}
+
+#[test]
+fn v32_save_migrates_to_v33_with_fishing_job() {
+    let game = Game::new(0);
+    let mut value = serde_json::to_value(game.to_save(0)).unwrap();
+    value["schema"] = json!(32);
+    let state = value["state"].as_object_mut().unwrap();
+    state.insert(
+        "pets".into(),
+        json!([{"id":"pet_1","name":"豆豆","species":"dog","breed":"corgi","boarded":false}]),
+    );
+    state.insert("schema".into(), json!(32));
+
+    let migrated = migrate_save(value).unwrap();
+    assert_eq!(migrated["schema"], json!(33));
+    assert_eq!(
+        migrated["state"]["pets"][0]["fishingJob"],
+        json!({"level": 1, "exp": 0})
+    );
+    let save: SaveFile = serde_json::from_value(migrated).unwrap();
+    let restored = Game::from_save(save).unwrap();
+    assert_eq!(restored.state().pets[0].fishing_job.level, 1);
 }
 
 #[test]

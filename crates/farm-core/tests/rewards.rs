@@ -118,7 +118,7 @@ fn v29_save_migrates_level_rewards_and_daily_counters() {
     }
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
     assert_eq!(migrated["state"]["levelRewardsClaimed"], json!([]));
     assert_eq!(migrated["state"]["daily"]["ranchCollects"], json!(0));
     assert_eq!(migrated["state"]["daily"]["claimedFish"], json!(false));
@@ -145,7 +145,7 @@ fn v30_save_migrates_fishing_level_and_skills() {
     }
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(32));
+    assert_eq!(migrated["schema"], json!(33));
     assert_eq!(migrated["state"]["skills"]["fishing"]["level"], json!(1));
     assert_eq!(migrated["state"]["skills"]["fishing"]["exp"], json!(0));
     assert_eq!(migrated["state"]["skills"]["fishing"]["points"], json!(0));

@@ -262,7 +262,7 @@ fn v26_fish_inventory_backfills_batches() {
         .unwrap()
         .remove("fishBatches");
     let migrated = farm_core::migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], serde_json::json!(32));
+    assert_eq!(migrated["schema"], serde_json::json!(33));
     let save: farm_core::SaveFile = serde_json::from_value(migrated).unwrap();
     let game = Game::from_save(save).unwrap();
     let batch = game.state().fishing.fish_batches.get("white_bait").unwrap();
@@ -848,4 +848,40 @@ fn catch_exp_scales_with_rarity_and_quality() {
     );
     assert_eq!(farm_core::fishing_exp_need(29), 3_000);
     assert_eq!(farm_core::fishing_exp_need(30), 0);
+}
+
+#[test]
+fn pet_fish_pool_only_returns_lit_unlocked_cheap_fish() {
+    let mut fishing = farm_core::FishingState::new();
+    for id in ["white_bait", "carp", "creek_king", "eel"] {
+        fishing.codex.insert(
+            id.into(),
+            FishCodexEntry {
+                count: 1,
+                ..Default::default()
+            },
+        );
+    }
+
+    // 1 级只解锁小溪；河王是鱼王，即使点亮也不进池。
+    let pool = farm_core::pet_fish_pool(&fishing, 1);
+    assert_eq!(pool.len(), 1);
+    assert_eq!(pool[0].id, "white_bait");
+    assert_eq!(
+        farm_core::pick_from_pool(&pool, 12_345).unwrap().id,
+        "white_bait"
+    );
+
+    // 5 级解锁河流；江面的鳗鲡仍被钓点门槛挡住。
+    let pool = farm_core::pet_fish_pool(&fishing, 5);
+    let ids: Vec<&str> = pool.iter().map(|def| def.id).collect();
+    assert!(ids.contains(&"carp"));
+    assert!(!ids.contains(&"eel"));
+    assert!(!ids.contains(&"creek_king"));
+    assert!(farm_core::pick_from_pool(&pool, 99).is_some());
+
+    // 12 级解锁江面，但鳗鲡单价 160，超出宠物能叼回的上限。
+    let pool = farm_core::pet_fish_pool(&fishing, 12);
+    assert!(!pool.iter().any(|def| def.id == "eel"));
+    assert!(farm_core::pick_from_pool(&[], 1).is_none());
 }

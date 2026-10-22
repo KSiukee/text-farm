@@ -50,8 +50,9 @@ pub use room::{
 pub use fishing::{
     apply_manual_bonus, auto_interval_ms_with_skill, bait_saver_pct, bait_weight,
     big_fish_bonus_tenths, catch_exp, faces_right, fish, fish_list, fishing_exp_need, golden_floor_price,
-    golden_session, king_base_price, market_pct, params, pick_auto_fish, pick_auto_fish_with_bait,
-    pick_fish, pick_fish_with_bait, pick_personality, price_for, quality_for, quality_label,
+    golden_session, king_base_price, market_pct, params, pet_fish_pool, pick_auto_fish,
+    pick_auto_fish_with_bait, pick_fish, pick_fish_with_bait, pick_from_pool, pick_personality,
+    price_for, quality_for, quality_label,
     reel_bonus, rod_exp, rod_unlocked,
     sell_price, skill_cost, skill_def, skill_level, spot_fish, spot_fish_count, spot_unlocked,
     weight_tenths_for,

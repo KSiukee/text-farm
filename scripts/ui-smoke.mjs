@@ -281,6 +281,22 @@ async function clickInRow(rowText, buttonText) {
   await new Promise((r) => setTimeout(r, 260));
 }
 
+async function clickTopIcon(name) {
+  const found = await evaluate(`(() => {
+    const el = [...document.querySelectorAll('header.icons .icon-item')].find((item) =>
+      (item.innerText || '').includes(${JSON.stringify(name)})
+    );
+    if (!el) return null;
+    el.scrollIntoView({ block: 'center', inline: 'center' });
+    const rect = el.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  })()`);
+  if (!found) throw new Error(`找不到顶部图标「${name}」`);
+  await send("Input.dispatchMouseEvent", { type: "mousePressed", x: found.x, y: found.y, button: "left", clickCount: 1 });
+  await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: found.x, y: found.y, button: "left", clickCount: 1 });
+  await new Promise((r) => setTimeout(r, 300));
+}
+
 async function startApp() {  if (spawnedAlreadyRunning()) throw new Error("检测到已有文字农场进程，请先关掉再跑 UI 测试");
   child = spawn(exe, [], {
     cwd: root,
@@ -354,8 +370,10 @@ try {
     "买母鸡进畜栏",
     saveState().ranch.pens.some((pen) => pen.animal && pen.animal.kind === "chicken"),
   );
+  const feedBefore = saveState().inventory["ranch:feed"] || 0;
   await clickText("[买专用饲料 300]");
-  check("买到专用饲料", (saveState().inventory["ranch:feed"] || 0) === 1);
+  await waitFor(async () => (saveState().inventory["ranch:feed"] || 0) > feedBefore);
+  check("买到专用饲料", (saveState().inventory["ranch:feed"] || 0) > feedBefore);
   await clickText("[喂专用饲料]");
   check("专用饲料提升品质", saveState().ranch.pens[0].animal.quality === 2);
   await clickText("母鸡 800", false);
@@ -400,7 +418,7 @@ try {
   await clickText("[取货]");
   await waitFor(async () => (saveState().inventory["ranch:cheese"] || 0) >= 1);
   check("取出一份奶酪", (saveState().inventory["ranch:cheese"] || 0) >= 1);
-  await clickEnabled("[做礼盒]");
+  await clickInRow("玉米礼盒", "[做礼盒]");
   await waitFor(async () => saveState().workshop.jobs[0]?.cropId === "yumi");
   check("制造屋开工（玉米礼盒）", saveState().workshop.jobs[0]?.cropId === "yumi");
   await clickText("返回农场", false);
@@ -443,6 +461,15 @@ try {
   check("主动技能按钮已显示", personalityText.includes("[主动 ·"));
   check("行为树当前活动已显示", personalityText.includes("正在："));
   check("牧场岗位已显示", personalityText.includes("牧场岗位"));
+  await clickText("钓鱼地", true);
+  await waitFor(async () => saveState().pets.some((pet) => pet.location === "fishing"));
+  check("宠物可派去钓鱼地", saveState().pets.some((pet) => pet.location === "fishing"));
+  check("钓鱼地岗位已显示", (await bodyText()).includes("钓鱼地岗位"));
+  await clickTopIcon("钓鱼");
+  await waitFor(async () => (await bodyText()).includes("在岸边帮忙"));
+  check("钓鱼页显示岸边帮忙的宠物", (await bodyText()).includes("在岸边帮忙"));
+  await clickText("宠物", true);
+  await waitFor(async () => (await bodyText()).includes("宠物用品"));
   const moodBeforeSkill = saveState().pets[0].mood;
   const activeLabel = personalityText.match(/\[主动 · ([^\]]+)\]/)?.[1] || "主动技能";
   await clickText("主动 ·", false);
@@ -662,7 +689,17 @@ try {
   check("900px 宽无横向溢出", narrow.overflow, `${narrow.width}/${narrow.scrollWidth}`);
   await send("Emulation.clearDeviceMetricsOverride");
 
+  if (await evaluate(`!!document.querySelector('.auto-report-overlay')`)) {
+    await clickText("[知道了]");
+    await new Promise((r) => setTimeout(r, 250));
+  }
   await clickText("宠物");
+  await waitFor(async () => (await bodyText()).includes("宠物用品"));
+  const releaseTarget = saveState().pets.find((pet) => !pet.boarded);
+  if (releaseTarget) {
+    await clickText(releaseTarget.name);
+    await new Promise((r) => setTimeout(r, 250));
+  }
   await clickText("[放生]");
   await waitFor(async () => saveState().pets.length === 3);
   check("点击放生（确认框自动接受）", saveState().pets.length === 3);
