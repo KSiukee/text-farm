@@ -518,8 +518,8 @@ pub enum FishRarity {
 impl FishRarity {
     pub fn label(self) -> &'static str {
         match self {
-            FishRarity::Common => "普通",
-            FishRarity::Uncommon => "优良",
+            FishRarity::Common => "常见",
+            FishRarity::Uncommon => "少见",
             FishRarity::Rare => "稀有",
             FishRarity::King => "鱼王",
         }

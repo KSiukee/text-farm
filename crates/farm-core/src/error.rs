@@ -12,7 +12,7 @@ pub enum SaveError {
 
 #[derive(Debug, Error)]
 pub enum GameError {
-    #[error("没有 {0} 号地")]
+    #[error("没有 {0} 号地块")]
     NoSuchPlot(u8),
     #[error("这块地还没开垦")]
     PlotLocked,
@@ -80,7 +80,7 @@ pub enum GameError {
     NpcLeaveSome,
     #[error("已经成熟了")]
     AlreadyReady,
-    #[error("这季已经浇过水")]
+    #[error("这块地已经浇过水")]
     AlreadyWatered,
     #[error("这块地已经开垦过了")]
     AlreadyUnlocked,
@@ -116,7 +116,7 @@ pub enum GameError {
     BadSkill,
     #[error("这个专精已经满级")]
     SkillMax,
-    #[error("这个物品不能吃喝加成")]
+    #[error("这个物品不能当加成食物用")]
     BadBuffItem,
     #[error("技能点不够：需要 {need}")]
     NotEnoughSkillPoints { need: u32 },

@@ -3382,7 +3382,7 @@ onUnmounted(() => {
         <section class="panel">
           <div class="panel-title">
             宠物
-            <span class="muted">狗狗/猫猫先只显示静态像素侧视图</span>
+            <span class="muted">狗狗/猫猫 · 像素侧视，待机与互动有小动作</span>
           </div>
 
           <div class="boarding-panel">
