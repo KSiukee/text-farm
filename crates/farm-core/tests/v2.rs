@@ -614,6 +614,47 @@ fn facilities_apply_to_new_plantings_and_enable_harvest_all() {
 }
 
 #[test]
+fn sprinkler_watering_counts_toward_daily_task() {
+    let mut game = game_with(15, 100_000, &[("xiaobaicai", 5)]);
+    for plot in &mut game.state_mut().plots {
+        plot.unlocked = true;
+    }
+    game.dispatch(
+        Action::BuyFacility {
+            kind: FacilityKind::Sprinkler,
+        },
+        0,
+    )
+    .unwrap();
+    for plot in 1..=5 {
+        game.dispatch(
+            Action::Plant {
+                plot,
+                crop_id: "xiaobaicai".into(),
+            },
+            0,
+        )
+        .unwrap();
+    }
+
+    // 灌溉机自动浇的水也记进今日浇水，否则日常「浇水 5 次」永远卡住。
+    assert_eq!(game.state().daily.waterings, 5);
+    let task = game
+        .snapshot(0)
+        .daily
+        .tasks
+        .into_iter()
+        .find(|task| task.id == 2)
+        .unwrap();
+    assert_eq!(task.progress, 5);
+    assert!(task.claimable);
+
+    let coins = game.state().coins;
+    game.dispatch(Action::ClaimDaily { id: 2 }, 0).unwrap();
+    assert!(game.state().coins > coins);
+}
+
+#[test]
 fn harvest_all_requires_the_harvester() {
     let mut game = game_with(1, 200, &[("xiaobaicai", 1)]);
     game.dispatch(

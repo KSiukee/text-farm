@@ -254,6 +254,9 @@ impl Game {
             greenhouse.then_some(greenhouse_level),
         );
         let (ready_at, watered) = if self.state.facilities.sprinkler {
+            // 灌溉机自动浇的水也算今天的浇水任务，否则建了灌溉机以后
+            // 每日「浇水 5 次」永远做不完。
+            self.state.daily.waterings += 1;
             (now + grow * 9 / 10, true)
         } else {
             (now + grow, false)

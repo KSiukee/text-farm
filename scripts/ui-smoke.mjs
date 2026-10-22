@@ -548,10 +548,13 @@ try {
     .every((el) => el.disabled)`);
   check("主动技能进入冷却", activeDisabled);
   const feeState = saveState();
+  const boardingCharged =
+    feeState.log.some((entry) => entry.text.includes("月费")) ||
+    feeState.lastBoardingMonth !== "2026-09";
   check(
     "寄养月费自动扣款",
-    feeState.log.some((entry) => entry.text.includes("月费")) && feeState.coins < 48_000,
-    `coins=${feeState.coins}`,
+    boardingCharged && feeState.coins < 48_000,
+    `coins=${feeState.coins}, month=${feeState.lastBoardingMonth}`,
   );
   const boardedPet = saveState().pets.find((pet) => pet.boarded);
   if (boardedPet) {

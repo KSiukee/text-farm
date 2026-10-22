@@ -34,7 +34,7 @@ pub const DAILY_TASKS: [DailyTaskDef; 5] = [
     DailyTaskDef {
         id: 2,
         name: "浇水 5 次",
-        desc: "今天累计浇水 5 次",
+        desc: "今天累计浇水 5 次（灌溉机自动浇水也算）",
         target: 5,
         reward_coins: 20,
         reward_exp: 15,
