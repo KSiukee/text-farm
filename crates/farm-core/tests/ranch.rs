@@ -648,6 +648,63 @@ fn p2_equipment_install_and_craft() {
 }
 
 #[test]
+fn equipment_upgrade_speeds_job_and_costs_coins() {
+    let mut game = Game::new(0);
+    game.state_mut().level = 30;
+    game.state_mut().coins = 100_000;
+    game.dispatch(Action::BuildWorkshop, 0).unwrap();
+    game.dispatch(
+        Action::InstallEquipment {
+            slot: 1,
+            kind: EquipmentKind::StoneMill,
+        },
+        0,
+    )
+    .unwrap();
+    assert_eq!(game.state().workshop.equipment_level(1), 1);
+    let coins = game.state().coins;
+    game.dispatch(Action::UpgradeEquipment { slot: 1 }, 0)
+        .unwrap();
+    assert_eq!(game.state().workshop.equipment_level(1), 2);
+    assert_eq!(game.state().coins, coins - 2_000);
+    assert_eq!(game.state().workshop.equipment_speed_pct(1), 4);
+    assert_eq!(game.state().workshop.equipment_yield_pct(1), 3);
+
+    game.state_mut().inventory.insert("crop:yumi".into(), 3);
+    game.dispatch(
+        Action::StartEquipmentCraft {
+            recipe: EquipmentRecipe::CornStarch,
+        },
+        0,
+    )
+    .unwrap();
+    // 2 小时 × (100 - 4)% = 1h55m12s
+    assert_eq!(job_ready_at(&game, 1), 2 * 60 * 60 * 1000 * 96 / 100);
+    assert!(matches!(
+        game.dispatch(Action::UpgradeEquipment { slot: 1 }, 0),
+        Err(GameError::RanchCraftBusy)
+    ));
+    finish_job(&mut game, 1);
+    game.dispatch(Action::CollectCraft { slot: 1 }, 0).unwrap();
+
+    for _ in 0..3 {
+        game.dispatch(Action::UpgradeEquipment { slot: 1 }, 0)
+            .unwrap();
+    }
+    assert_eq!(game.state().workshop.equipment_level(1), 5);
+    assert_eq!(game.state().workshop.equipment_speed_pct(1), 16);
+    assert_eq!(game.state().workshop.equipment_yield_pct(1), 12);
+    assert!(matches!(
+        game.dispatch(Action::UpgradeEquipment { slot: 1 }, 0),
+        Err(GameError::WorkshopUpgradeMax)
+    ));
+    assert!(matches!(
+        game.dispatch(Action::UpgradeEquipment { slot: 0 }, 0),
+        Err(GameError::WorkshopUpgradeManual)
+    ));
+}
+
+#[test]
 fn equipment_requires_install_and_checks_level() {
     let mut game = Game::new(0);
     game.state_mut().level = 9;

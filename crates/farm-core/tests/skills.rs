@@ -19,7 +19,7 @@ fn new_game_has_four_disciplines_at_level_one() {
         assert_eq!(d.points, 0, "{kind:?}");
         assert!(d.perks.is_empty(), "{kind:?}");
     }
-    assert_eq!(SAVE_SCHEMA, 34);
+    assert_eq!(SAVE_SCHEMA, 35);
 }
 
 #[test]
@@ -105,7 +105,7 @@ fn v31_save_migrates_fishing_progress_and_legacy_spots() {
     fishing.remove("legacyUnlocks");
 
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(34));
+    assert_eq!(migrated["schema"], json!(35));
     assert_eq!(migrated["state"]["skills"]["fishing"]["level"], json!(12));
     assert_eq!(migrated["state"]["skills"]["fishing"]["exp"], json!(345));
     assert_eq!(migrated["state"]["skills"]["fishing"]["points"], json!(7));
@@ -255,7 +255,7 @@ fn real_v31_save_migrates() {
     let old_level = value["state"]["fishing"]["level"].clone();
     let old_exp = value["state"]["fishing"]["exp"].clone();
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], json!(34));
+    assert_eq!(migrated["schema"], json!(35));
     assert_eq!(migrated["state"]["skills"]["fishing"]["level"], old_level);
     assert_eq!(migrated["state"]["skills"]["fishing"]["exp"], old_exp);
     assert!(migrated["state"]["fishing"].get("level").is_none());

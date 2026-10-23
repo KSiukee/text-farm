@@ -146,6 +146,13 @@ export interface WorkshopSlotView {
   equipment: EquipmentKind | null;
   equipmentLabel: string;
   equipmentEmoji: string;
+  equipmentLevel: number;
+  equipmentMaxLevel: number;
+  equipmentSpeedPct: number;
+  equipmentYieldPct: number;
+  upgradeCost: number;
+  canUpgrade: boolean;
+  upgradeMissing: string;
   job: WorkshopJobView | null;
 }
 
@@ -1010,6 +1017,7 @@ export type Action =
   | { type: "buildWorkshop" }
   | { type: "expandWorkshop" }
   | { type: "installEquipment"; slot: number; kind: EquipmentKind }
+  | { type: "upgradeEquipment"; slot: number }
   | { type: "startRanchCraft"; recipe: RanchRecipe }
   | { type: "startCropCraft"; cropId: string }
   | { type: "startEquipmentCraft"; recipe: EquipmentRecipe }

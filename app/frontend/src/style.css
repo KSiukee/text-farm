@@ -1515,6 +1515,16 @@ footer {
   font-size: 12px;
 }
 
+.workshop-slot-upgrade {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .equipment-options {
   display: flex;
   flex-wrap: wrap;

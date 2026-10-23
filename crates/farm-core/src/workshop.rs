@@ -5,6 +5,10 @@ use crate::ranch::RanchRecipe;
 
 pub const WORKSHOP_BASE_SLOTS: u8 = 3;
 pub const WORKSHOP_MAX_SLOTS: u8 = 5;
+/// 设备最高 5 级；每级 +4% 加工速度、+3% 取货增产概率。
+pub const WORKSHOP_EQUIPMENT_MAX_LEVEL: u8 = 5;
+pub const WORKSHOP_LEVEL_SPEED_PCT: u32 = 4;
+pub const WORKSHOP_LEVEL_YIELD_PCT: u32 = 3;
 pub const WORKSHOP_COST: u64 = 6_000;
 pub const WORKSHOP_LEVEL: u32 = 8;
 /// 扩槽费用/等级：3→4 槽、4→5 槽。
@@ -607,6 +611,9 @@ pub struct WorkshopState {
     pub slots: u8,
     pub equipment: Vec<Option<EquipmentKind>>,
     pub jobs: Vec<Option<WorkshopJob>>,
+    /// 与 equipment 对齐的 1–5 级；旧档默认 1。
+    #[serde(default)]
+    pub equipment_levels: Vec<u8>,
 }
 
 impl Default for WorkshopState {
@@ -622,6 +629,7 @@ impl WorkshopState {
             slots: WORKSHOP_BASE_SLOTS,
             equipment: Vec::new(),
             jobs: Vec::new(),
+            equipment_levels: Vec::new(),
         };
         state.ensure();
         state
@@ -632,9 +640,14 @@ impl WorkshopState {
         let slots = usize::from(self.slots);
         self.equipment.resize(slots, None);
         self.jobs.resize(slots, None);
+        self.equipment_levels.resize(slots, 1);
+        for level in &mut self.equipment_levels {
+            *level = (*level).clamp(1, WORKSHOP_EQUIPMENT_MAX_LEVEL);
+        }
         if self.equipment[0].is_none() {
             self.equipment[0] = Some(EquipmentKind::Manual);
         }
+        self.equipment_levels[0] = 1;
     }
 
     pub fn slot_count(&self) -> u8 {
@@ -704,6 +717,51 @@ impl WorkshopState {
             return false;
         }
         *target = Some(kind);
+        if let Some(level) = self.equipment_levels.get_mut(usize::from(slot)) {
+            *level = 1;
+        }
+        true
+    }
+
+    pub fn equipment_level(&self, slot: u8) -> u8 {
+        self.equipment_levels
+            .get(usize::from(slot))
+            .copied()
+            .unwrap_or(1)
+            .clamp(1, WORKSHOP_EQUIPMENT_MAX_LEVEL)
+    }
+
+    /// 加工速度加成（百分点）：2 级 +4%，5 级 +16%。
+    pub fn equipment_speed_pct(&self, slot: u8) -> u32 {
+        u32::from(self.equipment_level(slot).saturating_sub(1)) * WORKSHOP_LEVEL_SPEED_PCT
+    }
+
+    /// 取货增产概率加成（百分点）：2 级 +3%，5 级 +12%。
+    pub fn equipment_yield_pct(&self, slot: u8) -> u32 {
+        u32::from(self.equipment_level(slot).saturating_sub(1)) * WORKSHOP_LEVEL_YIELD_PCT
+    }
+
+    /// 下一级升级费用；手工台/空槽/满级返回 None。
+    pub fn equipment_upgrade_cost(&self, slot: u8) -> Option<u64> {
+        let kind = self.equipment(slot)?;
+        if slot == 0 || kind == EquipmentKind::Manual {
+            return None;
+        }
+        let level = self.equipment_level(slot);
+        if level >= WORKSHOP_EQUIPMENT_MAX_LEVEL {
+            return None;
+        }
+        Some(kind.cost().max(2_000) * u64::from(level) / 2)
+    }
+
+    pub fn upgrade_equipment(&mut self, slot: u8) -> bool {
+        if self.equipment_upgrade_cost(slot).is_none() {
+            return false;
+        }
+        let Some(level) = self.equipment_levels.get_mut(usize::from(slot)) else {
+            return false;
+        };
+        *level += 1;
         true
     }
 }

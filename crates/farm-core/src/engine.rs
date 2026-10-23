@@ -111,6 +111,7 @@ impl Game {
             Action::BuildWorkshop => self.build_workshop(now)?,
             Action::ExpandWorkshop => self.expand_workshop(now)?,
             Action::InstallEquipment { slot, kind } => self.install_equipment(slot, kind, now)?,
+            Action::UpgradeEquipment { slot } => self.upgrade_equipment(slot, now)?,
             Action::StartRanchCraft { recipe } => self.start_ranch_craft(recipe, now)?,
             Action::StartCropCraft { crop_id } => self.start_crop_craft(&crop_id, now)?,
             Action::StartEquipmentCraft { recipe } => self.start_equipment_craft(recipe, now)?,
@@ -2503,6 +2504,43 @@ impl Game {
         Ok(vec![Effect::Log { text }])
     }
 
+    fn upgrade_equipment(&mut self, slot: u8, now: i64) -> Result<Vec<Effect>, GameError> {
+        if !self.state.workshop.built {
+            return Err(GameError::RanchWorkshopMissing);
+        }
+        if slot == 0 {
+            return Err(GameError::WorkshopUpgradeManual);
+        }
+        if self.state.workshop.equipment(slot).is_none() {
+            return Err(GameError::WorkshopEquipmentMissing);
+        }
+        if self.state.workshop.job(slot).is_some() {
+            return Err(GameError::RanchCraftBusy);
+        }
+        let Some(cost) = self.state.workshop.equipment_upgrade_cost(slot) else {
+            return Err(GameError::WorkshopUpgradeMax);
+        };
+        if self.state.coins < cost {
+            return Err(GameError::NotEnoughCoins { need: cost });
+        }
+        let Some(kind) = self.state.workshop.equipment(slot) else {
+            return Err(GameError::WorkshopEquipmentMissing);
+        };
+        self.state.coins -= cost;
+        if !self.state.workshop.upgrade_equipment(slot) {
+            return Err(GameError::WorkshopUpgradeMax);
+        }
+        let level = self.state.workshop.equipment_level(slot);
+        let speed = self.state.workshop.equipment_speed_pct(slot);
+        let yield_pct = self.state.workshop.equipment_yield_pct(slot);
+        let text = format!(
+            "你把{}升到 {level} 级：加工时间 -{speed}%、取货增产 +{yield_pct}%，花费 {cost}",
+            kind.label()
+        );
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
     fn start_ranch_craft(
         &mut self,
         recipe: RanchRecipe,
@@ -2676,10 +2714,11 @@ impl Game {
         let Some(slot) = self.state.workshop.first_idle_slot(equipment) else {
             return Err(GameError::RanchCraftBusy);
         };
-        let speed =
-            (processing::speed_pct(self.state.skills.processing.skill_level("craft_speed"))
-                + buffs::craft_speed_pct(&self.state.buffs, now))
-            .min(40);
+        let speed = (processing::speed_pct(
+            self.state.skills.processing.skill_level("craft_speed"),
+        ) + buffs::craft_speed_pct(&self.state.buffs, now)
+            + self.state.workshop.equipment_speed_pct(slot))
+        .min(50);
         let save_chance =
             processing::save_chance(self.state.skills.processing.skill_level("craft_save"));
         for (key, need) in recipe.inputs() {
@@ -2906,6 +2945,11 @@ impl Game {
         let quality = job.quality();
         let mut bait_output: Option<(fishing::BaitType, u32)> = None;
         let mut fish_output: Option<(String, u32)> = None;
+        let level_yield = if matches!(&job, WorkshopJob::Equipment { .. }) {
+            self.state.workshop.equipment_yield_pct(slot)
+        } else {
+            0
+        };
         let (key, label) = match job {
             WorkshopJob::Ranch {
                 recipe, quality, ..
@@ -2939,8 +2983,10 @@ impl Game {
         if let Some(slot_job) = self.state.workshop.job_mut(slot) {
             *slot_job = None;
         }
-        let yield_chance =
-            processing::yield_chance(self.state.skills.processing.skill_level("craft_yield"));
+        let yield_chance = (processing::yield_chance(
+            self.state.skills.processing.skill_level("craft_yield"),
+        ) + level_yield)
+            .min(100);
         let extra = bait_output.is_none()
             && yield_chance > 0
             && roll_pest(now.max(0) as u64 ^ 0x77a1, slot, "craft-yield") % 100

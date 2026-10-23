@@ -1050,6 +1050,10 @@ function installEquipment(slot: number, kind: EquipmentKind) {
   void act({ type: "installEquipment", slot, kind });
 }
 
+function upgradeEquipment(slot: number) {
+  void act({ type: "upgradeEquipment", slot });
+}
+
 function startRanchCraft(recipe: RanchRecipe) {
   void act({ type: "startRanchCraft", recipe });
 }
@@ -2797,6 +2801,9 @@ onUnmounted(() => {
               <div v-for="slot in workshop.slotViews" :key="slot.index" class="workshop-slot">
                 <div class="workshop-slot-head">
                   {{ slot.index }} 号槽 · {{ slot.equipmentEmoji }} {{ slot.equipmentLabel }}
+                  <span v-if="slot.index > 0 && slot.equipment" class="muted">
+                    Lv{{ slot.equipmentLevel }}/{{ slot.equipmentMaxLevel }}
+                  </span>
                 </div>
                 <div v-if="slot.job" class="ranch-craft-active">
                   <span>
@@ -2814,6 +2821,24 @@ onUnmounted(() => {
                 </div>
                 <div v-else class="muted">
                   {{ slot.index === 0 ? "手工台空闲" : slot.equipment ? "设备空闲" : "空槽，等装设备" }}
+                </div>
+                <div v-if="slot.index > 0 && slot.equipment" class="workshop-slot-upgrade">
+                  <button
+                    v-if="slot.canUpgrade"
+                    class="link"
+                    type="button"
+                    :disabled="acting"
+                    @click="upgradeEquipment(slot.index)"
+                  >
+                    [升级 {{ slot.upgradeCost }}]
+                  </button>
+                  <span v-else-if="slot.equipmentLevel < slot.equipmentMaxLevel" class="muted">
+                    {{ slot.upgradeMissing }}
+                  </span>
+                  <span v-else class="muted">已满级</span>
+                  <span class="muted">
+                    加工时间 -{{ slot.equipmentSpeedPct }}% · 取货增产 +{{ slot.equipmentYieldPct }}%
+                  </span>
                 </div>
               </div>
             </div>

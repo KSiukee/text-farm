@@ -20,7 +20,8 @@ use crate::ranch::{RanchAnimalKind, RanchRecipe, RANCH_MAX_PENS};
 use crate::specimen;
 use crate::workshop::{
     craft_item, crop_box_price, EquipmentKind, EquipmentRecipe, WorkshopJob, CROP_BOX_INPUT,
-    CROP_BOX_INTERVAL_MS, WORKSHOP_COST, WORKSHOP_LEVEL, WORKSHOP_MAX_SLOTS,
+    CROP_BOX_INTERVAL_MS, WORKSHOP_COST, WORKSHOP_EQUIPMENT_MAX_LEVEL, WORKSHOP_LEVEL,
+    WORKSHOP_MAX_SLOTS,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -313,6 +314,13 @@ pub struct WorkshopSlotView {
     pub equipment: Option<EquipmentKind>,
     pub equipment_label: String,
     pub equipment_emoji: String,
+    pub equipment_level: u8,
+    pub equipment_max_level: u8,
+    pub equipment_speed_pct: u32,
+    pub equipment_yield_pct: u32,
+    pub upgrade_cost: u64,
+    pub can_upgrade: bool,
+    pub upgrade_missing: String,
     pub job: Option<WorkshopJobView>,
 }
 
@@ -1546,6 +1554,26 @@ impl Game {
         let slot_views: Vec<WorkshopSlotView> = (0..workshop_state.slot_count())
             .map(|index| {
                 let equipment = workshop_state.equipment(index);
+                let job = workshop_state
+                    .job(index)
+                    .map(|job| workshop_job_view(job, &self.content, now));
+                let level = workshop_state.equipment_level(index);
+                let upgrade_cost = workshop_state.equipment_upgrade_cost(index).unwrap_or(0);
+                let can_upgrade =
+                    upgrade_cost > 0 && job.is_none() && self.state.coins >= upgrade_cost;
+                let upgrade_missing = if index == 0 {
+                    "手工台不可升级".to_string()
+                } else if equipment.is_none() {
+                    "空槽".to_string()
+                } else if level >= WORKSHOP_EQUIPMENT_MAX_LEVEL {
+                    "已满级".to_string()
+                } else if job.is_some() {
+                    "加工中".to_string()
+                } else if self.state.coins < upgrade_cost {
+                    format!("金币差 {}", upgrade_cost - self.state.coins)
+                } else {
+                    String::new()
+                };
                 WorkshopSlotView {
                     index,
                     equipment,
@@ -1555,9 +1583,14 @@ impl Game {
                     equipment_emoji: equipment
                         .map(|kind| kind.emoji().into())
                         .unwrap_or_default(),
-                    job: workshop_state
-                        .job(index)
-                        .map(|job| workshop_job_view(job, &self.content, now)),
+                    equipment_level: level,
+                    equipment_max_level: WORKSHOP_EQUIPMENT_MAX_LEVEL,
+                    equipment_speed_pct: workshop_state.equipment_speed_pct(index),
+                    equipment_yield_pct: workshop_state.equipment_yield_pct(index),
+                    upgrade_cost,
+                    can_upgrade,
+                    upgrade_missing,
+                    job,
                 }
             })
             .collect();

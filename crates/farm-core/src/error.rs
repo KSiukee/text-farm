@@ -204,6 +204,10 @@ pub enum GameError {
     WorkshopEquipmentMissing,
     #[error("这个配方不属于这台设备")]
     WorkshopEquipmentMismatch,
+    #[error("这台设备已经到 5 级了")]
+    WorkshopUpgradeMax,
+    #[error("手工台不能升级")]
+    WorkshopUpgradeManual,
     #[error("药品用完了，去宠物用品里买")]
     NoPetMedicine,
     #[error("主动技能还在冷却")]
@@ -329,6 +333,8 @@ impl GameError {
             GameError::WorkshopSlotOccupied => "workshop_slot_occupied",
             GameError::WorkshopEquipmentMissing => "workshop_equipment_missing",
             GameError::WorkshopEquipmentMismatch => "workshop_equipment_mismatch",
+            GameError::WorkshopUpgradeMax => "workshop_upgrade_max",
+            GameError::WorkshopUpgradeManual => "workshop_upgrade_manual",
             GameError::NoPetMedicine => "no_pet_medicine",
             GameError::PetSkillCooldown => "pet_skill_cooldown",
             GameError::TrainingLocked => "training_locked",

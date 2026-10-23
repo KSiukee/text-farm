@@ -123,6 +123,9 @@ pub enum Action {
         slot: u8,
         kind: crate::workshop::EquipmentKind,
     },
+    UpgradeEquipment {
+        slot: u8,
+    },
     StartRanchCraft {
         recipe: crate::ranch::RanchRecipe,
     },

@@ -531,6 +531,9 @@ try {
   await clickText("[取货]");
   await waitFor(async () => (saveState().inventory["craft:corn_starch"] || 0) >= 1);
   check("取出玉米淀粉", (saveState().inventory["craft:corn_starch"] || 0) >= 1);
+  await clickText("[升级", false);
+  await waitFor(async () => saveState().workshop.equipmentLevels?.[1] === 2);
+  check("设备升级到 2 级", saveState().workshop.equipmentLevels?.[1] === 2);
   await screenshot(workshopScreenshotPath);
   check("制造屋截图已保存", existsSync(workshopScreenshotPath), workshopScreenshotPath);
 

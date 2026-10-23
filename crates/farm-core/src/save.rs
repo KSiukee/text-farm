@@ -840,6 +840,25 @@ pub fn migrate_save(mut value: Value) -> Result<Value, SaveError> {
         value["schema"] = json!(34);
     }
 
+    if schema < 35 {
+        let state = value
+            .get_mut("state")
+            .and_then(Value::as_object_mut)
+            .ok_or(SaveError::Unknown(schema))?;
+        if let Some(workshop) = state.get_mut("workshop").and_then(Value::as_object_mut) {
+            let slots = workshop
+                .get("slots")
+                .and_then(Value::as_u64)
+                .unwrap_or(3)
+                .clamp(3, 5) as usize;
+            workshop
+                .entry("equipmentLevels")
+                .or_insert_with(|| json!(vec![1u8; slots]));
+        }
+        state.insert("schema".into(), json!(35));
+        value["schema"] = json!(35);
+    }
+
     Ok(value)
 }
 
