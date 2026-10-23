@@ -120,31 +120,31 @@ pub const RANCH_ITEMS: &[RanchItemDef] = &[
     RanchItemDef {
         key: "ranch:cheese",
         name: "奶酪",
-        base_price: 620,
+        base_price: 840,
         sellable: true,
     },
     RanchItemDef {
         key: "ranch:butter",
         name: "黄油",
-        base_price: 310,
+        base_price: 520,
         sellable: true,
     },
     RanchItemDef {
         key: "ranch:cake",
         name: "蛋糕",
-        base_price: 600,
+        base_price: 910,
         sellable: true,
     },
     RanchItemDef {
         key: "ranch:yarn",
         name: "毛线",
-        base_price: 420,
+        base_price: 900,
         sellable: true,
     },
     RanchItemDef {
         key: "ranch:salted_egg",
         name: "咸鸭蛋",
-        base_price: 210,
+        base_price: 450,
         sellable: true,
     },
     RanchItemDef {

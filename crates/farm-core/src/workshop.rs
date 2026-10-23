@@ -11,10 +11,29 @@ pub const WORKSHOP_LEVEL: u32 = 8;
 pub const WORKSHOP_SLOT_COSTS: [u64; 2] = [30_000, 80_000];
 pub const WORKSHOP_SLOT_LEVELS: [u32; 2] = [18, 24];
 
-/// 作物礼盒：5 份同种作物 + 3 小时 → 1 个礼盒，售价 = 单份售价 × 7（原料的 1.4 倍）。
+/// 制造屋调平目标（#125）：每个加工槽每小时净赚 100 金币。
+/// 手工台/设备配方按「原料价值 + 工时边距」定价，礼盒按原料价值的 20% 封顶。
+pub const WORKSHOP_PROFIT_PER_HOUR: u64 = 100;
+
+/// 加工一份要的工时边距；100 金币/小时 → 每 36,000 毫秒 1 金币。
+pub const fn workshop_margin(duration_ms: i64) -> u64 {
+    if duration_ms <= 0 {
+        0
+    } else {
+        (duration_ms as u64) / 36_000
+    }
+}
+
+/// 原料按市场价计入后，加一份固定工时边距。
+pub const fn workshop_price(input_value: u64, duration_ms: i64) -> u64 {
+    input_value.saturating_add(workshop_margin(duration_ms))
+}
+
+/// 作物礼盒：5 份同种作物 + 3 小时 → 1 个礼盒。
+/// 售价 = 5 份原料价值 + 20% 原料价值，边距限制在 60–300（20–100 金币/小时）。
 pub const CROP_BOX_INPUT: u32 = 5;
 pub const CROP_BOX_INTERVAL_MS: i64 = 3 * 60 * 60 * 1000;
-pub const CROP_BOX_PRICE_MULTIPLIER: u64 = 7;
+pub const CROP_BOX_MIN_MARGIN: u64 = 60;
 
 /// 制造屋鱼加工配方：主料是「任意未锁定鱼」，按鱼价从低到高消耗，避免误吃鱼王。
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -98,7 +117,12 @@ pub fn crop_box_key(crop_id: &str) -> String {
 }
 
 pub fn crop_box_price(crop_sell_price: u64) -> u64 {
-    crop_sell_price.saturating_mul(CROP_BOX_PRICE_MULTIPLIER)
+    let input = crop_sell_price.saturating_mul(u64::from(CROP_BOX_INPUT));
+    let margin = (input.saturating_mul(20) / 100).clamp(
+        CROP_BOX_MIN_MARGIN,
+        workshop_margin(CROP_BOX_INTERVAL_MS),
+    );
+    input.saturating_add(margin)
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -304,57 +328,57 @@ pub const CRAFT_ITEMS: &[CraftItemDef] = &[
     CraftItemDef {
         key: "craft:corn_starch",
         name: "玉米淀粉",
-        price: 80,
+        price: 260,
     },
     CraftItemDef {
         key: "craft:coffee_powder",
         name: "咖啡粉",
-        price: 380,
+        price: 490,
     },
     CraftItemDef {
         key: "craft:ginseng_slice",
         name: "参片",
-        price: 470,
+        price: 560,
     },
     CraftItemDef {
         key: "craft:lingzhi_powder",
         name: "灵芝粉",
-        price: 315,
+        price: 440,
     },
     CraftItemDef {
         key: "craft:cane_juice",
         name: "甘蔗汁",
-        price: 115,
+        price: 238,
     },
     CraftItemDef {
         key: "craft:strawberry_juice",
         name: "草莓汁",
-        price: 80,
+        price: 210,
     },
     CraftItemDef {
         key: "craft:grape_juice",
         name: "葡萄汁",
-        price: 155,
+        price: 270,
     },
     CraftItemDef {
         key: "craft:watermelon_juice",
         name: "西瓜汁",
-        price: 60,
+        price: 195,
     },
     CraftItemDef {
         key: "craft:sugar",
         name: "白糖",
-        price: 310,
+        price: 676,
     },
     CraftItemDef {
         key: "craft:cream",
         name: "奶油",
-        price: 570,
+        price: 590,
     },
     CraftItemDef {
         key: "craft:strawberry_jam",
         name: "草莓酱",
-        price: 635,
+        price: 1346,
     },
     CraftItemDef {
         key: "craft:fish_jerky",
@@ -552,5 +576,92 @@ impl WorkshopState {
         }
         *target = Some(kind);
         true
+    }
+}
+
+#[cfg(test)]
+mod balance_tests {
+    use super::*;
+    use crate::content::ContentPack;
+    use crate::ranch::{item_def, RanchRecipe};
+
+    fn crop_price(id: &str) -> u64 {
+        ContentPack::starter()
+            .crop(id)
+            .map(|crop| crop.sell_price)
+            .unwrap_or(0)
+    }
+
+    fn input_value(inputs: &[(&str, u32)]) -> u64 {
+        inputs
+            .iter()
+            .map(|(key, need)| {
+                let price = if let Some(def) = craft_item(key) {
+                    def.price
+                } else if let Some(def) = item_def(key) {
+                    def.base_price
+                } else {
+                    crop_price(key.strip_prefix("crop:").unwrap_or(key))
+                };
+                price.saturating_mul(u64::from(*need))
+            })
+            .sum()
+    }
+
+    fn assert_target(input: u64, duration_ms: i64, output: u64, label: &str) {
+        assert_eq!(
+            output,
+            workshop_price(input, duration_ms),
+            "{label}：输出价应等于原料 + 工时边距"
+        );
+        let margin = output.saturating_sub(input);
+        let per_hour = margin
+            .saturating_mul(3_600_000)
+            .checked_div(duration_ms.max(1) as u64)
+            .unwrap_or(0);
+        assert_eq!(
+            per_hour, WORKSHOP_PROFIT_PER_HOUR,
+            "{label}：每小时净赚应为 {WORKSHOP_PROFIT_PER_HOUR}"
+        );
+    }
+
+    #[test]
+    fn ranch_recipes_earn_target_per_hour() {
+        for recipe in RanchRecipe::ALL {
+            let output = item_def(recipe.output_key())
+                .map(|item| item.base_price)
+                .unwrap_or(0);
+            assert_target(
+                input_value(recipe.inputs()),
+                recipe.duration_ms(),
+                output,
+                recipe.label(),
+            );
+        }
+    }
+
+    #[test]
+    fn equipment_recipes_earn_target_per_hour() {
+        for recipe in EquipmentRecipe::ALL {
+            let output = craft_item(recipe.output_key())
+                .map(|item| item.price)
+                .unwrap_or(0);
+            assert_target(
+                input_value(recipe.inputs()),
+                recipe.duration_ms(),
+                output,
+                recipe.label(),
+            );
+        }
+    }
+
+    #[test]
+    fn crop_boxes_keep_early_margin_and_cap_late_margin() {
+        // 5 份小青菜 30 → 90（最低 60 边距）
+        assert_eq!(crop_box_price(6), 90);
+        // 5 份玉米 100 → 160（最低 60 边距）
+        assert_eq!(crop_box_price(20), 160);
+        // 5 份月见草 2250 → 2550（封顶 300 边距）
+        assert_eq!(crop_box_price(450), 2550);
     }
 }

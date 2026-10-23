@@ -2891,7 +2891,7 @@ onUnmounted(() => {
                 <span class="ws-count muted">
                   {{ workshop.cropRecipes.length }} 种 · 可开工 {{ workshopCropReady }}
                 </span>
-                <span class="muted">5 份同种作物 → 1 个礼盒，约为原料的 1.4 倍</span>
+                <span class="muted">5 份同种作物 → 1 个礼盒，原料价 + 20%（最高 300 工时费）</span>
               </summary>
               <div v-if="workshop.cropRecipes.length" class="ranch-recipes">
                 <div v-for="crop in workshop.cropRecipes" :key="crop.cropId" class="ranch-recipe">
