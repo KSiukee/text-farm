@@ -3101,6 +3101,10 @@ onUnmounted(() => {
                 {{ currentSpot?.emoji }} {{ currentSpot?.label }} · {{ fishing.rodLabel }} ·
                 {{ activeBaitTypeLabel }}{{ activeBaitInfo?.label }} ×{{ activeBaitInfo?.count ?? 0 }}
               </div>
+              <div class="fish-hero-meta">
+                🌦️ {{ fishing.condition.summary }}
+                <span class="muted">· 季节/昼夜/雨天只改鱼种权重，不会禁钓</span>
+              </div>
               <div v-if="fishingPet" class="fish-hero-meta">
                 🐾 {{ fishingPet.name }}在岸边帮忙 · 钓鱼地岗位 Lv{{ fishingPet.fishingJobLevel }}
                 <span class="muted">（每天结算一次）</span>
@@ -3520,6 +3524,7 @@ onUnmounted(() => {
               <img :src="`/fish/${item.id}.png`" :alt="item.name" />
               <span>{{ item.caught ? item.name : "???" }}</span>
               <span class="muted">{{ item.rarityLabel }} · {{ item.price }}</span>
+              <span v-if="item.conditionHint" class="muted">{{ item.conditionHint }}</span>
               <span v-if="item.caught" class="muted">
                 最大 {{ (item.bestWeightTenths / 10).toFixed(1) }}kg · {{ item.bestQualityLabel }}
               </span>
@@ -4214,6 +4219,9 @@ onUnmounted(() => {
           金色变异：{{ selectedFish.golden ? `已记录 ×${selectedFish.goldenCount}` : "未记录" }}
         </div>
         <div class="fish-source">主动钓鱼</div>
+        <div v-if="selectedFish.conditionHint" class="muted">
+          条件加成：{{ selectedFish.conditionHint }}
+        </div>
         <div class="fish-stats">
           <div>
             <b>{{ selectedFish.caught ? selectedFish.manualCount : "—" }}</b>

@@ -3,6 +3,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
+use crate::model::Season;
+
 pub const FISHING_BAIT_PRICE: u64 = 10;
 pub const FISHING_START_BAIT: u32 = 10;
 pub const FISHING_SESSION_TTL_MS: i64 = 60_000;
@@ -907,6 +909,169 @@ pub const FISH: [FishDef; 35] = [
     },
 ];
 
+/// 钓鱼条件（#61）：只改权重，不禁用任何鱼。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FishingCondition {
+    pub season: Season,
+    pub night: bool,
+    pub rainy: bool,
+}
+
+impl FishingCondition {
+    pub fn neutral() -> Self {
+        Self {
+            season: Season::Spring,
+            night: false,
+            rainy: false,
+        }
+    }
+
+    /// 天气按日期确定性生成（25% 雨天）；昼夜按 UTC+8 的整点判断。
+    pub fn at(today: &str, now: i64) -> Self {
+        let hour = ((now.max(0) / 3_600_000 + 8) % 24) as u32;
+        Self {
+            season: Season::from_today(today),
+            night: hour >= 19 || hour < 6,
+            rainy: condition_seed(today) % 100 < 25,
+        }
+    }
+
+    pub fn time_label(self) -> &'static str {
+        if self.night {
+            "夜晚"
+        } else {
+            "白天"
+        }
+    }
+
+    pub fn weather_label(self) -> &'static str {
+        if self.rainy {
+            "雨天"
+        } else {
+            "晴天"
+        }
+    }
+
+    pub fn summary(self) -> String {
+        format!(
+            "{} · {} · {}",
+            self.season.label(),
+            self.time_label(),
+            self.weather_label()
+        )
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FishConditionTag {
+    Day,
+    Night,
+    Rain,
+    Spring,
+    Summer,
+    Autumn,
+    Winter,
+}
+
+impl FishConditionTag {
+    pub fn label(self) -> &'static str {
+        match self {
+            FishConditionTag::Day => "日行",
+            FishConditionTag::Night => "夜行",
+            FishConditionTag::Rain => "雨天",
+            FishConditionTag::Spring => "春季",
+            FishConditionTag::Summer => "夏季",
+            FishConditionTag::Autumn => "秋季",
+            FishConditionTag::Winter => "冬季",
+        }
+    }
+
+    fn matches(self, condition: FishingCondition) -> bool {
+        match self {
+            FishConditionTag::Day => !condition.night,
+            FishConditionTag::Night => condition.night,
+            FishConditionTag::Rain => condition.rainy,
+            FishConditionTag::Spring => condition.season == Season::Spring,
+            FishConditionTag::Summer => condition.season == Season::Summer,
+            FishConditionTag::Autumn => condition.season == Season::Autumn,
+            FishConditionTag::Winter => condition.season == Season::Winter,
+        }
+    }
+}
+
+/// 鱼种条件权重表（百分比，100 = 不变）。
+/// 只加权重、不硬禁；想调平衡直接改这张表。
+pub const FISH_CONDITION_WEIGHTS: &[(&str, FishConditionTag, u32)] = &[
+    ("white_bait", FishConditionTag::Day, 140),
+    ("white_bait", FishConditionTag::Night, 70),
+    ("crucian", FishConditionTag::Spring, 160),
+    ("crucian", FishConditionTag::Day, 120),
+    ("loach", FishConditionTag::Rain, 180),
+    ("loach", FishConditionTag::Spring, 140),
+    ("topmouth_gudgeon", FishConditionTag::Spring, 150),
+    ("chinese_hooksnout", FishConditionTag::Autumn, 140),
+    ("pale_chub", FishConditionTag::Winter, 160),
+    ("yellow_catfish", FishConditionTag::Night, 200),
+    ("yellow_catfish", FishConditionTag::Rain, 180),
+    ("stone_grouper", FishConditionTag::Winter, 160),
+    ("carp", FishConditionTag::Autumn, 150),
+    ("grass_carp", FishConditionTag::Summer, 160),
+    ("silver_carp", FishConditionTag::Day, 130),
+    ("bream", FishConditionTag::Autumn, 150),
+    ("bighead_carp", FishConditionTag::Summer, 150),
+    ("black_carp", FishConditionTag::Rain, 180),
+    ("catfish", FishConditionTag::Night, 200),
+    ("catfish", FishConditionTag::Rain, 200),
+    ("topmouth_culter", FishConditionTag::Summer, 140),
+    ("bronze_carp", FishConditionTag::Autumn, 140),
+    ("river_perch", FishConditionTag::Day, 130),
+    ("red_eye_chub", FishConditionTag::Day, 130),
+    ("jiang_tuan", FishConditionTag::Night, 160),
+    ("mandarin_fish", FishConditionTag::Autumn, 160),
+    ("mongolian_culter", FishConditionTag::Summer, 140),
+    ("eel", FishConditionTag::Night, 220),
+    ("eel", FishConditionTag::Rain, 160),
+    ("yellowcheek", FishConditionTag::Summer, 150),
+    ("hairtail", FishConditionTag::Night, 180),
+    ("sea_perch", FishConditionTag::Day, 130),
+    ("large_yellow_croaker", FishConditionTag::Autumn, 160),
+    ("silver_pomfret", FishConditionTag::Winter, 150),
+    ("spanish_mackerel", FishConditionTag::Summer, 150),
+    ("red_seabream", FishConditionTag::Autumn, 150),
+    ("grouper", FishConditionTag::Winter, 160),
+];
+
+fn condition_seed(today: &str) -> u64 {
+    let mut hash = 0x9E37_79B9_7F4A_7C15u64;
+    for byte in today.bytes() {
+        hash ^= u64::from(byte);
+        hash = hash.wrapping_mul(1_099_511_628_211);
+    }
+    hash ^ (hash >> 33)
+}
+
+/// 条件权重百分比；上下限只防表格写错，不是禁用。
+pub fn condition_weight(def: &FishDef, condition: FishingCondition) -> u64 {
+    let mut pct = 100i32;
+    for (id, tag, value) in FISH_CONDITION_WEIGHTS {
+        if *id == def.id && tag.matches(condition) {
+            pct += *value as i32 - 100;
+        }
+    }
+    pct.clamp(20, 400) as u64
+}
+
+/// 图鉴/详情里显示的条件标签，例如「夜行、雨天」。
+pub fn condition_hint(fish_id: &str) -> String {
+    let mut labels: Vec<&'static str> = Vec::new();
+    for (id, tag, value) in FISH_CONDITION_WEIGHTS {
+        if *id == fish_id && *value > 100 && !labels.contains(&tag.label()) {
+            labels.push(tag.label());
+        }
+    }
+    labels.join("、")
+}
+
 pub fn fish(id: &str) -> Option<&'static FishDef> {
     FISH.iter().find(|def| def.id == id)
 }
@@ -986,8 +1151,22 @@ pub fn pick_fish(spot: FishingSpot, roll: u64) -> &'static FishDef {
 }
 
 pub fn pick_fish_with_bait(spot: FishingSpot, roll: u64, bait_type: BaitType) -> &'static FishDef {
-    let weight =
-        |def: &FishDef| u64::from(def.weight) * u64::from(bait_weight(bait_type, def.id)) / 100;
+    pick_fish_with_bait_condition(spot, roll, bait_type, FishingCondition::neutral())
+}
+
+pub fn pick_fish_with_bait_condition(
+    spot: FishingSpot,
+    roll: u64,
+    bait_type: BaitType,
+    condition: FishingCondition,
+) -> &'static FishDef {
+    let weight = |def: &FishDef| {
+        (u64::from(def.weight)
+            * u64::from(bait_weight(bait_type, def.id))
+            * condition_weight(def, condition)
+            / 10_000)
+            .max(1)
+    };
     let total: u64 = spot_fish(spot).map(weight).sum();
     let mut point = if total == 0 { 0 } else { roll % total };
     let mut last = spot_fish(spot).next().expect("spot has fish");
@@ -1019,6 +1198,22 @@ pub fn pick_auto_fish_with_bait(
     codex: &BTreeMap<String, FishCodexEntry>,
     bait_type: BaitType,
 ) -> Option<&'static FishDef> {
+    pick_auto_fish_with_bait_condition(
+        spot,
+        roll,
+        codex,
+        bait_type,
+        FishingCondition::neutral(),
+    )
+}
+
+pub fn pick_auto_fish_with_bait_condition(
+    spot: FishingSpot,
+    roll: u64,
+    codex: &BTreeMap<String, FishCodexEntry>,
+    bait_type: BaitType,
+    condition: FishingCondition,
+) -> Option<&'static FishDef> {
     let pool: Vec<&FishDef> = spot_fish(spot)
         .filter(|def| def.rarity != FishRarity::King)
         .filter(|def| {
@@ -1042,8 +1237,13 @@ pub fn pick_auto_fish_with_bait(
         FishRarity::Rare => 10,
         FishRarity::King => 0,
     };
-    let weight =
-        |def: &FishDef| rarity_weight(def) * u64::from(bait_weight(bait_type, def.id)) / 100;
+    let weight = |def: &FishDef| {
+        (rarity_weight(def)
+            * u64::from(bait_weight(bait_type, def.id))
+            * condition_weight(def, condition)
+            / 10_000)
+            .max(1)
+    };
     let total: u64 = pool.iter().map(|def| weight(def)).sum();
     if total == 0 {
         return None;

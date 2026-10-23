@@ -1010,3 +1010,74 @@ fn tournament_settles_once_and_claims_once() {
     game.sync(2000, "2026-10-25");
     assert_eq!(game.state().fishing.quests.results.len(), 1);
 }
+
+#[test]
+fn condition_weights_change_distribution_without_banning() {
+    use farm_core::{condition_hint, condition_weight, pick_fish_with_bait_condition, FishingCondition};
+    use farm_core::Season;
+
+    let catfish = fish("catfish").unwrap();
+    let day = FishingCondition {
+        season: Season::Summer,
+        night: false,
+        rainy: false,
+    };
+    let night = FishingCondition {
+        season: Season::Summer,
+        night: true,
+        rainy: false,
+    };
+    assert_eq!(condition_weight(catfish, day), 100);
+    assert_eq!(condition_weight(catfish, night), 200);
+    assert!(condition_hint("catfish").contains("夜行"));
+    assert!(condition_hint("eel").contains("雨天"));
+
+    let mut day_catfish = 0;
+    let mut night_catfish = 0;
+    for roll in 0..5_000 {
+        if pick_fish_with_bait_condition(FishingSpot::River, roll, farm_core::BaitType::Dough, day)
+            .id
+            == "catfish"
+        {
+            day_catfish += 1;
+        }
+        if pick_fish_with_bait_condition(FishingSpot::River, roll, farm_core::BaitType::Dough, night)
+            .id
+            == "catfish"
+        {
+            night_catfish += 1;
+        }
+    }
+    assert!(
+        night_catfish > day_catfish,
+        "night={night_catfish} day={day_catfish}"
+    );
+
+    // 中立条件与旧接口完全一致（旧档/旧模拟不受影响）
+    for roll in 0..2_000 {
+        assert_eq!(
+            farm_core::pick_fish_with_bait(FishingSpot::Creek, roll, farm_core::BaitType::Dough).id,
+            pick_fish_with_bait_condition(
+                FishingSpot::Creek,
+                roll,
+                farm_core::BaitType::Dough,
+                FishingCondition::neutral(),
+            )
+            .id
+        );
+    }
+}
+
+#[test]
+fn snapshot_exposes_current_condition_and_codex_hint() {
+    let game = game(0);
+    let snapshot = game.snapshot(0);
+    assert!(snapshot.fishing.condition.summary.contains("·"));
+    let eel = snapshot
+        .fishing
+        .codex
+        .iter()
+        .find(|item| item.id == "eel")
+        .unwrap();
+    assert!(eel.condition_hint.contains("夜行"));
+}

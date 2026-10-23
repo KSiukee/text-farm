@@ -718,6 +718,7 @@ try {
 
   await clickText("钓鱼", false);
   check("钓鱼页已打开", (await bodyText()).includes("鱼类图鉴") && (await bodyText()).includes("鱼饵"));
+  check("钓鱼页显示当前条件", (await bodyText()).includes("季节/昼夜/雨天"));
   await openFold("委托与比赛");
   check(
     "钓鱼委托与比赛已显示",

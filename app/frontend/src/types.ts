@@ -714,6 +714,14 @@ export interface FishCodexView {
   autoBestQuality: number;
   autoBestQualityLabel: string;
   autoBestPrice: number;
+  conditionHint: string;
+}
+
+export interface FishingConditionView {
+  seasonLabel: string;
+  timeLabel: string;
+  weatherLabel: string;
+  summary: string;
 }
 
 export interface FishCatchView {
@@ -874,6 +882,7 @@ export interface FishingView {
   lastCatch: FishCatchView | null;
   lastAutoReport: AutoReportView | null;
   quests: FishingQuestView;
+  condition: FishingConditionView;
 }
 
 export interface RoomFurniture {

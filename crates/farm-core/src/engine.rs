@@ -1228,7 +1228,8 @@ impl Game {
             self.state.fishing.take_bait_of(bait_type, quality);
         }
         let roll = roll_pest((now.max(0) as u64) ^ seq, spot as u8, "cast");
-        let def = fishing::pick_fish_with_bait(spot, roll, bait_type);
+        let condition = fishing::FishingCondition::at(&self.state.daily.day, now);
+        let def = fishing::pick_fish_with_bait_condition(spot, roll, bait_type, condition);
         let personality = fishing::pick_personality(
             def,
             roll_pest(
@@ -1657,8 +1658,14 @@ impl Game {
         for step in 0..steps {
             let at = last_at + i64::from(step) * interval;
             let roll = roll_pest((at.max(0) as u64) / 1000, spot as u8, "auto");
-            let Some(def) =
-                fishing::pick_auto_fish_with_bait(spot, roll, &self.state.fishing.codex, bait_type)
+            let condition = fishing::FishingCondition::at(&self.state.daily.day, at);
+            let Some(def) = fishing::pick_auto_fish_with_bait_condition(
+                spot,
+                roll,
+                &self.state.fishing.codex,
+                bait_type,
+                condition,
+            )
             else {
                 self.state.fishing.auto.enabled = false;
                 stop_message = Some(format!(

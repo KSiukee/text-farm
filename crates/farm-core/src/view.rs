@@ -620,6 +620,15 @@ pub struct FishingQuestView {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct FishingConditionView {
+    pub season_label: String,
+    pub time_label: String,
+    pub weather_label: String,
+    pub summary: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FishCodexView {
     pub id: String,
     pub name: String,
@@ -647,6 +656,7 @@ pub struct FishCodexView {
     pub auto_best_quality: u32,
     pub auto_best_quality_label: String,
     pub auto_best_price: u64,
+    pub condition_hint: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -779,6 +789,7 @@ pub struct FishingView {
     pub last_catch: Option<FishCatchView>,
     pub last_auto_report: Option<AutoReportView>,
     pub quests: FishingQuestView,
+    pub condition: FishingConditionView,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1948,6 +1959,7 @@ impl Game {
                     )
                     .into(),
                     auto_best_price: entry.map(|e| e.auto_best_price).unwrap_or(0),
+                    condition_hint: fishing::condition_hint(def.id).into(),
                 }
             })
             .collect();
@@ -2048,6 +2060,13 @@ impl Game {
             .find(|d| d.kind == crate::skills::DisciplineKind::Fishing)
             .map(|d| d.skills.clone())
             .unwrap_or_default();
+        let condition = fishing::FishingCondition::at(&self.state.daily.day, now);
+        let condition_view = FishingConditionView {
+            season_label: condition.season.label().into(),
+            time_label: condition.time_label().into(),
+            weather_label: condition.weather_label().into(),
+            summary: condition.summary(),
+        };
         let quest_state = &fishing_state.quests;
         let to_commission = |c: &crate::fishing::FishingCommission| FishingCommissionView {
             id: c.id.clone(),
@@ -2137,6 +2156,7 @@ impl Game {
             last_catch,
             last_auto_report,
             quests,
+            condition: condition_view,
         };
         let ranch = RanchView {
             can_expand: self.state.ranch.can_expand(),
