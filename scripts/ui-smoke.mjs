@@ -16,6 +16,7 @@ const ranchScreenshotPath = join(root, "docs", "ranch-v028.png");
 const workshopScreenshotPath = join(root, "docs", "workshop-v031.png");
 const fishingScreenshotPath = join(root, "docs", "fishing-v032.png");
 const fishingGameScreenshotPath = join(root, "docs", "fishing-game-v032.png");
+const fishingBgDir = join(root, "app", "frontend", "public", "fishing");
 const port = 9333;
 const checks = [];
 let child = null;
@@ -374,6 +375,12 @@ try {
   await startApp();
   const title = await evaluate("document.title");
   check("页面标题为文字农场", title.includes("文字农场"), title);
+  check(
+    "四种水域背景已生成",
+    ["creek", "river", "jiang", "sea"].every((name) =>
+      existsSync(join(fishingBgDir, `bg_${name}.png`)),
+    ),
+  );
 
   await clickText("宠物");
   await waitFor(async () => (await bodyText()).includes("宠物用品"));
@@ -755,6 +762,12 @@ try {
   );
   check("F 开始收线", true);
   check("张力第二维已显示", await evaluate(`!!document.querySelector('.fg-tension')`));
+  check(
+    "水域背景已加载",
+    await evaluate(
+      `(() => { const img = document.querySelector('.fg-bg'); return !!img && img.complete && img.naturalWidth > 0 && img.src.includes('/fishing/bg_'); })()`,
+    ),
+  );
   const gameText = await bodyText();
   check(
     "鱼种行为已显示",

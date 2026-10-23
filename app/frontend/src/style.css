@@ -2194,6 +2194,25 @@ footer {
   user-select: none;
 }
 
+.fg-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: pixelated;
+  opacity: 0.92;
+  pointer-events: none;
+  user-select: none;
+}
+
+.fg-bg-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgb(4 27 36 / 18%), rgb(3 20 28 / 42%));
+  pointer-events: none;
+}
+
 .fg-pond:focus {
   outline: 2px solid var(--pond-focus);
   outline-offset: 2px;

@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "source": "generated/pil",
+  "license": "in-house",
+  "style": "light pixel, underwater cross-section",
+  "master": [
+    230,
+    100
+  ],
+  "scale": 4,
+  "assets": [
+    {
+      "id": "fishing_bg_creek",
+      "file": "bg_creek.png",
+      "size": [
+        920,
+        400
+      ]
+    },
+    {
+      "id": "fishing_bg_river",
+      "file": "bg_river.png",
+      "size": [
+        920,
+        400
+      ]
+    },
+    {
+      "id": "fishing_bg_jiang",
+      "file": "bg_jiang.png",
+      "size": [
+        920,
+        400
+      ]
+    },
+    {
+      "id": "fishing_bg_sea",
+      "file": "bg_sea.png",
+      "size": [
+        920,
+        400
+      ]
+    }
+  ]
+}

@@ -176,6 +176,7 @@ const tensionState = computed(() =>
 const behavior = computed(() => props.session?.params.behavior ?? "migratory");
 const behaviorLabel = computed(() => props.session?.params.behaviorLabel ?? "洄游");
 const behaviorHint = computed(() => props.session?.params.behaviorHint ?? "");
+const bgSrc = computed(() => `/fishing/bg_${props.session?.spot ?? "creek"}.png`);
 const kingPhaseLabel = computed(() => {
   switch (kingPhase.value) {
     case "probe":
@@ -949,6 +950,8 @@ onUnmounted(() => {
       @click="focusGame"
       @pointerdown="focusGame"
     >
+      <img class="fg-bg" :src="bgSrc" alt="" draggable="false" />
+      <div class="fg-bg-shade"></div>
       <div class="fg-pond-glow"></div>
       <div class="fg-caustics"></div>
       <div class="fg-bubbles">
