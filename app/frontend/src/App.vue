@@ -981,6 +981,22 @@ function resolveFishing(success: boolean) {
   void act({ type: "resolveFishing", success });
 }
 
+function acceptFishingCommission(id: string) {
+  void act({ type: "acceptFishingCommission", id });
+}
+
+function claimFishingCommission(id: string) {
+  void act({ type: "claimFishingCommission", id });
+}
+
+function refreshFishingCommissions() {
+  void act({ type: "refreshFishingCommissions" });
+}
+
+function claimFishingTournament(day: string) {
+  void act({ type: "claimFishingTournament", day });
+}
+
 function setAutoFishing(enabled: boolean) {
   void act({
     type: "setAutoFishing",
@@ -3198,6 +3214,110 @@ onUnmounted(() => {
             <span v-else class="muted">F 抛竿 → 等咬钩 → 再按 F 开始；WASD 移框，进度满自动收鱼</span>
           </div>
           </div>
+
+          <details
+            class="fish-card fish-card--quest fish-fold fish-section"
+            :open="classicLayout ? true : undefined"
+          >
+            <summary @click="guardClassicFold">
+              <span class="fish-fold-title">委托与比赛</span>
+              <span class="muted">
+                可接 {{ fishing.quests.offers.length }} 条 · 进行中 {{ fishing.quests.active.length }}/2
+                <template v-if="fishing.quests.results.some((r) => !r.claimed)"> · 有比赛奖励可领</template>
+              </span>
+            </summary>
+            <div class="fishing-quest-block">
+              <div class="fishing-quest-head">
+                <b>NPC 委托</b>
+                <span class="muted">每天 3 条，今天有效；同时最多接 2 条</span>
+                <button
+                  v-if="fishing.quests.canRefresh"
+                  class="link"
+                  type="button"
+                  :disabled="acting"
+                  @click="refreshFishingCommissions"
+                >
+                  [换一批]
+                </button>
+                <span v-else class="muted">今天已换过</span>
+              </div>
+              <div v-for="offer in fishing.quests.offers" :key="offer.id" class="fishing-quest">
+                <span>{{ offer.title }}</span>
+                <span class="muted">
+                  奖励 {{ offer.rewardCoins }} 金币 · 鱼饵×{{ offer.rewardBait }} · 经验 {{ offer.rewardExp }}
+                </span>
+                <button
+                  class="link"
+                  type="button"
+                  :disabled="acting || fishing.quests.active.length >= 2"
+                  @click="acceptFishingCommission(offer.id)"
+                >
+                  [接委托]
+                </button>
+              </div>
+              <div v-if="!fishing.quests.offers.length" class="muted">今天的委托都接完了，明天再来。</div>
+            </div>
+            <div class="fishing-quest-block">
+              <div class="fishing-quest-head">
+                <b>进行中</b>
+                <span class="muted">{{ fishing.quests.active.length }}/2</span>
+              </div>
+              <div v-for="commission in fishing.quests.active" :key="commission.id" class="fishing-quest">
+                <span>{{ commission.title }}</span>
+                <span class="muted">进度 {{ commission.progress }}/{{ commission.qty }}</span>
+                <button
+                  v-if="commission.complete"
+                  class="link"
+                  type="button"
+                  :disabled="acting"
+                  @click="claimFishingCommission(commission.id)"
+                >
+                  [交委托]
+                </button>
+                <span v-else class="muted">
+                  还差 {{ commission.qty - commission.progress }} 条（{{
+                    (commission.minWeightTenths / 10).toFixed(1)
+                  }}kg 以上）
+                </span>
+              </div>
+              <div v-if="!fishing.quests.active.length" class="muted">还没接委托。</div>
+            </div>
+            <div v-if="fishing.quests.tournament" class="fishing-quest-block">
+              <div class="fishing-quest-head">
+                <b>今日最重一条</b>
+                <span class="muted">和 {{ fishing.quests.tournament.npcName }} 比 · 明天结算</span>
+              </div>
+              <div class="fishing-quest">
+                <span v-if="fishing.quests.tournament.bestTenths">
+                  你的最重：{{ fishing.quests.tournament.bestFishName }}
+                  {{ (fishing.quests.tournament.bestTenths / 10).toFixed(1) }}kg
+                </span>
+                <span v-else class="muted">你今天还没上鱼</span>
+                <span class="muted">
+                  {{ fishing.quests.tournament.npcName }} 目前
+                  {{ (fishing.quests.tournament.npcBestTenths / 10).toFixed(1) }}kg
+                </span>
+              </div>
+            </div>
+            <div
+              v-for="result in fishing.quests.results.filter((r) => !r.claimed)"
+              :key="result.day"
+              class="fishing-quest"
+            >
+              <span>{{ result.message }}</span>
+              <span class="muted">
+                金币+{{ result.rewardCoins }} · 鱼饵+{{ result.rewardBait }} · 经验+{{ result.rewardExp }}
+              </span>
+              <button
+                class="link"
+                type="button"
+                :disabled="acting"
+                @click="claimFishingTournament(result.day)"
+              >
+                [领奖]
+              </button>
+            </div>
+          </details>
 
           <details
             class="fish-card fish-card--gear fish-fold fish-section fish-section--gear"

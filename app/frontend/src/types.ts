@@ -791,6 +791,50 @@ export interface SkillsView {
   buffItems: BuffItemView[];
 }
 
+export interface FishingCommissionView {
+  id: string;
+  npcName: string;
+  title: string;
+  fishName: string;
+  spotLabel: string;
+  minWeightTenths: number;
+  qty: number;
+  progress: number;
+  complete: boolean;
+  rewardCoins: number;
+  rewardBait: number;
+  rewardExp: number;
+}
+
+export interface FishingTournamentView {
+  day: string;
+  npcName: string;
+  npcBestTenths: number;
+  bestTenths: number;
+  bestFishName: string;
+}
+
+export interface FishingTournamentResultView {
+  day: string;
+  message: string;
+  rank: number;
+  rewardCoins: number;
+  rewardBait: number;
+  rewardExp: number;
+  claimed: boolean;
+  bestTenths: number;
+  npcBestTenths: number;
+}
+
+export interface FishingQuestView {
+  offers: FishingCommissionView[];
+  active: FishingCommissionView[];
+  tournament: FishingTournamentView | null;
+  results: FishingTournamentResultView[];
+  canRefresh: boolean;
+  refreshUsed: boolean;
+}
+
 export interface FishingView {
   rod: RodKind;
   rodLabel: string;
@@ -829,6 +873,7 @@ export interface FishingView {
   fullCodexClaimed: boolean;
   lastCatch: FishCatchView | null;
   lastAutoReport: AutoReportView | null;
+  quests: FishingQuestView;
 }
 
 export interface RoomFurniture {
@@ -1030,6 +1075,10 @@ export type Action =
   | { type: "switchRod"; rod: RodKind }
   | { type: "castLine"; spot: FishingSpot; quality?: BaitQuality }
   | { type: "resolveFishing"; success: boolean }
+  | { type: "acceptFishingCommission"; id: string }
+  | { type: "claimFishingCommission"; id: string }
+  | { type: "refreshFishingCommissions" }
+  | { type: "claimFishingTournament"; day: string }
   | { type: "setAutoFishing"; spot: FishingSpot; enabled: boolean; rod?: RodKind; baitQuality?: BaitQuality; baitType?: BaitType }
   | { type: "upgradeFishingSkill"; skill: string }
   | { type: "upgradeSkill"; discipline: DisciplineKind; skill: string }

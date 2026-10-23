@@ -890,3 +890,123 @@ fn pet_fish_pool_only_returns_lit_unlocked_cheap_fish() {
     assert!(!keen.iter().any(|def| def.id == "creek_king"));
     assert!(farm_core::pick_from_pool(&[], 1).is_none());
 }
+
+#[test]
+fn daily_commission_accept_progress_claim() {
+    let mut game = game(0);
+    game.state_mut().skills.fishing.level = 12;
+    game.sync(0, "2026-10-23");
+    let offers = game.state().fishing.quests.offers.clone();
+    assert_eq!(offers.len(), 3);
+    let offer = offers[0].clone();
+    game.dispatch(
+        Action::AcceptFishingCommission {
+            id: offer.id.clone(),
+        },
+        0,
+    )
+    .unwrap();
+    assert!(matches!(
+        game.dispatch(
+            Action::ClaimFishingCommission {
+                id: offer.id.clone(),
+            },
+            0,
+        ),
+        Err(GameError::FishingCommissionNotReady)
+    ));
+    let def = offer
+        .fish_id
+        .as_deref()
+        .and_then(fish)
+        .or_else(|| offer.spot.and_then(|spot| spot_fish(spot).next()))
+        .expect("commission has a fish");
+    let weight = offer.min_weight_tenths.max(10);
+    for _ in 0..offer.qty {
+        game.state_mut().fishing.quests.on_catch(def, weight);
+    }
+    let coins = game.state().coins;
+    let bait = game.state().fishing.bait;
+    game.dispatch(
+        Action::ClaimFishingCommission {
+            id: offer.id.clone(),
+        },
+        0,
+    )
+    .unwrap();
+    assert!(game.state().coins > coins);
+    assert!(game.state().fishing.bait > bait);
+    assert!(game.state().fishing.quests.active.is_empty());
+
+    // 同时最多接 2 条；先接满，再换一批拿新委托来试
+    let more = game.state().fishing.quests.offers.clone();
+    game.dispatch(
+        Action::AcceptFishingCommission {
+            id: more[0].id.clone(),
+        },
+        0,
+    )
+    .unwrap();
+    game.dispatch(
+        Action::AcceptFishingCommission {
+            id: more[1].id.clone(),
+        },
+        0,
+    )
+    .unwrap();
+    game.dispatch(Action::RefreshFishingCommissions, 0).unwrap();
+    let fresh = game.state().fishing.quests.offers.clone();
+    assert!(matches!(
+        game.dispatch(
+            Action::AcceptFishingCommission {
+                id: fresh[0].id.clone(),
+            },
+            0,
+        ),
+        Err(GameError::FishingCommissionLimit)
+    ));
+}
+
+#[test]
+fn commission_refresh_once_per_day() {
+    let mut game = game(0);
+    game.state_mut().skills.fishing.level = 12;
+    game.sync(0, "2026-10-23");
+    game.dispatch(Action::RefreshFishingCommissions, 0).unwrap();
+    assert!(matches!(
+        game.dispatch(Action::RefreshFishingCommissions, 0),
+        Err(GameError::FishingCommissionRefreshUsed)
+    ));
+    game.sync(1000, "2026-10-24");
+    game.dispatch(Action::RefreshFishingCommissions, 1000)
+        .unwrap();
+}
+
+#[test]
+fn tournament_settles_once_and_claims_once() {
+    let mut game = game(0);
+    game.state_mut().skills.fishing.level = 12;
+    game.sync(0, "2026-10-23");
+    let def = fish("white_bait").expect("white bait");
+    game.state_mut().fishing.quests.on_catch(def, 20);
+    game.sync(1000, "2026-10-24");
+    let results = game.state().fishing.quests.results.clone();
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].best_tenths, 20);
+    assert_eq!(results[0].rank, 1);
+    let day = results[0].day.clone();
+    let coins = game.state().coins;
+    game.dispatch(
+        Action::ClaimFishingTournament { day: day.clone() },
+        1000,
+    )
+    .unwrap();
+    assert!(game.state().coins > coins);
+    assert!(matches!(
+        game.dispatch(Action::ClaimFishingTournament { day }, 1000),
+        Err(GameError::FishingTournamentInvalid)
+    ));
+    // 第二天再结算也只多一条，不会重复结算同一天
+    game.sync(2000, "2026-10-25");
+    assert_eq!(game.state().fishing.quests.results.len(), 1);
+}

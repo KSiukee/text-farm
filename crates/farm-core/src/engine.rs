@@ -131,6 +131,16 @@ impl Game {
             Action::SellAllFish => self.sell_all_fish(now)?,
             Action::MaintainRod { rod } => self.maintain_rod(rod, now)?,
             Action::ResolveFishing { success } => self.resolve_fishing(success, now)?,
+            Action::AcceptFishingCommission { id } => {
+                self.accept_fishing_commission(&id, now)?
+            }
+            Action::ClaimFishingCommission { id } => {
+                self.claim_fishing_commission(&id, now)?
+            }
+            Action::RefreshFishingCommissions => self.refresh_fishing_commissions(now)?,
+            Action::ClaimFishingTournament { day } => {
+                self.claim_fishing_tournament(&day, now)?
+            }
             Action::SetAutoFishing {
                 spot,
                 enabled,
@@ -1308,6 +1318,7 @@ impl Game {
             self.state
                 .fishing
                 .record_catch(def, weight_tenths, quality, price, false, now);
+        self.state.fishing.quests.on_catch(def, weight_tenths);
         if golden {
             *self
                 .state
@@ -1405,6 +1416,106 @@ impl Game {
         }
         texts
     }
+    fn accept_fishing_commission(&mut self, id: &str, now: i64) -> Result<Vec<Effect>, GameError> {
+        if self.state.fishing.quests.active.len() >= 2 {
+            return Err(GameError::FishingCommissionLimit);
+        }
+        let Some(offer) = self
+            .state
+            .fishing
+            .quests
+            .offers
+            .iter()
+            .find(|offer| offer.id == id)
+        else {
+            return Err(GameError::FishingCommissionInvalid);
+        };
+        let title = offer.title.clone();
+        if !self.state.fishing.quests.accept(id) {
+            return Err(GameError::FishingCommissionInvalid);
+        }
+        let text = format!("接下钓鱼委托：{title}");
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn claim_fishing_commission(&mut self, id: &str, now: i64) -> Result<Vec<Effect>, GameError> {
+        let Some(active) = self
+            .state
+            .fishing
+            .quests
+            .active
+            .iter()
+            .find(|commission| commission.id == id)
+        else {
+            return Err(GameError::FishingCommissionInvalid);
+        };
+        if !active.complete() {
+            return Err(GameError::FishingCommissionNotReady);
+        }
+        let commission = self
+            .state
+            .fishing
+            .quests
+            .claim_commission(id)
+            .ok_or(GameError::FishingCommissionNotReady)?;
+        self.state.coins = self.state.coins.saturating_add(commission.reward_coins);
+        self.state
+            .fishing
+            .add_bait(fishing::BaitQuality::Normal, commission.reward_bait);
+        let levels = self.state.skills.fishing.add_exp(commission.reward_exp);
+        let mut texts = vec![format!(
+            "完成{}的钓鱼委托：金币+{}，普通鱼饵+{}，钓鱼经验+{}",
+            commission.npc_name,
+            commission.reward_coins,
+            commission.reward_bait,
+            commission.reward_exp
+        )];
+        for _ in 0..levels {
+            texts.push(format!("钓鱼等级升到 {} 级", self.state.skills.fishing.level));
+        }
+        for text in &texts {
+            self.push_log(now, text.clone());
+        }
+        Ok(texts.into_iter().map(|text| Effect::Log { text }).collect())
+    }
+
+    fn refresh_fishing_commissions(&mut self, now: i64) -> Result<Vec<Effect>, GameError> {
+        if !self
+            .state
+            .fishing
+            .quests
+            .refresh(self.state.skills.fishing.level)
+        {
+            return Err(GameError::FishingCommissionRefreshUsed);
+        }
+        let text = "换了一批钓鱼委托".to_string();
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn claim_fishing_tournament(&mut self, day: &str, now: i64) -> Result<Vec<Effect>, GameError> {
+        let Some(result) = self.state.fishing.quests.claim_tournament(day) else {
+            return Err(GameError::FishingTournamentInvalid);
+        };
+        self.state.coins = self.state.coins.saturating_add(result.reward_coins);
+        self.state
+            .fishing
+            .add_bait(fishing::BaitQuality::Normal, result.reward_bait);
+        let levels = self.state.skills.fishing.add_exp(result.reward_exp);
+        let mut texts = vec![format!(
+            "{}：金币+{}，普通鱼饵+{}，钓鱼经验+{}",
+            result.message, result.reward_coins, result.reward_bait, result.reward_exp
+        )];
+        for _ in 0..levels {
+            texts.push(format!("钓鱼等级升到 {} 级", self.state.skills.fishing.level));
+        }
+        for text in &texts {
+            self.push_log(now, text.clone());
+        }
+        Ok(texts.into_iter().map(|text| Effect::Log { text }).collect())
+    }
+
     fn set_auto_fishing(
         &mut self,
         spot: FishingSpot,
@@ -1615,6 +1726,7 @@ impl Game {
             self.state
                 .fishing
                 .record_catch(def, weight_tenths, quality, price, true, at);
+            self.state.fishing.quests.on_catch(def, weight_tenths);
             if golden {
                 *self
                     .state
@@ -4211,6 +4323,17 @@ impl Game {
             } else {
                 format!("换季：{}来了{}", season.label(), season.emoji())
             };
+            self.push_log(now, text.clone());
+            effects.push(Effect::Log { text });
+            changed = true;
+        }
+        if self
+            .state
+            .fishing
+            .quests
+            .ensure_day(today, self.state.skills.fishing.level)
+        {
+            let text = "钓鱼委托和今日比赛更新了".to_string();
             self.push_log(now, text.clone());
             effects.push(Effect::Log { text });
             changed = true;

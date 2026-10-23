@@ -112,6 +112,16 @@ pub enum GameError {
     BadFishingSkill,
     #[error("这个钓术已经满级")]
     FishingSkillMax,
+    #[error("这条钓鱼委托不在了")]
+    FishingCommissionInvalid,
+    #[error("最多同时接 2 条钓鱼委托")]
+    FishingCommissionLimit,
+    #[error("委托还没完成")]
+    FishingCommissionNotReady,
+    #[error("今天的委托已经换过了")]
+    FishingCommissionRefreshUsed,
+    #[error("没有这场可领的钓鱼比赛")]
+    FishingTournamentInvalid,
     #[error("没有这个专精")]
     BadSkill,
     #[error("这个专精已经满级")]
@@ -286,6 +296,11 @@ impl GameError {
             GameError::FishLocked => "fish_locked",
             GameError::BadFishingSkill => "bad_fishing_skill",
             GameError::FishingSkillMax => "fishing_skill_max",
+            GameError::FishingCommissionInvalid => "fishing_commission_invalid",
+            GameError::FishingCommissionLimit => "fishing_commission_limit",
+            GameError::FishingCommissionNotReady => "fishing_commission_not_ready",
+            GameError::FishingCommissionRefreshUsed => "fishing_commission_refresh_used",
+            GameError::FishingTournamentInvalid => "fishing_tournament_invalid",
             GameError::BadSkill => "bad_skill",
             GameError::SkillMax => "skill_max",
             GameError::BadBuffItem => "bad_buff_item",

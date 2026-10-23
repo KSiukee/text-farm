@@ -1857,6 +1857,40 @@ footer {
   background: var(--panel);
 }
 
+.fish-card--quest {
+  border-left-color: var(--gold-line);
+  background: var(--gold-bg);
+}
+
+.fishing-quest-block {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+}
+
+.fishing-quest-block:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.fishing-quest-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin-bottom: 4px;
+}
+
+.fishing-quest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 3px 0;
+  font-size: 13px;
+}
+
 .fish-card > .fishing-level {
   margin: 0;
 }

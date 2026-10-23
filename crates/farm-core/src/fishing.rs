@@ -1223,6 +1223,9 @@ pub struct FishingState {
     /// v31→v32 迁移时记下的「按农场等级当时已解锁」的钓点；之后不再新增。
     #[serde(default)]
     pub legacy_unlocks: BTreeSet<String>,
+    /// 每日 NPC 委托与限时比赛。
+    #[serde(default)]
+    pub quests: FishingQuestState,
 }
 
 fn default_bait() -> u32 {
@@ -1263,6 +1266,7 @@ impl FishingState {
             stats: FishingStats::default(),
             session_seq: 0,
             legacy_unlocks: BTreeSet::new(),
+            quests: FishingQuestState::default(),
         }
     }
 
@@ -1644,6 +1648,313 @@ impl FishBatch {
             .total_quality
             .saturating_sub(u64::from(self.avg_quality()) * u64::from(qty));
         value
+    }
+}
+
+const QUEST_NPCS: [(&str, &str); 5] = [
+    ("ahe", "阿禾"),
+    ("xiaoman", "小满"),
+    ("qingxing", "青杏"),
+    ("laotao", "老陶"),
+    ("liuyue", "六月"),
+];
+
+/// 每日 NPC 钓鱼委托。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+pub struct FishingCommission {
+    pub id: String,
+    pub npc_id: String,
+    pub npc_name: String,
+    pub title: String,
+    pub fish_id: Option<String>,
+    pub fish_name: String,
+    pub spot: Option<FishingSpot>,
+    pub min_weight_tenths: u32,
+    pub qty: u32,
+    pub progress: u32,
+    pub reward_coins: u64,
+    pub reward_bait: u32,
+    pub reward_exp: u64,
+}
+
+impl FishingCommission {
+    pub fn complete(&self) -> bool {
+        self.progress >= self.qty
+    }
+}
+
+/// 本日「最重一条」比赛；只记录当天，第二天结算。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+pub struct FishingTournament {
+    pub day: String,
+    pub npc_name: String,
+    pub npc_best_tenths: u32,
+    pub best_tenths: u32,
+    pub best_fish_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+pub struct FishingTournamentResult {
+    pub day: String,
+    pub npc_name: String,
+    pub npc_best_tenths: u32,
+    pub best_tenths: u32,
+    pub best_fish_name: String,
+    pub rank: u32,
+    pub reward_coins: u64,
+    pub reward_bait: u32,
+    pub reward_exp: u64,
+    pub claimed: bool,
+    pub message: String,
+}
+
+/// 钓鱼委托/比赛的存档。旧档为空，第一次 sync 时自动生成。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+pub struct FishingQuestState {
+    pub day: String,
+    pub offers: Vec<FishingCommission>,
+    pub active: Vec<FishingCommission>,
+    /// 今日已手动换过几批（最多 1 次）。
+    pub refreshes: u32,
+    pub tournament: Option<FishingTournament>,
+    /// 最近 3 场已结算、最多 3 条待领；领过仍留作历史。
+    pub results: Vec<FishingTournamentResult>,
+}
+
+fn quest_roll(day: &str, salt: u64) -> u64 {
+    let mut hash = 1_469_598_103_934_665_603u64 ^ salt;
+    for byte in day.bytes() {
+        hash ^= u64::from(byte);
+        hash = hash.wrapping_mul(1_099_511_628_211);
+    }
+    hash ^= hash >> 33;
+    hash = hash.wrapping_mul(0xff51_afd7_ed55_8ccd);
+    hash ^ (hash >> 33)
+}
+
+fn commission_reward(fish: &FishDef, qty: u32, min_weight_tenths: u32) -> (u64, u32, u64) {
+    let coins = fish
+        .price
+        .saturating_mul(u64::from(qty) * 2)
+        .saturating_add(u64::from(min_weight_tenths) * 100)
+        .saturating_add(100);
+    let bait = 4 + qty * 3;
+    let exp = 10 + u64::from(qty) * 8;
+    (coins, bait, exp)
+}
+
+fn generate_offers(day: &str, fishing_level: u32) -> Vec<FishingCommission> {
+    let pool: Vec<&'static FishDef> = FISH
+        .iter()
+        .filter(|def| def.rarity != FishRarity::King)
+        .filter(|def| fishing_level >= def.spot.unlock_level())
+        .collect();
+    if pool.is_empty() {
+        return Vec::new();
+    }
+    let spots: Vec<FishingSpot> = FishingSpot::ALL
+        .iter()
+        .copied()
+        .filter(|spot| fishing_level >= spot.unlock_level())
+        .collect();
+    (0..3)
+        .map(|index| {
+            let roll = quest_roll(day, 0x100 + index as u64 * 17);
+            let (npc_id, npc_name) = QUEST_NPCS[(roll as usize >> 8) % QUEST_NPCS.len()];
+            if index == 2 {
+                let spot = spots[(roll as usize >> 16) % spots.len()];
+                let qty = 2 + ((roll >> 24) % 2) as u32;
+                let min_weight = 8 + ((roll >> 32) % 4) as u32;
+                let coins = 200u64
+                    .saturating_add((spot as u64 + 1) * 250)
+                    .saturating_add(u64::from(qty) * 120);
+                FishingCommission {
+                    id: format!("{day}-{index}"),
+                    npc_id: npc_id.into(),
+                    npc_name: npc_name.into(),
+                    title: format!(
+                        "{npc_name}想收 {qty} 条{spot}的鱼（{:.1}kg 以上都行）",
+                        f64::from(min_weight) / 10.0,
+                        spot = spot.label()
+                    ),
+                    fish_id: None,
+                    fish_name: "任意鱼".into(),
+                    spot: Some(spot),
+                    min_weight_tenths: min_weight,
+                    qty,
+                    progress: 0,
+                    reward_coins: coins,
+                    reward_bait: 4 + qty * 3,
+                    reward_exp: 10 + u64::from(qty) * 6,
+                }
+            } else {
+                let def = pool[(roll as usize) % pool.len()];
+                let qty = 1 + ((roll >> 8) % 2) as u32;
+                let min_weight = 8 + ((roll >> 16) % 5) as u32;
+                let (coins, bait, exp) = commission_reward(def, qty, min_weight);
+                FishingCommission {
+                    id: format!("{day}-{index}"),
+                    npc_id: npc_id.into(),
+                    npc_name: npc_name.into(),
+                    title: format!(
+                        "{npc_name}想要 {qty} 条{:.1}kg 以上的{}",
+                        f64::from(min_weight) / 10.0,
+                        def.name
+                    ),
+                    fish_id: Some(def.id.into()),
+                    fish_name: def.name.into(),
+                    spot: Some(def.spot),
+                    min_weight_tenths: min_weight,
+                    qty,
+                    progress: 0,
+                    reward_coins: coins,
+                    reward_bait: bait,
+                    reward_exp: exp,
+                }
+            }
+        })
+        .collect()
+}
+
+impl FishingTournament {
+    fn new(day: &str) -> Self {
+        let roll = quest_roll(day, 0x900);
+        let (npc_id, npc_name) = QUEST_NPCS[(roll as usize >> 8) % QUEST_NPCS.len()];
+        let _ = npc_id;
+        Self {
+            day: day.into(),
+            npc_name: npc_name.into(),
+            npc_best_tenths: 12 + ((roll >> 16) % 7) as u32,
+            best_tenths: 0,
+            best_fish_name: String::new(),
+        }
+    }
+
+    fn settle(self) -> Option<FishingTournamentResult> {
+        if self.best_tenths == 0 {
+            return None;
+        }
+        let (rank, coins, bait, exp) = if self.best_tenths >= self.npc_best_tenths + 2 {
+            (1, 3_000, 20, 60)
+        } else if self.best_tenths >= self.npc_best_tenths {
+            (2, 1_500, 12, 40)
+        } else if self.best_tenths + 2 >= self.npc_best_tenths {
+            (3, 800, 6, 20)
+        } else {
+            (4, 200, 2, 10)
+        };
+        let message = match rank {
+            1 => format!("{}拿了第一：{}，{}kg！", self.npc_name, self.best_fish_name, f64::from(self.best_tenths) / 10.0),
+            2 => format!("{}拿了第二：{}，{}kg", self.npc_name, self.best_fish_name, f64::from(self.best_tenths) / 10.0),
+            3 => format!("{}拿了第三：{}，{}kg", self.npc_name, self.best_fish_name, f64::from(self.best_tenths) / 10.0),
+            _ => format!("这场没进前三：{}，{}kg", self.best_fish_name, f64::from(self.best_tenths) / 10.0),
+        };
+        Some(FishingTournamentResult {
+            day: self.day,
+            npc_name: self.npc_name,
+            npc_best_tenths: self.npc_best_tenths,
+            best_tenths: self.best_tenths,
+            best_fish_name: self.best_fish_name,
+            rank,
+            reward_coins: coins,
+            reward_bait: bait,
+            reward_exp: exp,
+            claimed: false,
+            message,
+        })
+    }
+}
+
+impl FishingQuestState {
+    /// 跨天：结算上一场、换新委托、开新比赛。返回是否换天。
+    pub fn ensure_day(&mut self, today: &str, fishing_level: u32) -> bool {
+        if self.day == today && self.tournament.is_some() {
+            return false;
+        }
+        if let Some(tournament) = self.tournament.take() {
+            if let Some(result) = tournament.settle() {
+                self.results.push(result);
+                while self.results.len() > 3 {
+                    self.results.remove(0);
+                }
+            }
+        }
+        self.day = today.into();
+        self.offers = generate_offers(today, fishing_level);
+        self.active.clear();
+        self.refreshes = 0;
+        self.tournament = Some(FishingTournament::new(today));
+        true
+    }
+
+    pub fn accept(&mut self, id: &str) -> bool {
+        if self.active.len() >= 2 {
+            return false;
+        }
+        let Some(index) = self.offers.iter().position(|offer| offer.id == id) else {
+            return false;
+        };
+        let mut offer = self.offers.remove(index);
+        offer.progress = 0;
+        self.active.push(offer);
+        true
+    }
+
+    pub fn refresh(&mut self, fishing_level: u32) -> bool {
+        if self.refreshes >= 1 {
+            return false;
+        }
+        self.offers = generate_offers(&self.day, fishing_level);
+        self.refreshes += 1;
+        true
+    }
+
+    pub fn on_catch(&mut self, def: &FishDef, weight_tenths: u32) {
+        for commission in &mut self.active {
+            if commission.complete() || weight_tenths < commission.min_weight_tenths {
+                continue;
+            }
+            if commission
+                .fish_id
+                .as_deref()
+                .is_some_and(|id| id != def.id)
+            {
+                continue;
+            }
+            if commission.spot.is_some_and(|spot| spot != def.spot) {
+                continue;
+            }
+            commission.progress += 1;
+        }
+        if let Some(tournament) = &mut self.tournament {
+            if weight_tenths > tournament.best_tenths {
+                tournament.best_tenths = weight_tenths;
+                tournament.best_fish_name = def.name.into();
+            }
+        }
+    }
+
+    /// 领取已完成委托；返回奖励。
+    pub fn claim_commission(&mut self, id: &str) -> Option<FishingCommission> {
+        let index = self
+            .active
+            .iter()
+            .position(|commission| commission.id == id && commission.complete())?;
+        Some(self.active.remove(index))
+    }
+
+    /// 领一场已结算比赛；每场只能领一次。
+    pub fn claim_tournament(&mut self, day: &str) -> Option<FishingTournamentResult> {
+        let index = self
+            .results
+            .iter()
+            .position(|result| result.day == day && !result.claimed)?;
+        self.results[index].claimed = true;
+        Some(self.results[index].clone())
     }
 }
 

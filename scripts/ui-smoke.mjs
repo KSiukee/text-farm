@@ -246,7 +246,7 @@ async function clickDom(selector, text) {
 
 async function openFold(text) {
   const opened = await evaluate(`(() => {
-    const fold = [...document.querySelectorAll('details.ws-fold')].find((item) =>
+    const fold = [...document.querySelectorAll('details.ws-fold, details.fish-fold')].find((item) =>
       (item.querySelector('summary')?.innerText || '').includes(${JSON.stringify(text)})
     );
     if (!fold) return false;
@@ -718,6 +718,17 @@ try {
 
   await clickText("钓鱼", false);
   check("钓鱼页已打开", (await bodyText()).includes("鱼类图鉴") && (await bodyText()).includes("鱼饵"));
+  await openFold("委托与比赛");
+  check(
+    "钓鱼委托与比赛已显示",
+    (await bodyText()).includes("NPC 委托") && (await bodyText()).includes("今日最重一条"),
+  );
+  await clickText("[接委托]");
+  await waitFor(async () => (saveState().fishing.quests?.active?.length ?? 0) === 1);
+  check("接取钓鱼委托", (saveState().fishing.quests?.active?.length ?? 0) === 1);
+  await clickText("[换一批]");
+  await waitFor(async () => saveState().fishing.quests?.refreshes === 1);
+  check("换一批钓鱼委托", saveState().fishing.quests?.refreshes === 1);
   const baitBefore = saveState().fishing.bait;
   await clickText("[买10份 100]");
   await waitFor(async () => saveState().fishing.bait >= baitBefore + 10);

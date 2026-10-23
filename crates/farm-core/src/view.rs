@@ -568,6 +568,58 @@ pub struct FishingAutoView {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct FishingCommissionView {
+    pub id: String,
+    pub npc_name: String,
+    pub title: String,
+    pub fish_name: String,
+    pub spot_label: String,
+    pub min_weight_tenths: u32,
+    pub qty: u32,
+    pub progress: u32,
+    pub complete: bool,
+    pub reward_coins: u64,
+    pub reward_bait: u32,
+    pub reward_exp: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FishingTournamentView {
+    pub day: String,
+    pub npc_name: String,
+    pub npc_best_tenths: u32,
+    pub best_tenths: u32,
+    pub best_fish_name: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FishingTournamentResultView {
+    pub day: String,
+    pub message: String,
+    pub rank: u32,
+    pub reward_coins: u64,
+    pub reward_bait: u32,
+    pub reward_exp: u64,
+    pub claimed: bool,
+    pub best_tenths: u32,
+    pub npc_best_tenths: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FishingQuestView {
+    pub offers: Vec<FishingCommissionView>,
+    pub active: Vec<FishingCommissionView>,
+    pub tournament: Option<FishingTournamentView>,
+    pub results: Vec<FishingTournamentResultView>,
+    pub can_refresh: bool,
+    pub refresh_used: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FishCodexView {
     pub id: String,
     pub name: String,
@@ -726,6 +778,7 @@ pub struct FishingView {
     pub full_codex_claimed: bool,
     pub last_catch: Option<FishCatchView>,
     pub last_auto_report: Option<AutoReportView>,
+    pub quests: FishingQuestView,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1995,6 +2048,56 @@ impl Game {
             .find(|d| d.kind == crate::skills::DisciplineKind::Fishing)
             .map(|d| d.skills.clone())
             .unwrap_or_default();
+        let quest_state = &fishing_state.quests;
+        let to_commission = |c: &crate::fishing::FishingCommission| FishingCommissionView {
+            id: c.id.clone(),
+            npc_name: c.npc_name.clone(),
+            title: c.title.clone(),
+            fish_name: c.fish_name.clone(),
+            spot_label: c
+                .spot
+                .map(|spot| spot.label().to_string())
+                .unwrap_or_default(),
+            min_weight_tenths: c.min_weight_tenths,
+            qty: c.qty,
+            progress: c.progress,
+            complete: c.complete(),
+            reward_coins: c.reward_coins,
+            reward_bait: c.reward_bait,
+            reward_exp: c.reward_exp,
+        };
+        let quests = FishingQuestView {
+            offers: quest_state.offers.iter().map(&to_commission).collect(),
+            active: quest_state.active.iter().map(&to_commission).collect(),
+            tournament: quest_state
+                .tournament
+                .as_ref()
+                .map(|tournament| FishingTournamentView {
+                    day: tournament.day.clone(),
+                    npc_name: tournament.npc_name.clone(),
+                    npc_best_tenths: tournament.npc_best_tenths,
+                    best_tenths: tournament.best_tenths,
+                    best_fish_name: tournament.best_fish_name.clone(),
+                }),
+            results: quest_state
+                .results
+                .iter()
+                .rev()
+                .map(|result| FishingTournamentResultView {
+                    day: result.day.clone(),
+                    message: result.message.clone(),
+                    rank: result.rank,
+                    reward_coins: result.reward_coins,
+                    reward_bait: result.reward_bait,
+                    reward_exp: result.reward_exp,
+                    claimed: result.claimed,
+                    best_tenths: result.best_tenths,
+                    npc_best_tenths: result.npc_best_tenths,
+                })
+                .collect(),
+            can_refresh: quest_state.refreshes == 0,
+            refresh_used: quest_state.refreshes > 0,
+        };
         let fishing = FishingView {
             rod: fishing_state.rod,
             rod_label: fishing_state.rod.label().into(),
@@ -2033,6 +2136,7 @@ impl Game {
             full_codex_claimed: fishing_state.full_codex_claimed,
             last_catch,
             last_auto_report,
+            quests,
         };
         let ranch = RanchView {
             can_expand: self.state.ranch.can_expand(),

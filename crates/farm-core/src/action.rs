@@ -178,6 +178,16 @@ pub enum Action {
     ResolveFishing {
         success: bool,
     },
+    AcceptFishingCommission {
+        id: String,
+    },
+    ClaimFishingCommission {
+        id: String,
+    },
+    RefreshFishingCommissions,
+    ClaimFishingTournament {
+        day: String,
+    },
     SetAutoFishing {
         spot: crate::fishing::FishingSpot,
         enabled: bool,
