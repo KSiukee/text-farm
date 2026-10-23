@@ -244,6 +244,19 @@ async function clickDom(selector, text) {
   await new Promise((r) => setTimeout(r, 250));
 }
 
+async function openFold(text) {
+  const opened = await evaluate(`(() => {
+    const fold = [...document.querySelectorAll('details.ws-fold')].find((item) =>
+      (item.querySelector('summary')?.innerText || '').includes(${JSON.stringify(text)})
+    );
+    if (!fold) return false;
+    fold.open = true;
+    return true;
+  })()`);
+  if (!opened) throw new Error(`找不到折叠「${text}」`);
+  await new Promise((r) => setTimeout(r, 200));
+}
+
 async function pressKey(key, code, vk) {
   await send("Input.dispatchKeyEvent", {
     type: "keyDown",
@@ -454,6 +467,19 @@ try {
   await clickText("[建制造屋", false);
   await waitFor(async () => saveState().workshop.built === true);
   check("点击建造制造屋", saveState().workshop.built === true);
+  const workshopModernText = await bodyText();
+  check(
+    "制造屋新版状态卡已显示",
+    workshopModernText.includes("现在能开工") && workshopModernText.includes("加工槽"),
+  );
+  check(
+    "制造屋配方已折叠分类",
+    workshopModernText.includes("手工台 · 牧场配方") &&
+      workshopModernText.includes("手工台 · 作物礼盒") &&
+      workshopModernText.includes("设备配方"),
+  );
+  await openFold("手工台 · 牧场配方");
+  await openFold("手工台 · 作物礼盒");
   const craftText = await bodyText();
   check("加工配方已显示", craftText.includes("奶酪：") && craftText.includes("→ 奶酪"));
   check("作物礼盒配方已显示", craftText.includes("作物礼盒") && craftText.includes("玉米礼盒"));
@@ -482,6 +508,8 @@ try {
   await waitFor(async () => (saveState().inventory["craft:box:yumi"] || 0) === 0);
   check("礼盒可直接卖", saveState().coins > boxCoins);
 
+  await openFold("设备");
+  await openFold("设备配方");
   check("设备列表已显示", (await bodyText()).includes("石磨") && (await bodyText()).includes("装到"));
   await clickText("[装到 1 号槽]");
   await waitFor(async () => saveState().workshop.equipment.includes("stone_mill"));

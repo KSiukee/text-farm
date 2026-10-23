@@ -1529,6 +1529,159 @@ footer {
   align-items: baseline;
 }
 
+.ws-hero,
+.ws-card {
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.ws-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+  padding: 10px 12px;
+  border-left-color: var(--accent-text);
+  background: linear-gradient(180deg, var(--panel-soft), var(--panel));
+}
+
+.ws-hero-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ws-hero-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.ws-hero-title b,
+.ws-hero-meta b {
+  color: var(--accent-text);
+}
+
+.ws-hero-meta {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.ws-hero-side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ws-pill {
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.ws-pill.on {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.ws-card {
+  padding: 10px 12px;
+}
+
+.ws-card--slots {
+  border-left-color: var(--accent-text);
+  background: linear-gradient(180deg, var(--panel-soft), var(--panel));
+}
+
+.ws-card--gear {
+  border-left-color: var(--gold-line);
+  background: var(--panel-warm);
+}
+
+.ws-card--recipes {
+  border-left-color: var(--info);
+  background: var(--panel-soft);
+}
+
+.ws-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin-bottom: 6px;
+}
+
+.ws-fold > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.ws-fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+.ws-fold > summary::before {
+  content: "▸";
+  color: var(--faint);
+  font-size: 12px;
+}
+
+.ws-fold[open] > summary::before {
+  content: "▾";
+}
+
+.ws-fold[open] > summary {
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--line);
+}
+
+.ws-fold-title {
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+.ws-fold > summary .muted {
+  font-weight: 400;
+}
+
+.ws-count + .muted::before {
+  content: "· ";
+  color: var(--faint);
+}
+
+.ws-subgroup {
+  margin-top: 6px;
+}
+
+.ws-subgroup-title {
+  margin: 6px 0 4px;
+  color: var(--faint);
+  font-size: 12px;
+}
+
+.ws-stock-panel {
+  margin-top: 10px;
+}
+
+.ws-body {
+  display: contents;
+}
+
+.ws-classic-title {
+  display: none;
+}
+
 .pet-job {
   margin-top: 4px;
   font-size: 13px;
@@ -3088,4 +3241,68 @@ footer {
   padding: 0;
   border: 0;
   background: none;
+}
+
+/* 制造屋：经典布局还原平铺；新版是卡片 + 折叠 */
+[data-layout="classic"] .ws-hero {
+  display: none;
+}
+
+[data-layout="classic"] .ws-body {
+  display: block;
+  margin-top: 12px;
+}
+
+[data-layout="classic"] .ws-classic-title {
+  display: block;
+}
+
+[data-layout="classic"] .ws-fold > summary .muted {
+  margin-left: 4px;
+}
+
+[data-layout="classic"] .ws-card {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+[data-layout="classic"] .ws-card-head,
+[data-layout="classic"] .ws-count,
+[data-layout="classic"] .ws-subgroup-title {
+  display: none;
+}
+
+[data-layout="classic"] .ws-count + .muted::before {
+  content: " ";
+}
+
+[data-layout="classic"] .ws-fold > summary {
+  display: block;
+  margin: 8px 0 4px;
+  padding: 0;
+  border: 0;
+  cursor: default;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+[data-layout="classic"] .ws-fold > summary::before {
+  content: "";
+}
+
+[data-layout="classic"] .ws-fold[open] > summary {
+  margin-bottom: 4px;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+[data-layout="classic"] .ws-fold-title {
+  color: inherit;
+}
+
+[data-layout="classic"] .ws-subgroup {
+  margin-top: 0;
 }

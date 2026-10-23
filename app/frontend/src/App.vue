@@ -51,6 +51,7 @@ import type {
   Season,
   Snapshot,
   SpecimenView,
+  WorkshopRecipeView,
 } from "./types";
 import FishingGame from "./FishingGame.vue";
 import RoomScene from "./RoomScene.vue";
@@ -288,6 +289,51 @@ const workshopItems = computed(() =>
     (item) => item.kind === "ranch" || item.kind === "craft",
   ),
 );
+const workshopActiveJobs = computed(
+  () => workshop.value?.slotViews.filter((slot) => slot.job).length ?? 0,
+);
+const workshopCollectable = computed(
+  () => workshop.value?.slotViews.filter((slot) => slot.job?.canCollect).length ?? 0,
+);
+const workshopInstalled = computed(
+  () =>
+    workshop.value?.slotViews.filter((slot) => slot.index > 0 && slot.equipment).length ?? 0,
+);
+const workshopManualReady = computed(
+  () => workshop.value?.manualRecipes.filter((recipe) => recipe.canStart).length ?? 0,
+);
+const workshopCropReady = computed(
+  () => workshop.value?.cropRecipes.filter((recipe) => recipe.canStart).length ?? 0,
+);
+const workshopBaitReady = computed(
+  () => workshop.value?.baitRecipes.filter((recipe) => recipe.canStart).length ?? 0,
+);
+const workshopFishReady = computed(
+  () => workshop.value?.fishRecipes.filter((recipe) => recipe.canStart).length ?? 0,
+);
+const workshopEquipmentReady = computed(
+  () => workshop.value?.equipmentRecipes.filter((recipe) => recipe.canStart).length ?? 0,
+);
+const workshopReadyTotal = computed(
+  () =>
+    workshopManualReady.value +
+    workshopCropReady.value +
+    workshopBaitReady.value +
+    workshopFishReady.value +
+    workshopEquipmentReady.value,
+);
+const workshopEquipmentGroups = computed(() => {
+  const groups: { kind: EquipmentKind; label: string; items: WorkshopRecipeView[] }[] = [];
+  for (const recipe of workshop.value?.equipmentRecipes ?? []) {
+    let group = groups.find((item) => item.kind === recipe.equipment);
+    if (!group) {
+      group = { kind: recipe.equipment, label: recipe.equipmentLabel, items: [] };
+      groups.push(group);
+    }
+    group.items.push(recipe);
+  }
+  return groups;
+});
 
 
 const seedStacks = computed(() =>
@@ -2003,7 +2049,7 @@ onUnmounted(() => {
           >
             {{ pack.name }}
           </button>
-          <span class="muted">只改钓鱼页；小游戏不变</span>
+          <span class="muted">改钓鱼页/制造屋排版；小游戏不变</span>
         </div>
         <div class="row">
           <span>字体</span>
@@ -2691,20 +2737,19 @@ onUnmounted(() => {
         </section>
       </div>
 
-      <div v-show="activeTab === '制造屋'">
+      <div v-show="activeTab === '制造屋'" class="workshop-page">
         <div class="level">{{ levelLine }}</div>
         <div class="sub">
           {{ currency }} {{ snapshot?.coins ?? 0 }}
           <span class="muted">· 制造屋只做加工，不影响动物状态</span>
         </div>
         <div class="rule"></div>
-        <section v-if="workshop" class="panel">
-          <div class="panel-title">
-            制造屋
-            <span class="muted">加工坊放设备，各槽各跑各的；配方按设备分组</span>
-          </div>
-          <template v-if="!workshop.built">
-            <p class="muted">建一座制造屋，就能把作物和牧场原料做成更值钱的东西。</p>
+        <template v-if="workshop">
+          <section v-if="!workshop.built" class="panel">
+            <div class="panel-title">
+              制造屋
+              <span class="muted">建一座制造屋，就能把作物和牧场原料做成更值钱的东西</span>
+            </div>
             <div class="row">
               <button
                 class="link"
@@ -2716,9 +2761,39 @@ onUnmounted(() => {
               </button>
               <span class="muted">需要农场 {{ workshop.level }} 级、金币够</span>
             </div>
-          </template>
+          </section>
           <template v-else>
-            <div class="workshop-slots">
+            <div class="ws-body" :class="{ panel: classicLayout }">
+              <div class="panel-title ws-classic-title">
+                制造屋
+                <span class="muted">加工坊放设备，各槽各跑各的；配方按设备分组</span>
+              </div>
+              <div class="ws-hero">
+              <div class="ws-hero-main">
+                <div class="ws-hero-title">
+                  制造屋
+                  <b>{{ workshop.slots }}</b> 个加工槽
+                </div>
+                <div class="ws-hero-meta">
+                  正在加工 <b>{{ workshopActiveJobs }}</b> · 可取货
+                  <b>{{ workshopCollectable }}</b> · 现在能开工
+                  <b>{{ workshopReadyTotal }}</b> 项
+                </div>
+              </div>
+              <div class="ws-hero-side">
+                <span class="ws-pill" :class="{ on: workshopActiveJobs > 0 }">
+                  {{ workshopActiveJobs > 0 ? "在忙" : "空闲" }}
+                </span>
+                <span class="muted">{{ workshop.slots }}/{{ workshop.maxSlots }} 槽</span>
+              </div>
+            </div>
+
+            <div class="ws-card ws-card--slots">
+              <div class="ws-card-head">
+                <b>加工槽</b>
+                <span class="muted">加工坊放设备，各槽各跑各的；手工台不用装设备</span>
+              </div>
+              <div class="workshop-slots">
               <div v-for="slot in workshop.slotViews" :key="slot.index" class="workshop-slot">
                 <div class="workshop-slot-head">
                   {{ slot.index }} 号槽 · {{ slot.equipmentEmoji }} {{ slot.equipmentLabel }}
@@ -2742,9 +2817,19 @@ onUnmounted(() => {
                 </div>
               </div>
             </div>
+            </div>
 
-            <div class="ranch-recipe-group">设备</div>
-            <div class="equipment-options">
+            <details class="ws-card ws-card--gear ws-fold" :open="classicLayout ? true : undefined">
+              <summary @click="guardClassicFold">
+                <span class="ws-fold-title">设备</span>
+                <span class="ws-count muted">
+                  已装 {{ workshopInstalled }} 台 ·
+                  <template v-if="emptyEquipmentSlot !== null">下一个空槽 {{ emptyEquipmentSlot }} 号</template>
+                  <template v-else>设备槽已满</template>
+                  · {{ workshop.slots }}/{{ workshop.maxSlots }} 槽
+                </span>
+              </summary>
+              <div class="equipment-options">
               <span
                 v-for="option in workshop.equipmentOptions"
                 :key="option.kind"
@@ -2773,118 +2858,152 @@ onUnmounted(() => {
                 {{ workshop.expandLevel }} 级
               </span>
             </div>
+            </details>
 
-            <div class="ranch-recipe-group">手工台 · 牧场配方</div>
-            <div class="ranch-recipes">
-              <div v-for="recipe in workshop.manualRecipes" :key="recipe.recipe" class="ranch-recipe">
-                <span class="ranch-recipe-text">
-                  {{ recipe.label }}：{{ recipe.inputText }} → {{ recipe.outputName }}
-                  <span class="muted">（{{ recipe.outputPrice }} 金币 · 约 {{ formatRemain(recipe.durationMs) }}）</span>
+            <details class="ws-card ws-card--recipes ws-fold" :open="classicLayout ? true : undefined">
+              <summary @click="guardClassicFold">
+                <span class="ws-fold-title">手工台 · 牧场配方</span>
+                <span class="ws-count muted">
+                  {{ workshop.manualRecipes.length }} 个 · 可开工 {{ workshopManualReady }}
                 </span>
-                <button
-                  class="link"
-                  type="button"
-                  :disabled="acting || !recipe.canStart"
-                  @click="startRanchCraft(recipe.recipe)"
-                >
-                  [开工]
-                </button>
-                <span v-if="recipe.missing" class="muted">{{ recipe.missing }}</span>
+              </summary>
+              <div class="ranch-recipes">
+                <div v-for="recipe in workshop.manualRecipes" :key="recipe.recipe" class="ranch-recipe">
+                  <span class="ranch-recipe-text">
+                    {{ recipe.label }}：{{ recipe.inputText }} → {{ recipe.outputName }}
+                    <span class="muted">（{{ recipe.outputPrice }} 金币 · 约 {{ formatRemain(recipe.durationMs) }}）</span>
+                  </span>
+                  <button
+                    class="link"
+                    type="button"
+                    :disabled="acting || !recipe.canStart"
+                    @click="startRanchCraft(recipe.recipe)"
+                  >
+                    [开工]
+                  </button>
+                  <span v-if="recipe.missing" class="muted">{{ recipe.missing }}</span>
+                </div>
               </div>
-            </div>
-            <div class="ranch-recipe-group">
-              手工台 · 作物礼盒
-              <span class="muted">5 份同种作物 → 1 个礼盒，约为原料的 1.4 倍</span>
-            </div>
-            <div v-if="workshop.cropRecipes.length" class="ranch-recipes">
-              <div v-for="crop in workshop.cropRecipes" :key="crop.cropId" class="ranch-recipe">
-                <span class="ranch-recipe-text">
-                  {{ crop.name }}×{{ crop.need }}（有 {{ crop.qty }}）→ {{ crop.outputName }}
-                  <span class="muted">（{{ crop.outputPrice }} 金币 · 约 {{ formatRemain(crop.durationMs) }}）</span>
+            </details>
+            <details class="ws-card ws-card--recipes ws-fold" :open="classicLayout ? true : undefined">
+              <summary @click="guardClassicFold">
+                <span class="ws-fold-title">手工台 · 作物礼盒</span>
+                <span class="ws-count muted">
+                  {{ workshop.cropRecipes.length }} 种 · 可开工 {{ workshopCropReady }}
                 </span>
-                <button
-                  class="link"
-                  type="button"
-                  :disabled="acting || !crop.canStart"
-                  @click="startCropCraft(crop.cropId)"
-                >
-                  [做礼盒]
-                </button>
-                <span v-if="crop.missing" class="muted">{{ crop.missing }}</span>
+                <span class="muted">5 份同种作物 → 1 个礼盒，约为原料的 1.4 倍</span>
+              </summary>
+              <div v-if="workshop.cropRecipes.length" class="ranch-recipes">
+                <div v-for="crop in workshop.cropRecipes" :key="crop.cropId" class="ranch-recipe">
+                  <span class="ranch-recipe-text">
+                    {{ crop.name }}×{{ crop.need }}（有 {{ crop.qty }}）→ {{ crop.outputName }}
+                    <span class="muted">（{{ crop.outputPrice }} 金币 · 约 {{ formatRemain(crop.durationMs) }}）</span>
+                  </span>
+                  <button
+                    class="link"
+                    type="button"
+                    :disabled="acting || !crop.canStart"
+                    @click="startCropCraft(crop.cropId)"
+                  >
+                    [做礼盒]
+                  </button>
+                  <span v-if="crop.missing" class="muted">{{ crop.missing }}</span>
+                </div>
               </div>
-            </div>
-            <div v-else class="muted">仓库里没有作物；去农场收一点再来。</div>
+              <div v-else class="muted">仓库里没有作物；去农场收一点再来。</div>
+            </details>
 
-            <div class="ranch-recipe-group">
-              手工台 · 做饵
-              <span class="muted">用作物/牧场产物做，产出普通品质，直接进鱼饵篓</span>
-            </div>
-            <div class="ranch-recipes">
-              <div v-for="recipe in workshop.baitRecipes" :key="recipe.recipe" class="ranch-recipe">
-                <span class="ranch-recipe-text">
-                  {{ recipe.label }}：{{ recipe.inputText }} → {{ recipe.outputText }}
-                  <span class="muted">（约 {{ formatRemain(recipe.durationMs) }}）</span>
+            <details class="ws-card ws-card--recipes ws-fold" :open="classicLayout ? true : undefined">
+              <summary @click="guardClassicFold">
+                <span class="ws-fold-title">手工台 · 做饵</span>
+                <span class="ws-count muted">
+                  {{ workshop.baitRecipes.length }} 个 · 可开工 {{ workshopBaitReady }}
                 </span>
-                <button
-                  class="link"
-                  type="button"
-                  :disabled="acting || !recipe.canStart"
-                  @click="startBaitCraft(recipe.recipe)"
-                >
-                  [做饵]
-                </button>
-                <span v-if="recipe.missing" class="muted">{{ recipe.missing }}</span>
+                <span class="muted">用作物/牧场产物做，产出普通品质，直接进鱼饵篓</span>
+              </summary>
+              <div class="ranch-recipes">
+                <div v-for="recipe in workshop.baitRecipes" :key="recipe.recipe" class="ranch-recipe">
+                  <span class="ranch-recipe-text">
+                    {{ recipe.label }}：{{ recipe.inputText }} → {{ recipe.outputText }}
+                    <span class="muted">（约 {{ formatRemain(recipe.durationMs) }}）</span>
+                  </span>
+                  <button
+                    class="link"
+                    type="button"
+                    :disabled="acting || !recipe.canStart"
+                    @click="startBaitCraft(recipe.recipe)"
+                  >
+                    [做饵]
+                  </button>
+                  <span v-if="recipe.missing" class="muted">{{ recipe.missing }}</span>
+                </div>
               </div>
-            </div>
+            </details>
 
-            <div class="ranch-recipe-group">
-              手工台 · 鱼加工
-              <span class="muted">吃任意未锁定鱼，按鱼价从低到高；鱼汤可当加成食物</span>
-            </div>
-            <div class="ranch-recipes">
-              <div v-for="recipe in workshop.fishRecipes" :key="recipe.recipe" class="ranch-recipe">
-                <span class="ranch-recipe-text">
-                  {{ recipe.label }}：{{ recipe.inputText }} → {{ recipe.outputText }}
-                  <span class="muted">（约 {{ formatRemain(recipe.durationMs) }}）</span>
+            <details class="ws-card ws-card--recipes ws-fold" :open="classicLayout ? true : undefined">
+              <summary @click="guardClassicFold">
+                <span class="ws-fold-title">手工台 · 鱼加工</span>
+                <span class="ws-count muted">
+                  {{ workshop.fishRecipes.length }} 个 · 可开工 {{ workshopFishReady }}
                 </span>
-                <button
-                  class="link"
-                  type="button"
-                  :disabled="acting || !recipe.canStart"
-                  @click="startFishCraft(recipe.recipe)"
-                >
-                  [加工]
-                </button>
-                <span v-if="recipe.missing" class="muted">{{ recipe.missing }}</span>
+                <span class="muted">吃任意未锁定鱼，按鱼价从低到高；鱼汤可当加成食物</span>
+              </summary>
+              <div class="ranch-recipes">
+                <div v-for="recipe in workshop.fishRecipes" :key="recipe.recipe" class="ranch-recipe">
+                  <span class="ranch-recipe-text">
+                    {{ recipe.label }}：{{ recipe.inputText }} → {{ recipe.outputText }}
+                    <span class="muted">（约 {{ formatRemain(recipe.durationMs) }}）</span>
+                  </span>
+                  <button
+                    class="link"
+                    type="button"
+                    :disabled="acting || !recipe.canStart"
+                    @click="startFishCraft(recipe.recipe)"
+                  >
+                    [加工]
+                  </button>
+                  <span v-if="recipe.missing" class="muted">{{ recipe.missing }}</span>
+                </div>
               </div>
-            </div>
+            </details>
 
-            <div class="ranch-recipe-group">设备配方</div>
-            <div class="ranch-recipes">
-              <div
-                v-for="recipe in workshop.equipmentRecipes"
-                :key="recipe.recipe"
-                class="ranch-recipe"
-              >
-                <span class="ranch-recipe-text">
-                  {{ recipe.equipmentLabel }} · {{ recipe.label }}：{{ recipe.inputText }} →
-                  {{ recipe.outputName }}
-                  <span class="muted">（{{ recipe.outputPrice }} 金币 · 约 {{ formatRemain(recipe.durationMs) }}）</span>
+            <details class="ws-card ws-card--recipes ws-fold" :open="classicLayout ? true : undefined">
+              <summary @click="guardClassicFold">
+                <span class="ws-fold-title">设备配方</span>
+                <span class="ws-count muted">
+                  {{ workshop.equipmentRecipes.length }} 个 · 可开工 {{ workshopEquipmentReady }}
                 </span>
-                <button
-                  class="link"
-                  type="button"
-                  :disabled="acting || !recipe.canStart"
-                  @click="startEquipmentCraft(recipe.recipe)"
-                >
-                  [开工]
-                </button>
-                <span v-if="recipe.missing" class="muted">{{ recipe.missing }}</span>
+              </summary>
+              <div v-for="group in workshopEquipmentGroups" :key="group.kind" class="ws-subgroup">
+                <div class="ws-subgroup-title">{{ group.label }}</div>
+                <div class="ranch-recipes">
+                  <div
+                    v-for="recipe in group.items"
+                    :key="recipe.recipe"
+                    class="ranch-recipe"
+                  >
+                    <span class="ranch-recipe-text">
+                      {{ recipe.equipmentLabel }} · {{ recipe.label }}：{{ recipe.inputText }} →
+                      {{ recipe.outputName }}
+                      <span class="muted">（{{ recipe.outputPrice }} 金币 · 约 {{ formatRemain(recipe.durationMs) }}）</span>
+                    </span>
+                    <button
+                      class="link"
+                      type="button"
+                      :disabled="acting || !recipe.canStart"
+                      @click="startEquipmentCraft(recipe.recipe)"
+                    >
+                      [开工]
+                    </button>
+                    <span v-if="recipe.missing" class="muted">{{ recipe.missing }}</span>
+                  </div>
+                </div>
               </div>
+            </details>
             </div>
           </template>
-        </section>
-        <section class="panel">
+        </template>
+        <section class="panel ws-stock-panel">
           <div class="panel-title">
             原料与成品
             <span class="muted">加工品按品质分堆；品质跟着投入原料里最低的那一档</span>
