@@ -510,7 +510,14 @@ try {
 
   await openFold("设备");
   await openFold("设备配方");
-  check("设备列表已显示", (await bodyText()).includes("石磨") && (await bodyText()).includes("装到"));
+  const equipmentText = await bodyText();
+  check(
+    "P2 设备已列出",
+    ["烤箱", "搅拌台", "榨油机", "纺织机", "蒸馏器"].every((name) =>
+      equipmentText.includes(name),
+    ),
+  );
+  check("设备列表已显示", equipmentText.includes("石磨") && equipmentText.includes("装到"));
   await clickText("[装到 1 号槽]");
   await waitFor(async () => saveState().workshop.equipment.includes("stone_mill"));
   check("装石磨到 1 号槽", saveState().workshop.equipment.includes("stone_mill"));

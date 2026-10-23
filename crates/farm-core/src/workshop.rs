@@ -132,13 +132,23 @@ pub enum EquipmentKind {
     StoneMill,
     Juicer,
     BoilingPot,
+    Oven,
+    Mixer,
+    OilPress,
+    Loom,
+    Still,
 }
 
 impl EquipmentKind {
-    pub const INSTALLABLE: [EquipmentKind; 3] = [
+    pub const INSTALLABLE: [EquipmentKind; 8] = [
         EquipmentKind::StoneMill,
         EquipmentKind::Juicer,
         EquipmentKind::BoilingPot,
+        EquipmentKind::Oven,
+        EquipmentKind::Mixer,
+        EquipmentKind::OilPress,
+        EquipmentKind::Loom,
+        EquipmentKind::Still,
     ];
 
     pub fn label(self) -> &'static str {
@@ -147,6 +157,11 @@ impl EquipmentKind {
             EquipmentKind::StoneMill => "石磨",
             EquipmentKind::Juicer => "榨汁机",
             EquipmentKind::BoilingPot => "熬煮锅",
+            EquipmentKind::Oven => "烤箱",
+            EquipmentKind::Mixer => "搅拌台",
+            EquipmentKind::OilPress => "榨油机",
+            EquipmentKind::Loom => "纺织机",
+            EquipmentKind::Still => "蒸馏器",
         }
     }
 
@@ -156,6 +171,11 @@ impl EquipmentKind {
             EquipmentKind::StoneMill => "🪨",
             EquipmentKind::Juicer => "🧃",
             EquipmentKind::BoilingPot => "🍯",
+            EquipmentKind::Oven => "🍞",
+            EquipmentKind::Mixer => "🥤",
+            EquipmentKind::OilPress => "🌻",
+            EquipmentKind::Loom => "🧵",
+            EquipmentKind::Still => "⚗️",
         }
     }
 
@@ -165,6 +185,11 @@ impl EquipmentKind {
             EquipmentKind::StoneMill => 4_000,
             EquipmentKind::Juicer => 6_000,
             EquipmentKind::BoilingPot => 8_000,
+            EquipmentKind::Oven => 12_000,
+            EquipmentKind::Mixer => 10_000,
+            EquipmentKind::OilPress => 10_000,
+            EquipmentKind::Loom => 15_000,
+            EquipmentKind::Still => 20_000,
         }
     }
 
@@ -174,6 +199,11 @@ impl EquipmentKind {
             EquipmentKind::StoneMill => 10,
             EquipmentKind::Juicer => 12,
             EquipmentKind::BoilingPot => 14,
+            EquipmentKind::Oven => 16,
+            EquipmentKind::Mixer => 16,
+            EquipmentKind::OilPress => 18,
+            EquipmentKind::Loom => 20,
+            EquipmentKind::Still => 24,
         }
     }
 
@@ -197,6 +227,15 @@ impl EquipmentKind {
                 EquipmentRecipe::Cream,
                 EquipmentRecipe::StrawberryJam,
             ],
+            EquipmentKind::Oven => &[EquipmentRecipe::CornPudding],
+            EquipmentKind::Mixer => &[
+                EquipmentRecipe::StrawberryShake,
+                EquipmentRecipe::Latte,
+                EquipmentRecipe::Mayonnaise,
+            ],
+            EquipmentKind::OilPress => &[EquipmentRecipe::SunflowerOil],
+            EquipmentKind::Loom => &[EquipmentRecipe::Sweater],
+            EquipmentKind::Still => &[EquipmentRecipe::EssentialOil],
         }
     }
 }
@@ -215,10 +254,17 @@ pub enum EquipmentRecipe {
     Sugar,
     Cream,
     StrawberryJam,
+    CornPudding,
+    StrawberryShake,
+    Latte,
+    Mayonnaise,
+    SunflowerOil,
+    Sweater,
+    EssentialOil,
 }
 
 impl EquipmentRecipe {
-    pub const ALL: [EquipmentRecipe; 11] = [
+    pub const ALL: [EquipmentRecipe; 18] = [
         EquipmentRecipe::CornStarch,
         EquipmentRecipe::CoffeePowder,
         EquipmentRecipe::GinsengSlice,
@@ -230,6 +276,13 @@ impl EquipmentRecipe {
         EquipmentRecipe::Sugar,
         EquipmentRecipe::Cream,
         EquipmentRecipe::StrawberryJam,
+        EquipmentRecipe::CornPudding,
+        EquipmentRecipe::StrawberryShake,
+        EquipmentRecipe::Latte,
+        EquipmentRecipe::Mayonnaise,
+        EquipmentRecipe::SunflowerOil,
+        EquipmentRecipe::Sweater,
+        EquipmentRecipe::EssentialOil,
     ];
 
     pub fn equipment(self) -> EquipmentKind {
@@ -245,6 +298,13 @@ impl EquipmentRecipe {
             EquipmentRecipe::Sugar | EquipmentRecipe::Cream | EquipmentRecipe::StrawberryJam => {
                 EquipmentKind::BoilingPot
             }
+            EquipmentRecipe::CornPudding => EquipmentKind::Oven,
+            EquipmentRecipe::StrawberryShake
+            | EquipmentRecipe::Latte
+            | EquipmentRecipe::Mayonnaise => EquipmentKind::Mixer,
+            EquipmentRecipe::SunflowerOil => EquipmentKind::OilPress,
+            EquipmentRecipe::Sweater => EquipmentKind::Loom,
+            EquipmentRecipe::EssentialOil => EquipmentKind::Still,
         }
     }
 
@@ -261,6 +321,13 @@ impl EquipmentRecipe {
             EquipmentRecipe::Sugar => "白糖",
             EquipmentRecipe::Cream => "奶油",
             EquipmentRecipe::StrawberryJam => "草莓酱",
+            EquipmentRecipe::CornPudding => "玉米布丁",
+            EquipmentRecipe::StrawberryShake => "草莓奶昔",
+            EquipmentRecipe::Latte => "拿铁",
+            EquipmentRecipe::Mayonnaise => "蛋黄酱",
+            EquipmentRecipe::SunflowerOil => "葵花籽油",
+            EquipmentRecipe::Sweater => "毛衣",
+            EquipmentRecipe::EssentialOil => "月见草精油",
         }
     }
 
@@ -281,6 +348,20 @@ impl EquipmentRecipe {
                 ("craft:sugar", 1),
                 ("craft:corn_starch", 1),
             ],
+            EquipmentRecipe::CornPudding => &[
+                ("craft:corn_starch", 1),
+                ("craft:sugar", 1),
+                ("ranch:egg", 2),
+                ("ranch:milk", 1),
+            ],
+            EquipmentRecipe::StrawberryShake => {
+                &[("craft:strawberry_jam", 1), ("ranch:milk", 1)]
+            }
+            EquipmentRecipe::Latte => &[("craft:coffee_powder", 1), ("ranch:milk", 1)],
+            EquipmentRecipe::Mayonnaise => &[("craft:sunflower_oil", 1), ("ranch:egg", 2)],
+            EquipmentRecipe::SunflowerOil => &[("crop:xiangrikui", 5)],
+            EquipmentRecipe::Sweater => &[("ranch:yarn", 3)],
+            EquipmentRecipe::EssentialOil => &[("crop:yuejiancao", 2)],
         }
     }
 
@@ -291,12 +372,18 @@ impl EquipmentRecipe {
             | EquipmentRecipe::GinsengSlice
             | EquipmentRecipe::LingzhiPowder
             | EquipmentRecipe::Sugar
-            | EquipmentRecipe::StrawberryJam => 2 * 60 * 60 * 1000,
+            | EquipmentRecipe::StrawberryJam
+            | EquipmentRecipe::CornPudding
+            | EquipmentRecipe::SunflowerOil => 2 * 60 * 60 * 1000,
             EquipmentRecipe::CaneJuice
             | EquipmentRecipe::StrawberryJuice
             | EquipmentRecipe::GrapeJuice
             | EquipmentRecipe::WatermelonJuice
             | EquipmentRecipe::Cream => 90 * 60 * 1000,
+            EquipmentRecipe::StrawberryShake | EquipmentRecipe::Mayonnaise => 60 * 60 * 1000,
+            EquipmentRecipe::Latte => 30 * 60 * 1000,
+            EquipmentRecipe::Sweater => 4 * 60 * 60 * 1000,
+            EquipmentRecipe::EssentialOil => 3 * 60 * 60 * 1000,
         }
     }
 
@@ -313,6 +400,13 @@ impl EquipmentRecipe {
             EquipmentRecipe::Sugar => "craft:sugar",
             EquipmentRecipe::Cream => "craft:cream",
             EquipmentRecipe::StrawberryJam => "craft:strawberry_jam",
+            EquipmentRecipe::CornPudding => "craft:corn_pudding",
+            EquipmentRecipe::StrawberryShake => "craft:strawberry_shake",
+            EquipmentRecipe::Latte => "craft:latte",
+            EquipmentRecipe::Mayonnaise => "craft:mayonnaise",
+            EquipmentRecipe::SunflowerOil => "craft:sunflower_oil",
+            EquipmentRecipe::Sweater => "craft:sweater",
+            EquipmentRecipe::EssentialOil => "craft:essential_oil",
         }
     }
 }
@@ -379,6 +473,41 @@ pub const CRAFT_ITEMS: &[CraftItemDef] = &[
         key: "craft:strawberry_jam",
         name: "草莓酱",
         price: 1346,
+    },
+    CraftItemDef {
+        key: "craft:corn_pudding",
+        name: "玉米布丁",
+        price: 1446,
+    },
+    CraftItemDef {
+        key: "craft:strawberry_shake",
+        name: "草莓奶昔",
+        price: 1666,
+    },
+    CraftItemDef {
+        key: "craft:latte",
+        name: "拿铁",
+        price: 760,
+    },
+    CraftItemDef {
+        key: "craft:mayonnaise",
+        name: "蛋黄酱",
+        price: 510,
+    },
+    CraftItemDef {
+        key: "craft:sunflower_oil",
+        name: "葵花籽油",
+        price: 320,
+    },
+    CraftItemDef {
+        key: "craft:sweater",
+        name: "毛衣",
+        price: 3100,
+    },
+    CraftItemDef {
+        key: "craft:essential_oil",
+        name: "月见草精油",
+        price: 1200,
     },
     CraftItemDef {
         key: "craft:fish_jerky",

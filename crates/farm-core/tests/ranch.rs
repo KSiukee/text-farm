@@ -590,6 +590,64 @@ fn equipment_slots_install_and_craft() {
 }
 
 #[test]
+fn p2_equipment_install_and_craft() {
+    let cases: [(EquipmentKind, EquipmentRecipe, &[(&str, u32)]); 5] = [
+        (
+            EquipmentKind::Oven,
+            EquipmentRecipe::CornPudding,
+            &[
+                ("craft:corn_starch", 1),
+                ("craft:sugar", 1),
+                ("ranch:egg", 2),
+                ("ranch:milk", 1),
+            ],
+        ),
+        (
+            EquipmentKind::Mixer,
+            EquipmentRecipe::Latte,
+            &[("craft:coffee_powder", 1), ("ranch:milk", 1)],
+        ),
+        (
+            EquipmentKind::OilPress,
+            EquipmentRecipe::SunflowerOil,
+            &[("crop:xiangrikui", 5)],
+        ),
+        (
+            EquipmentKind::Loom,
+            EquipmentRecipe::Sweater,
+            &[("ranch:yarn", 3)],
+        ),
+        (
+            EquipmentKind::Still,
+            EquipmentRecipe::EssentialOil,
+            &[("crop:yuejiancao", 2)],
+        ),
+    ];
+    for (kind, recipe, inputs) in cases {
+        let mut game = Game::new(0);
+        game.state_mut().level = 30;
+        game.state_mut().coins = 300_000;
+        game.dispatch(Action::BuildWorkshop, 0).unwrap();
+        game.dispatch(Action::ExpandWorkshop, 0).unwrap();
+        game.dispatch(Action::ExpandWorkshop, 0).unwrap();
+        game.dispatch(Action::InstallEquipment { slot: 1, kind }, 0)
+            .unwrap();
+        for (key, qty) in inputs {
+            game.state_mut().inventory.insert((*key).into(), *qty);
+        }
+        game.dispatch(Action::StartEquipmentCraft { recipe }, 0)
+            .unwrap();
+        finish_job(&mut game, 1);
+        game.dispatch(Action::CollectCraft { slot: 1 }, 0).unwrap();
+        assert_eq!(
+            game.state().inventory.get(recipe.output_key()),
+            Some(&1),
+            "{kind:?}"
+        );
+    }
+}
+
+#[test]
 fn equipment_requires_install_and_checks_level() {
     let mut game = Game::new(0);
     game.state_mut().level = 9;
