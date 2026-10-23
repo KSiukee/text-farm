@@ -1081,3 +1081,33 @@ fn snapshot_exposes_current_condition_and_codex_hint() {
         .unwrap();
     assert!(eel.condition_hint.contains("夜行"));
 }
+
+#[test]
+fn fish_behaviors_are_distinct_and_exposed_in_params() {
+    use farm_core::{fish, fish_behavior, params, FishBehavior, FishPersonality, RodKind};
+
+    assert_eq!(fish_behavior(fish("loach").unwrap()), FishBehavior::Bottom);
+    assert_eq!(fish_behavior(fish("white_bait").unwrap()), FishBehavior::Surface);
+    assert_eq!(fish_behavior(fish("carp").unwrap()), FishBehavior::Migratory);
+    assert_eq!(fish_behavior(fish("black_carp").unwrap()), FishBehavior::Burst);
+
+    let bottom = params(
+        RodKind::Wood,
+        fish("catfish").unwrap(),
+        false,
+        FishPersonality::Normal,
+    );
+    assert_eq!(bottom.behavior, FishBehavior::Bottom);
+    assert_eq!(bottom.behavior_label, "贴底");
+    assert_eq!(bottom.tension_gain_pct, 80);
+
+    let burst = params(
+        RodKind::Wood,
+        fish("black_carp").unwrap(),
+        false,
+        FishPersonality::Fierce,
+    );
+    assert_eq!(burst.behavior, FishBehavior::Burst);
+    assert_eq!(burst.behavior_label, "爆发");
+    assert_eq!(burst.tension_gain_pct, 130);
+}

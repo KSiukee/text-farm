@@ -2094,9 +2094,58 @@ footer {
 
 .fg-head {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 8px;
+}
+
+.fg-behavior {
+  flex-basis: 100%;
+  font-size: 12px;
+}
+
+.fg-tension {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 5;
+  color: #fff;
+  font-size: 11px;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 65%);
+  pointer-events: none;
+}
+
+.fg-tension-track {
+  flex: 1;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgb(0 0 0 / 35%);
+}
+
+.fg-tension-track b {
+  display: block;
+  height: 100%;
+  background: #6fd28a;
+  transition: width 0.08s linear;
+}
+
+.fg-tension.high .fg-tension-track b {
+  background: #ff8a5b;
+}
+
+.fg-tension.low .fg-tension-track b {
+  background: #7fb8ff;
+}
+
+.fg-tension-value {
+  min-width: 34px;
+  text-align: right;
 }
 
 .fg-golden {

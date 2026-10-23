@@ -754,6 +754,12 @@ try {
       (await evaluate(`document.querySelector('.fishing-game')?.dataset.phase`)) === "playing",
   );
   check("F 开始收线", true);
+  check("张力第二维已显示", await evaluate(`!!document.querySelector('.fg-tension')`));
+  const gameText = await bodyText();
+  check(
+    "鱼种行为已显示",
+    ["贴底", "上层", "洄游", "爆发"].some((label) => gameText.includes(`行为：${label}`)),
+  );
   const frameBefore = await evaluate(`document.querySelector('.fg-frame')?.style.left || ''`);
   await send("Input.dispatchKeyEvent", {
     type: "keyDown",

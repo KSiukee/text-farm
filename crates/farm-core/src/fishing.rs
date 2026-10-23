@@ -516,7 +516,6 @@ pub enum FishRarity {
     Rare,
     King,
 }
-
 impl FishRarity {
     pub fn label(self) -> &'static str {
         match self {
@@ -525,6 +524,57 @@ impl FishRarity {
             FishRarity::Rare => "稀有",
             FishRarity::King => "鱼王",
         }
+    }
+}
+
+/// 鱼种行为（#62）：只影响小游戏里的游动偏好，不改价格/重量/概率。
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum FishBehavior {
+    Bottom,
+    Surface,
+    Migratory,
+    Burst,
+}
+
+impl FishBehavior {
+    pub fn label(self) -> &'static str {
+        match self {
+            FishBehavior::Bottom => "贴底",
+            FishBehavior::Surface => "上层",
+            FishBehavior::Migratory => "洄游",
+            FishBehavior::Burst => "爆发",
+        }
+    }
+
+    pub fn hint(self) -> &'static str {
+        match self {
+            FishBehavior::Bottom => "爱贴着水底，少往上窜",
+            FishBehavior::Surface => "爱在水面附近，下沉慢",
+            FishBehavior::Migratory => "横向长距离游动",
+            FishBehavior::Burst => "会突然发力冲刺",
+        }
+    }
+
+    /// 张力上涨倍率（百分比）。
+    pub fn tension_gain_pct(self) -> u32 {
+        match self {
+            FishBehavior::Bottom => 80,
+            FishBehavior::Surface => 110,
+            FishBehavior::Migratory => 100,
+            FishBehavior::Burst => 130,
+        }
+    }
+}
+
+pub fn fish_behavior(def: &FishDef) -> FishBehavior {
+    match def.id {
+        "loach" | "yellow_catfish" | "catfish" | "eel" | "stone_grouper" => FishBehavior::Bottom,
+        "white_bait" | "pale_chub" | "topmouth_culter" | "hairtail" | "silver_pomfret" => {
+            FishBehavior::Surface
+        }
+        "black_carp" | "yellowcheek" | "grouper" | "red_seabream" => FishBehavior::Burst,
+        _ => FishBehavior::Migratory,
     }
 }
 
@@ -1724,6 +1774,10 @@ pub struct FishingParams {
     pub catch_ms: i64,
     pub progress_gain: u32,
     pub progress_loss: u32,
+    pub behavior: FishBehavior,
+    pub behavior_label: String,
+    pub behavior_hint: String,
+    pub tension_gain_pct: u32,
 }
 
 pub fn params(
@@ -1777,6 +1831,10 @@ pub fn params_with_reel(
         },
         progress_gain: 22 + reel_bonus(reel_level),
         progress_loss: 12,
+        behavior: fish_behavior(def),
+        behavior_label: fish_behavior(def).label().into(),
+        behavior_hint: fish_behavior(def).hint().into(),
+        tension_gain_pct: fish_behavior(def).tension_gain_pct(),
     }
 }
 

@@ -43,6 +43,8 @@ const fishVY = ref(0);
 const fishFacing = ref(-1); // -1 朝左，1 朝右
 const progress = ref(35);
 const peakProgress = ref(35);
+const tension = ref(30);
+const kingPhase = ref<"none" | "probe" | "power" | "sprint">("none");
 const done = ref(false);
 const message = ref(props.session ? "浮标落水了，等鱼咬钩……" : "按 F 抛竿，等浮标落水。");
 const inZone = ref(false);
@@ -96,6 +98,8 @@ let badHoldMs = 0;
 let badDirX = 0;
 let badDirY = 0;
 let badReversalMs = 0;
+let burstLeft = 0;
+let burstCooldown = 3;
 
 const POND_MIN = 16;
 const POND_MAX = 84;
@@ -109,6 +113,32 @@ function keepInPond(value: number): number {
   let v = (((value - POND_MIN) % period) + period) % period;
   if (v > span) v = period - v;
   return POND_MIN + v;
+}
+
+/// 鱼种偏好的水深区间（百分比，0 = 水面）。
+function preferredDepth(): [number, number] {
+  switch (behavior.value) {
+    case "bottom":
+      return [58, 82];
+    case "surface":
+      return [18, 42];
+    case "burst":
+      return [28, 68];
+    default:
+      return [26, 72];
+  }
+}
+
+function depthBias(): number {
+  switch (behavior.value) {
+    case "bottom":
+    case "surface":
+      return 0.55;
+    case "burst":
+      return 0.35;
+    default:
+      return 0.25;
+  }
 }
 
 const frameSize = computed(() => props.session?.params.framePct ?? 20);
@@ -137,6 +167,27 @@ const progressStyle = computed(() => ({
 const progressGhostStyle = computed(() => ({
   width: `${Math.max(0, Math.min(100, peakProgress.value))}%`,
 }));
+const tensionStyle = computed(() => ({
+  width: `${Math.max(0, Math.min(100, tension.value))}%`,
+}));
+const tensionState = computed(() =>
+  tension.value >= 75 ? "high" : tension.value <= 34 ? "low" : "good",
+);
+const behavior = computed(() => props.session?.params.behavior ?? "migratory");
+const behaviorLabel = computed(() => props.session?.params.behaviorLabel ?? "洄游");
+const behaviorHint = computed(() => props.session?.params.behaviorHint ?? "");
+const kingPhaseLabel = computed(() => {
+  switch (kingPhase.value) {
+    case "probe":
+      return "试探";
+    case "power":
+      return "发力";
+    case "sprint":
+      return "冲刺";
+    default:
+      return "";
+  }
+});
 const isLosing = computed(
   () => phase.value === "playing" && !inZone.value && graceLeft.value <= 0,
 );
@@ -399,6 +450,12 @@ function tick(now: number) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   elapsed += dt * 1000;
+  if (session.isKing) {
+    const ratio = elapsed / (session.params.catchMs * fightMultiplier.value);
+    kingPhase.value = ratio < 0.3 ? "probe" : ratio < 0.7 ? "power" : "sprint";
+  } else {
+    kingPhase.value = "none";
+  }
 
   if (Date.now() > session.expiresAt) {
     finish(false, "这一竿放太久了");
@@ -467,6 +524,16 @@ function tick(now: number) {
     let targetY = fishY.value + Math.sin(angle) * range;
     targetX = keepInPond(targetX);
     targetY = keepInPond(targetY);
+    // 行为偏好：贴底/上层往固定水深靠，洄游更爱横穿。
+    const [minY, maxY] = preferredDepth();
+    const bias = depthBias();
+    targetY = keepInPond(
+      targetY * (1 - bias) + (minY + Math.random() * (maxY - minY)) * bias,
+    );
+    if (behavior.value === "migratory") {
+      const farX = fishX.value < 50 ? 70 + Math.random() * 13 : 17 + Math.random() * 13;
+      targetX = keepInPond(targetX * 0.3 + farX * 0.7);
+    }
     // 折返后如果离鱼太近，就朝池心推一段，保证它继续游。
     if (Math.hypot(targetX - fishX.value, targetY - fishY.value) < 6) {
       const cx = 50 - fishX.value;
@@ -488,13 +555,50 @@ function tick(now: number) {
   const dy = fishTargetY.value - fishY.value;
   const dist = Math.hypot(dx, dy);
   const escaping = frameDist < 30;
+  // 行为：贴底/上层垂直慢，洄游更平；爆发鱼周期性冲一下。
+  let behaviorSpeed = 1;
+  if (behavior.value === "burst") {
+    if (burstLeft > 0) {
+      burstLeft = Math.max(0, burstLeft - dt);
+      behaviorSpeed = 1.8;
+    } else {
+      burstCooldown -= dt;
+      if (burstCooldown <= 0) {
+        burstLeft = 0.55;
+        burstCooldown = 2.6 + Math.random() * 1.2;
+        behaviorSpeed = 1.8;
+      } else {
+        behaviorSpeed = 0.9;
+      }
+    }
+  }
+  const kingSpeed =
+    kingPhase.value === "probe"
+      ? 0.9
+      : kingPhase.value === "power"
+        ? 1.15
+        : kingPhase.value === "sprint"
+          ? 1.35
+          : 1;
+  const tensionSpeed = tension.value > 75 ? 1.15 : tension.value < 35 ? 0.9 : 1;
   const speed =
     (session.params.fishSpeedPct / 100) *
     70 *
-    (escaping ? session.params.fishEscapePct / 100 : 1);
+    (escaping ? session.params.fishEscapePct / 100 : 1) *
+    behaviorSpeed *
+    kingSpeed *
+    tensionSpeed;
+  const verticalFactor =
+    behavior.value === "bottom"
+      ? 0.65
+      : behavior.value === "surface"
+        ? 0.85
+        : behavior.value === "migratory"
+          ? 0.75
+          : 1;
   if (dist > 0.01) {
     const desiredX = (dx / dist) * speed;
-    const desiredY = (dy / dist) * speed;
+    const desiredY = (dy / dist) * speed * verticalFactor;
     const turn = Math.min(1, dt * 2.4 * (session.params.turnPct / 100));
     fishVX.value += (desiredX - fishVX.value) * turn;
     fishVY.value += (desiredY - fishVY.value) * turn;
@@ -546,6 +650,27 @@ function tick(now: number) {
   } else if (graceLeft.value > 0) {
     graceLeft.value = Math.max(0, graceLeft.value - dt);
   }
+  // 第二维：张力。鱼在框内涨，框外回落；太高会绷断鱼线。
+  const kingTension =
+    kingPhase.value === "probe"
+      ? 0.7
+      : kingPhase.value === "power"
+        ? 1
+        : kingPhase.value === "sprint"
+          ? 1.25
+          : 1;
+  const tensionGain =
+    12 * ((session.params.tensionGainPct ?? 100) / 100) * kingTension;
+  tension.value = Math.max(
+    0,
+    Math.min(100, tension.value + (inside ? tensionGain : -10) * dt),
+  );
+  if (tension.value >= 100) {
+    finish(false, "鱼线绷断了，鱼跑了");
+    return;
+  }
+  const tensionFactor =
+    tension.value < 35 ? 0.8 : tension.value > 75 ? 0.85 : 1.15;
   trailAt += dt * 1000;
   if (trailAt >= 110) {
     trailAt = 0;
@@ -555,7 +680,8 @@ function tick(now: number) {
     ].slice(0, 2);
   }
   if (inside) {
-    progress.value += (session.params.progressGain * dt) / fightMultiplier.value;
+    progress.value +=
+      (session.params.progressGain * dt * tensionFactor) / fightMultiplier.value;
     if (progress.value > peakProgress.value) {
       peakProgress.value = progress.value;
     }
@@ -622,6 +748,8 @@ function resetRound() {
   done.value = false;
   progress.value = 35;
   peakProgress.value = 35;
+  tension.value = 30;
+  kingPhase.value = "none";
   inZone.value = false;
   graceLeft.value = 0;
   biteLeft.value = 0;
@@ -629,6 +757,8 @@ function resetRound() {
   badDirX = 0;
   badDirY = 0;
   badReversalMs = 0;
+  burstLeft = 0;
+  burstCooldown = 3;
   trail.value = [];
   frameX.value = 50;
   frameY.value = 50;
@@ -717,6 +847,10 @@ onUnmounted(() => {
         {{ session.isKing ? "鱼王" : `难度 ${session.difficulty}` }}
       </span>
       <span v-else class="muted">按 F 抛竿，浮标落水后会等鱼咬钩</span>
+      <span v-if="session" class="fg-behavior muted" :title="behaviorHint">
+        行为：{{ behaviorLabel }}（{{ behaviorHint }}）
+        <template v-if="kingPhaseLabel"> · {{ kingPhaseLabel }}</template>
+      </span>
     </div>
     <div class="fg-feel">
       <span class="muted">手感</span>
@@ -834,6 +968,15 @@ onUnmounted(() => {
       <div class="fg-progress" :class="{ losing: isLosing }">
         <i class="fg-progress-ghost" :style="progressGhostStyle"></i>
         <span :style="progressStyle"></span>
+      </div>
+      <div
+        class="fg-tension"
+        :class="tensionState"
+        title="张力 35–75 最佳；到 100 会绷断鱼线"
+      >
+        <span class="fg-tension-label">张力</span>
+        <i class="fg-tension-track"><b :style="tensionStyle"></b></i>
+        <span class="fg-tension-value">{{ Math.round(tension) }}%</span>
       </div>
       <div class="fg-trail">
         <img

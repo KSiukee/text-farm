@@ -579,6 +579,7 @@ export type BaitQuality = "normal" | "fine" | "prime" | "master";
 export type BaitType = "dough" | "corn" | "worm" | "lure";
 export type FishRarity = "common" | "uncommon" | "rare" | "king";
 export type FishPersonality = "lazy" | "normal" | "active" | "fierce";
+export type FishBehavior = "bottom" | "surface" | "migratory" | "burst";
 
 export interface FishingParams {
   framePct: number;
@@ -596,6 +597,10 @@ export interface FishingParams {
   catchMs: number;
   progressGain: number;
   progressLoss: number;
+  behavior: FishBehavior;
+  behaviorLabel: string;
+  behaviorHint: string;
+  tensionGainPct: number;
 }
 
 export interface FishingSpotView {
