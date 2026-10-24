@@ -865,6 +865,30 @@ pub struct NpcRoomView {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct FarmOrderView {
+    pub id: String,
+    pub npc_name: String,
+    pub crop_id: String,
+    pub crop_name: String,
+    pub qty: u32,
+    pub expires_day: String,
+    pub reward_coins: u64,
+    pub reward_exp: u64,
+    pub have: u32,
+    pub can_deliver: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FarmOrdersView {
+    pub day: String,
+    pub offers: Vec<FarmOrderView>,
+    pub active: Vec<FarmOrderView>,
+    pub max_active: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Snapshot {
     pub rev: u64,
     pub now: i64,
@@ -884,6 +908,7 @@ pub struct Snapshot {
     pub facilities: Vec<FacilityView>,
     pub onboarded: bool,
     pub daily: DailyView,
+    pub orders: FarmOrdersView,
     pub level_rewards: Vec<LevelRewardView>,
     pub level_rewards_claimable: u32,
     pub codex: Vec<CodexView>,
@@ -2215,6 +2240,45 @@ impl Game {
             cat_toy_repair: PetSupplyKind::CatToy.repair_cost(),
         };
 
+        let to_order_view = |order: &crate::orders::FarmOrder| {
+            let have = self
+                .state
+                .inventory
+                .get(&format!("crop:{}", order.crop_id))
+                .copied()
+                .unwrap_or(0);
+            FarmOrderView {
+                id: order.id.clone(),
+                npc_name: order.npc_name.clone(),
+                crop_id: order.crop_id.clone(),
+                crop_name: order.crop_name.clone(),
+                qty: order.qty,
+                expires_day: order.expires_day.clone(),
+                reward_coins: order.reward_coins,
+                reward_exp: order.reward_exp,
+                have,
+                can_deliver: have >= order.qty,
+            }
+        };
+        let orders = FarmOrdersView {
+            day: self.state.orders.day.clone(),
+            offers: self
+                .state
+                .orders
+                .offers
+                .iter()
+                .map(&to_order_view)
+                .collect(),
+            active: self
+                .state
+                .orders
+                .active
+                .iter()
+                .map(&to_order_view)
+                .collect(),
+            max_active: crate::orders::FARM_ORDER_MAX_ACTIVE,
+        };
+
         Snapshot {
             rev: self.state.rev,
             now,
@@ -2234,6 +2298,7 @@ impl Game {
             facilities,
             onboarded: self.state.settings.onboarded,
             daily: daily::view(&self.state.daily, self.state.ranch.has_animal()),
+            orders,
             level_rewards: level_reward::views(&self.state, &self.content),
             level_rewards_claimable: level_reward::claimable_count(&self.state),
             codex,

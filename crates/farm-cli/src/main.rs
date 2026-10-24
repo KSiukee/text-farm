@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 
 use clap::{Parser, Subcommand, ValueEnum};
@@ -92,6 +92,9 @@ enum Cmd {
         /// 模拟吃喝加成食物（只吃模拟器会产出的奶酪/蛋糕）
         #[arg(long)]
         buffs: bool,
+        /// 同时模拟村庄订单：接单、交付、统计订单收入
+        #[arg(long)]
+        orders: bool,
     },
     /// 生成一批种子并跑审核/时间加速沙盒
     Seedgen {
@@ -173,10 +176,20 @@ fn run(game: &mut Game, action: Action, now: i64, errors: &mut u64) -> bool {
     }
 }
 
-fn sell_all(game: &mut Game, now: i64, errors: &mut u64, reserve: bool, ranch: bool) {
+fn sell_all(
+    game: &mut Game,
+    now: i64,
+    errors: &mut u64,
+    reserve: bool,
+    ranch: bool,
+    reserved: &BTreeSet<String>,
+) {
     let snap = game.snapshot(now);
     for item in &snap.inventory {
         if item.kind == ItemKind::Produce && item.qty > 0 {
+            if reserved.contains(&item.key) {
+                continue;
+            }
             let qty = if reserve {
                 item.qty.saturating_sub(3)
             } else {
@@ -332,6 +345,86 @@ fn npc_actions(game: &mut Game, now: i64, errors: &mut u64) {
     }
 }
 
+#[derive(Default)]
+struct OrderSim {
+    accepted: u64,
+    delivered: u64,
+    income: u64,
+}
+
+fn order_actions(game: &mut Game, now: i64, sim: &mut OrderSim, errors: &mut u64) {
+    let snap = game.snapshot(now);
+    if snap.orders.active.len() < snap.orders.max_active {
+        for offer in &snap.orders.offers {
+            if game.state().orders.active.len() >= snap.orders.max_active {
+                break;
+            }
+            run(
+                game,
+                Action::AcceptFarmOrder {
+                    id: offer.id.clone(),
+                },
+                now,
+                errors,
+            );
+            sim.accepted += 1;
+        }
+    }
+    let snap = game.snapshot(now);
+    for order in &snap.orders.active {
+        if !order.can_deliver {
+            continue;
+        }
+        let before = game.state().coins;
+        if run(
+            game,
+            Action::DeliverFarmOrder {
+                id: order.id.clone(),
+            },
+            now,
+            errors,
+        ) {
+            let gained = game.state().coins.saturating_sub(before);
+            if gained > 0 {
+                sim.delivered += 1;
+                sim.income = sim.income.saturating_add(gained);
+            }
+        }
+    }
+}
+
+fn order_crop(game: &Game, snap: &Snapshot) -> Option<String> {
+    for order in &snap.orders.active {
+        let planted = snap
+            .plots
+            .iter()
+            .filter(|plot| {
+                plot.crop
+                    .as_ref()
+                    .is_some_and(|crop| crop.crop_id == order.crop_id)
+            })
+            .count() as u32;
+        let have = game
+            .state()
+            .inventory
+            .get(&format!("crop:{}", order.crop_id))
+            .copied()
+            .unwrap_or(0);
+        if planted + have < order.qty {
+            return Some(order.crop_id.clone());
+        }
+    }
+    None
+}
+
+fn seed_qty(snap: &Snapshot, crop_id: &str) -> u32 {
+    snap.inventory
+        .iter()
+        .find(|item| item.key == format!("seed:{crop_id}"))
+        .map(|item| item.qty)
+        .unwrap_or(0)
+}
+
 fn act(
     game: &mut Game,
     now: i64,
@@ -341,6 +434,8 @@ fn act(
     ranch: bool,
     buffs: bool,
     buff_uses: &mut u64,
+    orders: bool,
+    order_sim: &mut OrderSim,
 ) {
     let snap = game.snapshot(now);
 
@@ -405,7 +500,17 @@ fn act(
     if buffs {
         buff_actions(game, now, errors, buff_uses);
     }
-    sell_all(game, now, errors, pets, ranch);
+    if orders {
+        order_actions(game, now, order_sim, errors);
+    }
+    let reserved: BTreeSet<String> = game
+        .snapshot(now)
+        .orders
+        .active
+        .iter()
+        .map(|order| format!("crop:{}", order.crop_id))
+        .collect();
+    sell_all(game, now, errors, pets, ranch, &reserved);
 
     // 开地 / 建设施。
     for plot in 5..=8u8 {
@@ -465,7 +570,28 @@ fn act(
             break;
         };
 
-        let crop_id = if let Some(id) = best_owned_seed(game, &snap) {
+        let crop_id = if let Some(id) = order_crop(game, &snap) {
+            if seed_qty(&snap, &id) == 0 {
+                let Some(def) = game.content().crop(&id) else {
+                    break;
+                };
+                if snap.coins < def.seed_price {
+                    break;
+                }
+                if !run(
+                    game,
+                    Action::BuySeed {
+                        crop_id: id.clone(),
+                        qty: 1,
+                    },
+                    now,
+                    errors,
+                ) {
+                    break;
+                }
+            }
+            id
+        } else if let Some(id) = best_owned_seed(game, &snap) {
             id
         } else {
             let Some((id, price)) = choose_crop(game, &snap, policy) else {
@@ -1208,6 +1334,7 @@ fn sim(
     ranch: bool,
     fishing: bool,
     buffs: bool,
+    orders: bool,
 ) {
     let days = days.max(1);
     let total_minutes = u64::from(days) * 24 * 60;
@@ -1224,6 +1351,8 @@ fn sim(
     let mut last_fishing_auto = 0u64;
     let mut last_fishing_income = 0u64;
     let mut buff_uses = 0u64;
+    let mut order_sim = OrderSim::default();
+    let mut last_order_income = 0u64;
 
     for minute in 0..total_minutes {
         let now = i64::try_from(minute * 60_000).unwrap_or(i64::MAX);
@@ -1241,6 +1370,8 @@ fn sim(
                 ranch,
                 buffs,
                 &mut buff_uses,
+                orders,
+                &mut order_sim,
             );
             if fishing {
                 fishing_actions(&mut game, now, day, policy, &mut fishing_sim, &mut errors);
@@ -1282,6 +1413,8 @@ fn sim(
                 "fishingCatches": fish_stats.catches.saturating_sub(last_fishing_catches),
                 "fishingAuto": fish_stats.auto_catches.saturating_sub(last_fishing_auto),
                 "fishingIncome": fishing_sim.income.saturating_sub(last_fishing_income),
+                "orderIncome": order_sim.income.saturating_sub(last_order_income),
+                "orderDelivered": order_sim.delivered,
                 "professions": profession_json(&game),
             }));
             for target in [5, 10, 15, 20, 25, 30] {
@@ -1293,6 +1426,7 @@ fn sim(
             last_fishing_catches = fish_stats.catches;
             last_fishing_auto = fish_stats.auto_catches;
             last_fishing_income = fishing_sim.income;
+            last_order_income = order_sim.income;
         }
     }
 
@@ -1318,6 +1452,15 @@ fn sim(
         },
         "buffs": buffs,
         "buffUses": buff_uses,
+        "orders": if orders {
+            json!({
+                "accepted": order_sim.accepted,
+                "delivered": order_sim.delivered,
+                "income": order_sim.income,
+            })
+        } else {
+            json!(null)
+        },
         "final": {
             "level": snap.level,
             "exp": snap.exp,
@@ -1606,7 +1749,8 @@ fn main() {
             ranch,
             fishing,
             buffs,
-        } => sim(days, policy, out, json, pets, ranch, fishing, buffs),
+            orders,
+        } => sim(days, policy, out, json, pets, ranch, fishing, buffs, orders),
         Cmd::Seedgen { count, seed, out } => seedgen(count, seed, out),
     }
 }

@@ -4292,6 +4292,7 @@ impl Game {
             self.state.inventory.insert(key, have - order.qty);
         }
         self.state.coins = self.state.coins.saturating_add(order.reward_coins);
+        self.state.daily.orders = self.state.daily.orders.saturating_add(1);
         if let Some(npc) = self
             .state
             .npcs

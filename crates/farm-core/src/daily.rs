@@ -21,7 +21,7 @@ pub struct DailyTaskDef {
     pub unlock: DailyUnlock,
 }
 
-pub const DAILY_TASKS: [DailyTaskDef; 5] = [
+pub const DAILY_TASKS: [DailyTaskDef; 6] = [
     DailyTaskDef {
         id: 1,
         name: "收获 10 次",
@@ -67,6 +67,15 @@ pub const DAILY_TASKS: [DailyTaskDef; 5] = [
         reward_exp: 30,
         unlock: DailyUnlock::Always,
     },
+    DailyTaskDef {
+        id: 6,
+        name: "交 1 笔村庄订单",
+        desc: "今天累计交付 1 笔村庄订单",
+        target: 1,
+        reward_coins: 40,
+        reward_exp: 25,
+        unlock: DailyUnlock::Always,
+    },
 ];
 
 pub fn daily_progress(daily: &DailyState, id: u8) -> u32 {
@@ -76,6 +85,7 @@ pub fn daily_progress(daily: &DailyState, id: u8) -> u32 {
         3 => daily.pests_cleared,
         4 => daily.ranch_collects,
         5 => daily.fish_catches,
+        6 => daily.orders,
         _ => 0,
     }
 }
@@ -87,6 +97,7 @@ pub fn daily_claimed(daily: &DailyState, id: u8) -> bool {
         3 => daily.claimed_pest,
         4 => daily.claimed_ranch,
         5 => daily.claimed_fish,
+        6 => daily.claimed_order,
         _ => false,
     }
 }
@@ -98,6 +109,7 @@ pub fn mark_claimed(daily: &mut DailyState, id: u8) {
         3 => daily.claimed_pest = true,
         4 => daily.claimed_ranch = true,
         5 => daily.claimed_fish = true,
+        6 => daily.claimed_order = true,
         _ => {}
     }
 }

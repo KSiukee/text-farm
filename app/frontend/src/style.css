@@ -824,6 +824,28 @@ textarea {
   font-weight: 700;
 }
 
+.farm-orders-sub {
+  margin: 8px 0 2px;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+
+.farm-order {
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--line);
+}
+
+.farm-order-main {
+  min-width: 170px;
+}
+
+.farm-orders-hint {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
 .tank-panel {
   margin-top: 8px;
   padding: 10px 12px;

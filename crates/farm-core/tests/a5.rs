@@ -147,7 +147,7 @@ fn daily_rewards_require_progress_and_only_pay_once() {
 fn daily_ranch_task_shows_only_when_ranch_has_animal() {
     let game = Game::new(0);
     let tasks = game.snapshot(0).daily.tasks;
-    assert_eq!(tasks.len(), 4);
+    assert_eq!(tasks.len(), 5);
     assert!(tasks.iter().all(|task| task.id != 4));
     assert!(tasks.iter().any(|task| task.id == 5));
 
@@ -162,7 +162,7 @@ fn daily_ranch_task_shows_only_when_ranch_has_animal() {
     )
     .unwrap();
     let tasks = game.snapshot(0).daily.tasks;
-    assert_eq!(tasks.len(), 5);
+    assert_eq!(tasks.len(), 6);
     assert!(tasks.iter().any(|task| task.id == 4));
 }
 

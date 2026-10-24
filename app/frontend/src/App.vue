@@ -718,6 +718,14 @@ function claimDaily(id: number) {
   void act({ type: "claimDaily", id });
 }
 
+function acceptFarmOrder(id: string) {
+  void act({ type: "acceptFarmOrder", id });
+}
+
+function deliverFarmOrder(id: string) {
+  void act({ type: "deliverFarmOrder", id });
+}
+
 function claimLevelReward(level: number) {
   void act({ type: "claimLevelReward", level });
 }
@@ -2219,6 +2227,66 @@ onUnmounted(() => {
         </details>
         <div class="row muted appearance-hint">
           只存在这台电脑上（localStorage），不写存档；默认跟随系统 + 新版布局，改完立即生效。
+        </div>
+      </section>
+
+      <section v-if="snapshot?.orders" class="panel farm-orders">
+        <div class="panel-title">
+          村庄订单
+          <span class="muted">
+            {{ snapshot.orders.day }} · 已接 {{ snapshot.orders.active.length }}/{{
+              snapshot.orders.maxActive
+            }}
+          </span>
+        </div>
+        <div v-if="snapshot.orders.active.length" class="muted farm-orders-sub">进行中</div>
+        <div
+          v-for="order in snapshot.orders.active"
+          :key="`active-${order.id}`"
+          class="row farm-order"
+        >
+          <span class="farm-order-main">
+            <b>{{ order.npcName }}</b> 收 {{ order.cropName }} ×{{ order.qty }}
+          </span>
+          <span class="muted">
+            {{ order.expiresDay }} 前 · 仓库 {{ order.have }}/{{ order.qty }}
+          </span>
+          <button
+            v-if="order.canDeliver"
+            class="link"
+            type="button"
+            :disabled="acting"
+            @click="deliverFarmOrder(order.id)"
+          >
+            [交付 +{{ order.rewardCoins }}]
+          </button>
+          <span v-else class="muted">还差 {{ order.qty - order.have }}</span>
+        </div>
+        <div v-if="snapshot.orders.offers.length" class="muted farm-orders-sub">可接</div>
+        <div
+          v-for="order in snapshot.orders.offers"
+          :key="`offer-${order.id}`"
+          class="row farm-order"
+        >
+          <span class="farm-order-main">
+            <b>{{ order.npcName }}</b> 收 {{ order.cropName }} ×{{ order.qty }}
+          </span>
+          <span class="muted">{{ order.expiresDay }} 前 · 仓库 {{ order.have }}</span>
+          <button
+            class="link"
+            type="button"
+            :disabled="acting || snapshot.orders.active.length >= snapshot.orders.maxActive"
+            @click="acceptFarmOrder(order.id)"
+          >
+            [接单]
+          </button>
+          <span class="muted">金币+{{ order.rewardCoins }} · 经验+{{ order.rewardExp }}</span>
+        </div>
+        <div v-if="!snapshot.orders.active.length && !snapshot.orders.offers.length" class="muted">
+          今天没有订单，明天再来。
+        </div>
+        <div class="muted farm-orders-hint">
+          每天 3 条，最多接 2 条；交付扣仓库作物；过期只掉 NPC 友好度，不扣金币。
         </div>
       </section>
 

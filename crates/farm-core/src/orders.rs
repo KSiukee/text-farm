@@ -98,12 +98,13 @@ fn generate_offers(today: &str, level: u32, content: &ContentPack) -> Vec<FarmOr
             let roll = roll(today, 0x200 + index as u64 * 31);
             let crop = crops[(roll as usize) % crops.len()];
             let (npc_id, npc_name) = NPC_PROFILES[((roll >> 8) as usize) % NPC_PROFILES.len()];
-            // 便宜作物量大、贵作物量小；让单笔总额大致落在几百到几千。
+            // 便宜作物量大、贵作物量小；上限按单季产量×2 块地，2–3 天交付。
             let budget = 900 + u64::from(level) * 55;
-            let base = (budget / crop.sell_price.max(1)).clamp(2, 30);
-            let qty = (base + ((roll >> 16) % 4) as u64).min(40) as u32;
+            let max_qty = (u64::from(crop.yield_per_season.max(1)) * 2).clamp(3, 24);
+            let base = (budget / crop.sell_price.max(1)).clamp(2, max_qty);
+            let qty = (base + ((roll >> 16) % 4) as u64).min(max_qty) as u32;
             let premium = 135 + ((roll >> 24) % 21) as u64;
-            let days = 1 + ((roll >> 32) % 2) as u32;
+            let days = 3 + ((roll >> 32) % 2) as u32;
             FarmOrder {
                 id: format!("{today}-{index}"),
                 npc_id: npc_id.into(),
@@ -222,7 +223,7 @@ mod tests {
         assert!(state.accept(&ids[0]));
         assert!(state.accept(&ids[1]));
         assert!(!state.accept(&ids[2]));
-        let expired = state.ensure_day("2026-10-28", 10, &content);
+        let expired = state.ensure_day("2026-11-02", 10, &content);
         assert_eq!(expired.len(), 2);
         assert!(state.active.is_empty());
         assert_eq!(state.offers.len(), FARM_ORDER_OFFERS);

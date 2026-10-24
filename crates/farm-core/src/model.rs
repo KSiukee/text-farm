@@ -328,12 +328,16 @@ pub struct DailyState {
     pub ranch_helps: u32,
     pub ranch_collects: u32,
     pub fish_catches: u32,
+    #[serde(default)]
+    pub orders: u32,
     pub sign_in: bool,
     pub claimed_harvest: bool,
     pub claimed_water: bool,
     pub claimed_pest: bool,
     pub claimed_ranch: bool,
     pub claimed_fish: bool,
+    #[serde(default)]
+    pub claimed_order: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

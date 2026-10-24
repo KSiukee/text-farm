@@ -479,6 +479,26 @@ export interface DailyView {
   tasks: DailyTaskView[];
 }
 
+export interface FarmOrderView {
+  id: string;
+  npcName: string;
+  cropId: string;
+  cropName: string;
+  qty: number;
+  expiresDay: string;
+  rewardCoins: number;
+  rewardExp: number;
+  have: number;
+  canDeliver: boolean;
+}
+
+export interface FarmOrdersView {
+  day: string;
+  offers: FarmOrderView[];
+  active: FarmOrderView[];
+  maxActive: number;
+}
+
 export interface LevelRewardView {
   level: number;
   coins: number;
@@ -1001,6 +1021,7 @@ export interface Snapshot {
   facilities: FacilityView[];
   onboarded: boolean;
   daily: DailyView;
+  orders: FarmOrdersView;
   levelRewards: LevelRewardView[];
   levelRewardsClaimable: number;
   codex: CodexView[];
@@ -1116,6 +1137,8 @@ export type Action =
   | { type: "npcGreeting"; npcId: string }
   | { type: "claimSignIn" }
   | { type: "claimDaily"; id: number }
+  | { type: "acceptFarmOrder"; id: string }
+  | { type: "deliverFarmOrder"; id: string }
   | { type: "claimLevelReward"; level: number }
   | { type: "updateSettings"; expRate: number }
   | { type: "showGuide" }

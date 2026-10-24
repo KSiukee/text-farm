@@ -17,6 +17,7 @@ const workshopScreenshotPath = join(root, "docs", "workshop-v031.png");
 const fishingScreenshotPath = join(root, "docs", "fishing-v032.png");
 const fishingGameScreenshotPath = join(root, "docs", "fishing-game-v032.png");
 const fishingBgDir = join(root, "app", "frontend", "public", "fishing");
+const farmOrderScreenshotPath = join(root, "docs", "farm-orders-v079.png");
 const port = 9333;
 const checks = [];
 let child = null;
@@ -105,6 +106,23 @@ function seedSave() {
   state.inventory = state.inventory || {};
   state.inventory["crop:yumi"] = 260;
   state.inventory["crop:xiaobaicai"] = 2;
+  for (const crop of [
+    "xiaobaicai",
+    "luobo",
+    "caomei",
+    "yumi",
+    "ganzhe",
+    "xiangrikui",
+    "putao",
+    "xigua",
+    "renshen",
+    "lingzhi",
+    "huolongguo",
+    "kafei",
+    "yuejiancao",
+  ]) {
+    state.inventory[`crop:${crop}`] = 99;
+  }
   state.inventory["ranch:milk"] = 4;
   state.inventory["ranch:wool"] = 2;
   state.lastBoardingMonth = "2026-09";
@@ -375,6 +393,19 @@ try {
   await startApp();
   const title = await evaluate("document.title");
   check("页面标题为文字农场", title.includes("文字农场"), title);
+  await waitFor(async () => (saveState().orders?.offers.length ?? 0) >= 1);
+  check("村庄订单已生成", (saveState().orders?.offers.length ?? 0) >= 1);
+  check("村庄订单面板已显示", (await bodyText()).includes("村庄订单"));
+  const orderCoins = saveState().coins;
+  await clickText("[接单]");
+  await waitFor(async () => saveState().orders.active.length === 1);
+  check("接单进入进行中", saveState().orders.active.length === 1);
+  await screenshot(farmOrderScreenshotPath);
+  check("村庄订单截图已保存", existsSync(farmOrderScreenshotPath), farmOrderScreenshotPath);
+  await clickText("[交付", false);
+  await waitFor(async () => saveState().orders.active.length === 0);
+  check("交付订单", saveState().orders.active.length === 0);
+  check("订单奖励到账", saveState().coins > orderCoins);
   check(
     "四种水域背景已生成",
     ["creek", "river", "jiang", "sea"].every((name) =>

@@ -43,6 +43,18 @@ fn farm_order_accept_deliver_and_expire() {
     .unwrap();
     assert!(game.state().coins > coins);
     assert!(game.state().orders.active.is_empty());
+    assert_eq!(game.state().daily.orders, 1);
+    let daily_task = game
+        .snapshot(0)
+        .daily
+        .tasks
+        .into_iter()
+        .find(|task| task.id == 6)
+        .unwrap();
+    assert!(daily_task.claimable);
+    let claimed_coins = game.state().coins;
+    game.dispatch(Action::ClaimDaily { id: 6 }, 0).unwrap();
+    assert!(game.state().coins > claimed_coins);
     assert_eq!(
         game.state()
             .inventory
