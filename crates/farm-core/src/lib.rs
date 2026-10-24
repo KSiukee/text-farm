@@ -12,6 +12,7 @@ mod error;
 mod fishing;
 mod level_reward;
 mod model;
+mod mystery;
 mod npc;
 mod orders;
 mod pet;
@@ -75,6 +76,10 @@ pub use model::{
     plot_unlock_level, CodexEntry, CropInstance, DailyState, Disaster, DisasterKind, Facilities,
     Game, GameState, LogEntry, Pest, PestKind, Plot, PlotKind, PlotTier, Region, Season, Settings,
     Stats, MAX_LEVEL, PLOT_COUNT, PLOT_MAX_TIER, SAVE_SCHEMA,
+};
+pub use mystery::{
+    MysteryKind, MysteryOffer, MysteryRarity, MysteryShopState, MYSTERY_LEGENDARY_PCT,
+    MYSTERY_OFFERS,
 };
 pub use npc::{
     NpcMessage, NpcMessageView, NpcPlot, NpcPlotView, NpcState, NpcView, HELP_DAILY_LIMIT,

@@ -197,7 +197,7 @@ const topIcons = [
   { icon: "🎣", name: "钓鱼" },
 ];
 
-const tabs = ["我的农场", "牧村", "邻居农场", "宠物", "标本室", "图鉴"];
+const tabs = ["我的农场", "牧村", "邻居农场", "宠物", "标本室", "神秘商店", "图鉴"];
 
 const levelLine = computed(() => {
   const s = snapshot.value;
@@ -372,9 +372,12 @@ const plantableSeeds = computed(() => {
   const level = snapshot.value?.level ?? 1;
   return seedStacks.value
     .flatMap((stack) => {
-      const id = stack.key.replace(/^seed:/, "");
+      const rare = stack.key.startsWith("rare_seed:");
+      const id = rare
+        ? stack.key.slice("rare_seed:".length)
+        : stack.key.replace(/^seed:/, "");
       const def = cropById(id);
-      if (!def || def.unlockLevel > level || stack.qty <= 0) return [];
+      if (!def || (!rare && def.unlockLevel > level) || stack.qty <= 0) return [];
       return [
         {
           id,
@@ -383,10 +386,16 @@ const plantableSeeds = computed(() => {
           qty: stack.qty,
           grow: formatGrowMinutes(def.growMinutes),
           off: !isInSeason(def),
+          rare,
         },
       ];
     })
-    .sort((a, b) => Number(a.off) - Number(b.off) || a.name.localeCompare(b.name));
+    .sort(
+      (a, b) =>
+        Number(b.rare) - Number(a.rare) ||
+        Number(a.off) - Number(b.off) ||
+        a.name.localeCompare(b.name),
+    );
 });
 
 const fishItems = computed(() =>
@@ -508,6 +517,7 @@ const logLines = computed(() =>
 const achievements = computed(() => snapshot.value?.achievements ?? []);
 const codex = computed(() => snapshot.value?.codex ?? []);
 const daily = computed(() => snapshot.value?.daily ?? null);
+const mystery = computed(() => snapshot.value?.mystery ?? null);
 const levelRewards = computed(() => snapshot.value?.levelRewards ?? []);
 const levelRewardClaimable = computed(() => snapshot.value?.levelRewardsClaimable ?? 0);
 const npcs = computed(() => snapshot.value?.npcs ?? []);
@@ -538,7 +548,8 @@ function selectTab(tab: string) {
     tab === "标本室" ||
     tab === "畜牧场" ||
     tab === "制造屋" ||
-    tab === "钓鱼"
+    tab === "钓鱼" ||
+    tab === "神秘商店"
   ) {
     activeTab.value = tab;
     if (tab === "钓鱼") maybeShowAutoReport();
@@ -1058,9 +1069,17 @@ function plant(plot: PlotView) {
   seedPickerPlot.value = seedPickerPlot.value === plot.index ? null : plot.index;
 }
 
-function plantWithSeed(plot: PlotView, cropId: string) {
+function plantWithSeed(plot: PlotView, seed: { id: string; rare: boolean }) {
   seedPickerPlot.value = null;
-  void act({ type: "plant", plot: plot.index, cropId });
+  void act(
+    seed.rare
+      ? { type: "plantRareSeed", plot: plot.index, cropId: seed.id }
+      : { type: "plant", plot: plot.index, cropId: seed.id },
+  );
+}
+
+function buyMystery(id: string) {
+  void act({ type: "buyMysteryOffer", id });
 }
 
 function water(plot: PlotView) {
@@ -2209,8 +2228,9 @@ onUnmounted(() => {
               class="seed-choice"
               type="button"
               :disabled="acting"
-              @click="plantWithSeed(plot, seed.id)"
+              @click="plantWithSeed(plot, seed)"
             >
+              <span v-if="seed.rare" class="rare-seed-tag">稀有</span>
               {{ seed.icon }} {{ seed.name }} ×{{ seed.qty }}
               <span class="muted">{{ seed.grow }} · {{ seed.off ? "反季" : "当季" }}</span>
             </button>
@@ -2899,6 +2919,51 @@ onUnmounted(() => {
           仓库里还没有加成食物（草莓汁/葡萄汁/西瓜汁/甘蔗汁/奶酪/蛋糕）。
         </div>
       </section>
+      </div>
+
+      <div v-show="activeTab === '神秘商店'">
+        <section class="panel">
+          <div class="panel-title">
+            神秘商店
+            <span class="muted">{{ mystery?.day }} · 每天刷新一次</span>
+          </div>
+          <p class="muted mystery-intro">
+            只卖稀有货：可越级种一次的稀有种子、神秘药剂；专栏每天 3% 概率出传说，价格很贵。
+          </p>
+          <div v-if="mystery?.legendary" class="mystery-legendary">
+            今天专栏出了一件传说商品。
+          </div>
+          <div class="mystery-grid">
+            <div
+              v-for="offer in mystery?.offers ?? []"
+              :key="offer.id"
+              class="mystery-card"
+              :class="[offer.rarity, { featured: offer.featured, sold: offer.sold }]"
+            >
+              <div class="mystery-card-head">
+                <span class="mystery-rarity">{{ offer.rarityLabel }}</span>
+                <span v-if="offer.featured" class="mystery-featured">专栏</span>
+                <span class="muted">{{ offer.kind }}</span>
+              </div>
+              <strong>{{ offer.name }}</strong>
+              <span class="muted mystery-desc">{{ offer.desc }}</span>
+              <div class="mystery-buy">
+                <b>{{ offer.price }} 金币</b>
+                <button
+                  v-if="!offer.sold"
+                  class="link"
+                  type="button"
+                  :disabled="acting || !offer.affordable"
+                  @click="buyMystery(offer.id)"
+                >
+                  {{ offer.affordable ? "[购买]" : "[金币不足]" }}
+                </button>
+                <span v-else class="muted">已售罄</span>
+              </div>
+            </div>
+          </div>
+          <div v-if="!mystery?.offers.length" class="muted">今天还没进货，明天再来。</div>
+        </section>
       </div>
 
       <div v-show="activeTab === '牧村'">

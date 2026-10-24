@@ -889,6 +889,29 @@ pub struct FarmOrdersView {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct MysteryOfferView {
+    pub id: String,
+    pub kind: String,
+    pub name: String,
+    pub desc: String,
+    pub price: u64,
+    pub rarity: String,
+    pub rarity_label: String,
+    pub featured: bool,
+    pub sold: bool,
+    pub affordable: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MysteryShopView {
+    pub day: String,
+    pub offers: Vec<MysteryOfferView>,
+    pub legendary: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Snapshot {
     pub rev: u64,
     pub now: i64,
@@ -910,6 +933,7 @@ pub struct Snapshot {
     pub onboarded: bool,
     pub daily: DailyView,
     pub orders: FarmOrdersView,
+    pub mystery: MysteryShopView,
     pub level_rewards: Vec<LevelRewardView>,
     pub level_rewards_claimable: u32,
     pub codex: Vec<CodexView>,
@@ -1260,7 +1284,7 @@ impl Game {
             let kind_str = parts.next().unwrap_or("");
             let id = parts.next().unwrap_or("");
             let kind = match kind_str {
-                "seed" => ItemKind::Seed,
+                "seed" | "rare_seed" => ItemKind::Seed,
                 "ranch" => ItemKind::Ranch,
                 "craft" => ItemKind::Craft,
                 "fish" => ItemKind::Fish,
@@ -1310,11 +1334,19 @@ impl Game {
                 let base = def
                     .map(|d| d.name.clone())
                     .unwrap_or_else(|| id.to_string());
-                let name = match kind {
-                    ItemKind::Seed => format!("{base}种子"),
-                    _ => base,
+                let name = if kind_str == "rare_seed" {
+                    format!("稀有·{base}种子")
+                } else {
+                    match kind {
+                        ItemKind::Seed => format!("{base}种子"),
+                        _ => base,
+                    }
                 };
-                let price = def.map(|d| d.sell_price).unwrap_or(0);
+                let price = if kind_str == "rare_seed" {
+                    0
+                } else {
+                    def.map(|d| d.sell_price).unwrap_or(0)
+                };
                 (name, kind == ItemKind::Produce, price)
             };
             let detail = if kind == ItemKind::Fish {
@@ -2279,6 +2311,36 @@ impl Game {
                 .collect(),
             max_active: crate::orders::FARM_ORDER_MAX_ACTIVE,
         };
+        let mystery = MysteryShopView {
+            day: self.state.mystery.day.clone(),
+            offers: self
+                .state
+                .mystery
+                .offers
+                .iter()
+                .map(|offer| MysteryOfferView {
+                    id: offer.id.clone(),
+                    kind: offer.kind.label().to_string(),
+                    name: offer.name.clone(),
+                    desc: offer.desc.clone(),
+                    price: offer.price,
+                    rarity: match offer.rarity {
+                        crate::mystery::MysteryRarity::Rare => "rare".into(),
+                        crate::mystery::MysteryRarity::Legendary => "legendary".into(),
+                    },
+                    rarity_label: offer.rarity.label().to_string(),
+                    featured: offer.featured,
+                    sold: offer.sold,
+                    affordable: self.state.coins >= offer.price,
+                })
+                .collect(),
+            legendary: self
+                .state
+                .mystery
+                .offers
+                .iter()
+                .any(|offer| offer.rarity == crate::mystery::MysteryRarity::Legendary),
+        };
 
         Snapshot {
             rev: self.state.rev,
@@ -2301,6 +2363,7 @@ impl Game {
             onboarded: self.state.settings.onboarded,
             daily: daily::view(&self.state.daily, self.state.ranch.has_animal()),
             orders,
+            mystery,
             level_rewards: level_reward::views(&self.state, &self.content),
             level_rewards_claimable: level_reward::claimable_count(&self.state),
             codex,

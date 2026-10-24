@@ -499,6 +499,25 @@ export interface FarmOrdersView {
   maxActive: number;
 }
 
+export interface MysteryOfferView {
+  id: string;
+  kind: string;
+  name: string;
+  desc: string;
+  price: number;
+  rarity: string;
+  rarityLabel: string;
+  featured: boolean;
+  sold: boolean;
+  affordable: boolean;
+}
+
+export interface MysteryShopView {
+  day: string;
+  offers: MysteryOfferView[];
+  legendary: boolean;
+}
+
 export interface LevelRewardView {
   level: number;
   coins: number;
@@ -1023,6 +1042,7 @@ export interface Snapshot {
   onboarded: boolean;
   daily: DailyView;
   orders: FarmOrdersView;
+  mystery: MysteryShopView;
   levelRewards: LevelRewardView[];
   levelRewardsClaimable: number;
   codex: CodexView[];
@@ -1065,6 +1085,7 @@ export interface DispatchReply {
 
 export type Action =
   | { type: "plant"; plot: number; cropId: string }
+  | { type: "plantRareSeed"; plot: number; cropId: string }
   | { type: "water"; plot: number }
   | { type: "harvest"; plot: number }
   | { type: "harvestAll" }
@@ -1141,6 +1162,7 @@ export type Action =
   | { type: "claimDaily"; id: number }
   | { type: "acceptFarmOrder"; id: string }
   | { type: "deliverFarmOrder"; id: string }
+  | { type: "buyMysteryOffer"; id: string }
   | { type: "claimLevelReward"; level: number }
   | { type: "updateSettings"; expRate: number }
   | { type: "showGuide" }

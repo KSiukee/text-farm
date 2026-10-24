@@ -132,6 +132,10 @@ pub enum GameError {
     FarmOrderExpired,
     #[error("昵称需要 1–12 个字")]
     BadPlayerName,
+    #[error("这件神秘商品不在了")]
+    MysteryOfferInvalid,
+    #[error("这件神秘商品已经卖掉了")]
+    MysteryOfferSold,
     #[error("没有这个专精")]
     BadSkill,
     #[error("这个专精已经满级")]
@@ -316,6 +320,8 @@ impl GameError {
             GameError::FarmOrderNotEnough => "farm_order_not_enough",
             GameError::FarmOrderExpired => "farm_order_expired",
             GameError::BadPlayerName => "bad_player_name",
+            GameError::MysteryOfferInvalid => "mystery_offer_invalid",
+            GameError::MysteryOfferSold => "mystery_offer_sold",
             GameError::BadSkill => "bad_skill",
             GameError::SkillMax => "skill_max",
             GameError::BadBuffItem => "bad_buff_item",

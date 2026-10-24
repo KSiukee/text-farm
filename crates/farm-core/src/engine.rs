@@ -74,6 +74,9 @@ impl Game {
     pub fn dispatch(&mut self, action: Action, now: i64) -> Result<Outcome, GameError> {
         let effects = match action {
             Action::Plant { plot, crop_id } => self.plant(plot, &crop_id, now)?,
+            Action::PlantRareSeed { plot, crop_id } => {
+                self.plant_rare_seed(plot, &crop_id, now)?
+            }
             Action::Water { plot } => self.water(plot, now)?,
             Action::Harvest { plot } => self.harvest(plot, now)?,
             Action::HarvestAll => self.harvest_all(now)?,
@@ -174,6 +177,7 @@ impl Game {
             Action::ClaimDaily { id } => self.claim_daily(id, now)?,
             Action::AcceptFarmOrder { id } => self.accept_farm_order(&id, now)?,
             Action::DeliverFarmOrder { id } => self.deliver_farm_order(&id, now)?,
+            Action::BuyMysteryOffer { id } => self.buy_mystery_offer(&id, now)?,
             Action::ClaimLevelReward { level } => self.claim_level_reward(level, now)?,
             Action::UpdateSettings { exp_rate } => self.update_settings(exp_rate, now)?,
             Action::ShowGuide => self.show_guide(now)?,
@@ -210,6 +214,25 @@ impl Game {
     }
 
     fn plant(&mut self, index: u8, crop_id: &str, now: i64) -> Result<Vec<Effect>, GameError> {
+        self.plant_inner(index, crop_id, false, now)
+    }
+
+    fn plant_rare_seed(
+        &mut self,
+        index: u8,
+        crop_id: &str,
+        now: i64,
+    ) -> Result<Vec<Effect>, GameError> {
+        self.plant_inner(index, crop_id, true, now)
+    }
+
+    fn plant_inner(
+        &mut self,
+        index: u8,
+        crop_id: &str,
+        rare: bool,
+        now: i64,
+    ) -> Result<Vec<Effect>, GameError> {
         let pos = self.plot_pos(index)?;
         if !self.state.plots[pos].unlocked {
             return Err(GameError::PlotLocked);
@@ -223,13 +246,17 @@ impl Game {
             .crop(crop_id)
             .cloned()
             .ok_or(GameError::UnknownCrop)?;
-        if self.state.level < def.unlock_level {
+        if !rare && self.state.level < def.unlock_level {
             return Err(GameError::LevelTooLow {
                 need: def.unlock_level,
             });
         }
 
-        let seed_key = format!("seed:{}", def.id);
+        let seed_key = if rare {
+            format!("rare_seed:{}", def.id)
+        } else {
+            format!("seed:{}", def.id)
+        };
         let have = *self.state.inventory.get(&seed_key).unwrap_or(&0);
         if have == 0 {
             return Err(GameError::NotEnoughSeeds);
@@ -311,7 +338,11 @@ impl Game {
         } else {
             suffix
         };
-        let text = format!("你种下了 {}×1{}", def.name, suffix);
+        let text = if rare {
+            format!("你种下了 稀有·{}×1{}", def.name, suffix)
+        } else {
+            format!("你种下了 {}×1{}", def.name, suffix)
+        };
         self.push_log(now, text.clone());
         Ok(vec![Effect::Log { text }])
     }
@@ -4323,6 +4354,33 @@ impl Game {
         Ok(effects)
     }
 
+    fn buy_mystery_offer(&mut self, id: &str, now: i64) -> Result<Vec<Effect>, GameError> {
+        let Some(offer) = self.state.mystery.offer(id).cloned() else {
+            return Err(GameError::MysteryOfferInvalid);
+        };
+        if offer.sold {
+            return Err(GameError::MysteryOfferSold);
+        }
+        if self.state.coins < offer.price {
+            return Err(GameError::NotEnoughCoins { need: offer.price });
+        }
+        self.state.coins -= offer.price;
+        if !self.state.mystery.mark_sold(id) {
+            return Err(GameError::MysteryOfferSold);
+        }
+        *self
+            .state
+            .inventory
+            .entry(offer.item_key.clone())
+            .or_insert(0) += 1;
+        let text = format!(
+            "在神秘商店买下 {}：金币-{}",
+            offer.name, offer.price
+        );
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
     fn claim_level_reward(&mut self, level: u32, now: i64) -> Result<Vec<Effect>, GameError> {
         if !(LEVEL_REWARD_MIN..=MAX_LEVEL).contains(&level) {
             return Err(GameError::BadLevelReward);
@@ -4443,6 +4501,16 @@ impl Game {
                     format!("，{} 条过期（NPC 友好度-1）", expired_orders.len())
                 }
             );
+            self.push_log(now, text.clone());
+            effects.push(Effect::Log { text });
+            changed = true;
+        }
+        if self
+            .state
+            .mystery
+            .ensure_day(today, self.state.level, &self.content)
+        {
+            let text = "神秘商店换了一批货".to_string();
             self.push_log(now, text.clone());
             effects.push(Effect::Log { text });
             changed = true;

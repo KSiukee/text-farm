@@ -1099,6 +1099,95 @@ textarea {
   font-size: 11px;
 }
 
+.rare-seed-tag {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 0 3px;
+  border: 1px solid var(--gold-strong);
+  color: var(--gold-strong);
+  font-size: 10px;
+}
+
+.mystery-intro {
+  margin: 0 0 10px;
+}
+
+.mystery-legendary {
+  margin-bottom: 10px;
+  padding: 7px 10px;
+  border: 1px solid var(--gold-strong);
+  background: color-mix(in srgb, var(--gold-strong) 12%, transparent);
+  color: var(--gold-strong);
+}
+
+.mystery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 10px;
+}
+
+.mystery-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.mystery-card.featured {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.mystery-card.legendary {
+  border-color: var(--gold-strong);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--gold-strong) 10%, transparent), transparent),
+    var(--panel);
+}
+
+.mystery-card.sold {
+  opacity: 0.55;
+}
+
+.mystery-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.mystery-rarity {
+  padding: 0 4px;
+  border: 1px solid var(--line-strong);
+  color: var(--accent-text);
+  font-size: 11px;
+}
+
+.mystery-card.legendary .mystery-rarity {
+  border-color: var(--gold-strong);
+  color: var(--gold-strong);
+}
+
+.mystery-featured {
+  color: var(--accent-text);
+  font-size: 11px;
+}
+
+.mystery-desc {
+  font-size: 12px;
+}
+
+.mystery-buy {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 5px;
+}
+
 .farm-orders-hint {
   margin-top: 8px;
   font-size: 12px;

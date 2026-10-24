@@ -20,6 +20,7 @@ const fishingBgDir = join(root, "app", "frontend", "public", "fishing");
 const farmOrderScreenshotPath = join(root, "docs", "farm-orders-v079.png");
 const playerScreenshotPath = join(root, "docs", "player-panel-v080.png");
 const seedPickerScreenshotPath = join(root, "docs", "seed-picker-v081.png");
+const mysteryScreenshotPath = join(root, "docs", "mystery-shop-v083.png");
 const port = 9333;
 const checks = [];
 let child = null;
@@ -493,11 +494,10 @@ try {
     `[...document.querySelectorAll('.tabs .tab')].map((el) => el.innerText.trim())`,
   );
   check(
-    "未开放 tab 已隐藏",
-    !["神秘商店", "神殿", "产业园", "种子精华"].some((name) => tabNames.includes(name)),
+    "tab 导航已收敛",
+    tabNames.join(",") === "我的农场,牧村,邻居农场,宠物,标本室,神秘商店,图鉴",
     tabNames.join(","),
-  );
-  check("矿场图标已隐藏", !(await bodyText()).includes("矿场"));
+  );  check("矿场图标已隐藏", !(await bodyText()).includes("矿场"));
   await clickText("图鉴");
   await waitFor(async () => (await evaluate(`!!document.querySelector('#farm-codex')?.open`)) === true);
   check("图鉴 tab 打开农场图鉴", true);
@@ -510,6 +510,21 @@ try {
   );
   check("顶部农场入口可跳转", true);
   check("不再出现 M4 占位", !(await bodyText()).includes("排在 M4"));
+  await clickText("神秘商店");
+  await waitFor(async () => (await evaluate(`document.querySelectorAll('.mystery-card').length`)) === 6);
+  check("神秘商店 6 格", (await evaluate(`document.querySelectorAll('.mystery-card').length`)) === 6);
+  check(
+    "神秘商店有专栏",
+    (await evaluate(`document.querySelectorAll('.mystery-card.featured').length`)) === 1,
+  );
+  const mysteryCoins = saveState().coins;
+  await clickText("[购买]");
+  await waitFor(async () => saveState().mystery.offers.some((offer) => offer.sold));
+  check("神秘商店购买成功", saveState().mystery.offers.some((offer) => offer.sold));
+  check("神秘商店扣款", saveState().coins < mysteryCoins);
+  await screenshot(mysteryScreenshotPath);
+  check("神秘商店截图已保存", existsSync(mysteryScreenshotPath), mysteryScreenshotPath);
+  await clickText("我的农场");
   const hasEmptyPlot = await evaluate(
     `[...document.querySelectorAll('.plot-line')].some((el) => el.innerText.includes('[播种]'))`,
   );

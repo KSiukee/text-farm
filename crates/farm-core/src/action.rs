@@ -20,6 +20,11 @@ pub enum Action {
         #[serde(rename = "cropId")]
         crop_id: String,
     },
+    PlantRareSeed {
+        plot: u8,
+        #[serde(rename = "cropId")]
+        crop_id: String,
+    },
     Water {
         plot: u8,
     },
@@ -280,6 +285,9 @@ pub enum Action {
         id: String,
     },
     DeliverFarmOrder {
+        id: String,
+    },
+    BuyMysteryOffer {
         id: String,
     },
     ClaimLevelReward {
