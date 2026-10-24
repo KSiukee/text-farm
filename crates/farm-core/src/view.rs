@@ -16,6 +16,7 @@ use crate::pet::{
     PetBreed, PetJob, PetLocation, PetSpecies, PetStage, PetState, PetSupplyKind, PetTalent,
     PET_BOARD_FEE_PER_MONTH, PET_PLAY_COOLDOWN_MS, PET_TOUCH_COOLDOWN_MS,
 };
+use crate::error::GameError;
 use crate::ranch::{RanchAnimalKind, RanchRecipe, RANCH_MAX_PENS};
 use crate::specimen;
 use crate::workshop::{
@@ -277,6 +278,34 @@ pub struct RanchAnimalView {
     /// 特殊产物名与概率说明（按最终品质）。
     pub special_name: String,
     pub special_hint: String,
+    /// 血统线与幼年/近亲/繁殖状态。
+    pub line_id: u32,
+    pub line_label: String,
+    pub young: bool,
+    pub young_remaining_ms: i64,
+    pub inbred: bool,
+    pub parents: String,
+    pub breed_ready: bool,
+    pub breed_remaining_ms: i64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RanchBreedPreview {
+    pub ok: bool,
+    pub kind: RanchAnimalKind,
+    pub kind_label: String,
+    pub quality: u8,
+    pub quality_label: String,
+    pub generation: u32,
+    pub line_id: u32,
+    pub line_label: String,
+    pub trait_label: String,
+    pub trait_hint: String,
+    pub inbred: bool,
+    pub parents: String,
+    pub warnings: Vec<String>,
+    pub missing: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -429,7 +458,6 @@ pub struct RanchView {
     pub expand_cost: u64,
     pub max_pens: u8,
     pub feed_count: u32,
-    pub can_breed: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1563,20 +1591,6 @@ impl Game {
             .iter()
             .any(|(key, qty)| key.starts_with("crop:") && *qty > 0);
         let premium_feed = *self.state.inventory.get("ranch:feed").unwrap_or(&0);
-        let can_breed = premium_feed > 0
-            && self
-                .state
-                .ranch
-                .pens
-                .iter()
-                .filter(|pen| {
-                    pen.animal
-                        .as_ref()
-                        .is_some_and(|animal| !animal.sick && !animal.bred)
-                })
-                .count()
-                >= 2
-            && self.state.ranch.pens.iter().any(|pen| pen.animal.is_none());
         let manual_recipes: Vec<RanchRecipeView> = RanchRecipe::ALL
             .iter()
             .map(|recipe| {
@@ -2280,7 +2294,6 @@ impl Game {
             expand_cost: self.state.ranch.next_expand_cost(),
             max_pens: RANCH_MAX_PENS,
             feed_count: premium_feed,
-            can_breed,
             pens: self
                 .state
                 .ranch
@@ -2316,6 +2329,14 @@ impl Game {
                             crate::ranch::special_chance(2),
                             crate::ranch::special_chance(3)
                         ),
+                        line_id: animal.line_id,
+                        line_label: format!("血统 #{}", animal.line_id),
+                        young: animal.is_young(now),
+                        young_remaining_ms: animal.young_remaining(now),
+                        inbred: animal.inbred,
+                        parents: animal.parents.clone(),
+                        breed_ready: animal.breed_ready(now),
+                        breed_remaining_ms: animal.breed_remaining(now),
                     }),
                 })
                 .collect(),
@@ -2753,5 +2774,56 @@ fn pet_view(pet: &PetState, now: i64) -> PetView {
         touch_remaining_ms: touch_remaining,
         play_remaining_ms: play_remaining,
         dig_remaining_ms: dig_remaining,
+    }
+}
+
+impl Game {
+    /// 两只动物的后代表现（只读）。与真繁殖共用 `breedSeq`，预览即下一发。
+    pub fn preview_ranch_breeding(
+        &self,
+        a: u8,
+        b: u8,
+        now: i64,
+    ) -> Result<RanchBreedPreview, GameError> {
+        let animal_a = self
+            .state
+            .ranch
+            .pen(a)
+            .and_then(|pen| pen.animal.as_ref())
+            .ok_or(GameError::RanchPenEmpty)?;
+        let animal_b = self
+            .state
+            .ranch
+            .pen(b)
+            .and_then(|pen| pen.animal.as_ref())
+            .ok_or(GameError::RanchPenEmpty)?;
+        let blockers = self.ranch_breed_blockers(a, b, now)?;
+        let plan = crate::ranch::breed_child(animal_a, animal_b, self.state.ranch.breed_seq);
+        let line_id = if plan.line_id == 0 {
+            self.state.ranch.line_seq + 1
+        } else {
+            plan.line_id
+        };
+        let inbred = a != b && plan.inbred;
+        Ok(RanchBreedPreview {
+            ok: blockers.is_empty(),
+            kind: plan.kind,
+            kind_label: plan.kind.label().into(),
+            quality: plan.quality,
+            quality_label: crate::ranch::quality_name(plan.quality).into(),
+            generation: plan.generation,
+            line_id,
+            line_label: format!("血统 #{line_id}"),
+            trait_label: plan.temper.label().into(),
+            trait_hint: plan.temper.hint().into(),
+            inbred,
+            parents: plan.parents,
+            warnings: if inbred {
+                vec!["近亲繁殖：后代品质上限 −1，生病率 +8%".into()]
+            } else {
+                Vec::new()
+            },
+            missing: blockers.iter().map(|blocker| blocker.message()).collect(),
+        })
     }
 }

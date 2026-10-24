@@ -7,6 +7,7 @@ import type {
   CropDef,
   DispatchReply,
   ImportReply,
+  RanchBreedPreview,
   SeedReview,
   Snapshot,
 } from "./types";
@@ -14,6 +15,8 @@ import type {
 export const getSnapshot = () => invoke<Snapshot>("get_snapshot");
 export const getContent = () => invoke<ContentPack>("get_content");
 export const getAppInfo = () => invoke<AppInfo>("app_info");
+export const previewRanchBreeding = (a: number, b: number) =>
+  invoke<RanchBreedPreview>("preview_ranch_breeding", { a, b });
 export const dispatch = (action: Action) =>
   invoke<DispatchReply>("dispatch", { action });
 export const sync = () => invoke<DispatchReply>("sync");

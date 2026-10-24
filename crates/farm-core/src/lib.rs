@@ -105,8 +105,9 @@ pub use processing::{
 };
 pub use ranch::{
     roll_trait, special_chance, RanchAnimal, RanchAnimalKind, RanchPen, RanchRecipe, RanchState,
-    RanchTrait, RANCH_CLEAN_GAIN, RANCH_CLEAN_MAX, RANCH_COLLECT_DIRT, RANCH_EXPAND_COSTS,
-    RANCH_PEN_COUNT, RANCH_QUALITY_PCT, RANCH_SPECIAL_PCT,
+    RanchTrait, RANCH_BREED_COOLDOWN_MS, RANCH_BREED_MIN_HEALTH, RANCH_CLEAN_GAIN, RANCH_CLEAN_MAX,
+    RANCH_COLLECT_DIRT, RANCH_EXPAND_COSTS, RANCH_PEN_COUNT, RANCH_QUALITY_PCT, RANCH_SPECIAL_PCT,
+    RANCH_YOUNG_MS,
 };
 pub use ranching::{
     care_pct, collect_exp as ranching_collect_exp, feed_save_chance,
@@ -129,7 +130,7 @@ pub use view::{
     BaitRecipeView, BaitTypeView, BuffItemView, BuffView, CodexView, CropView, DisasterView,
     DisciplineView, FacilityView, FishRecipeView, ItemKind, ItemStack, KingTrophyView, PestView,
     NpcRoomView, PetTalentTierView, PetTalentView, PetView, PlotEffectsView, PlotStatus, PlotView,
-    RoomView, RoomWindowStyleView,
+    RanchBreedPreview, RoomView, RoomWindowStyleView,
     SkillView, SkillsView, Snapshot, SpecimenView, SpotProgressView,
 };
 pub use workshop::{

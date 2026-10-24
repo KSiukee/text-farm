@@ -88,6 +88,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_snapshot,
             commands::get_content,
+            commands::preview_ranch_breeding,
             commands::dispatch,
             commands::sync,
             commands::advance_time,

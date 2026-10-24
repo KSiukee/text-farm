@@ -1965,6 +1965,66 @@ footer {
   line-height: 1.7;
 }
 
+.ranch-trait.young {
+  border-color: var(--line-strong);
+  background: var(--panel-soft);
+  color: var(--faint);
+}
+
+.ranch-trait.inbred {
+  border-color: var(--warn-line);
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.ranch-rename {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.ranch-rename-input {
+  width: 120px;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+}
+
+.ranch-breed {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+  font-size: 13px;
+}
+
+.ranch-breed-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.ranch-breed-picked {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+}
+
+.ranch-breed-preview {
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-left: 2px solid var(--accent-line);
+  background: var(--panel-soft);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
 .ranch-meters {
   display: flex;
   flex-wrap: wrap;

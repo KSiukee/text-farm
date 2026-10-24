@@ -32,7 +32,10 @@ use crate::pet::{
 };
 use crate::planting;
 use crate::processing;
-use crate::ranch::{RanchAnimal, RanchAnimalKind, RanchRecipe};
+use crate::ranch::{
+    BreedBlocker, RanchAnimal, RanchAnimalKind, RanchRecipe, RANCH_BREED_MIN_HEALTH,
+    RANCH_DIRTY_LINE, RANCH_YOUNG_MS,
+};
 use crate::ranching;
 use crate::room::{self, RoomLayout};
 use crate::skills::{self, DisciplineKind};
@@ -125,7 +128,10 @@ impl Game {
             Action::ExpandRanch => self.expand_ranch(now)?,
             Action::FeedRanchPremium { pen } => self.feed_ranch_premium(pen, now)?,
             Action::BuyRanchFeed => self.buy_ranch_feed(now)?,
-            Action::BreedRanch => self.breed_ranch(now)?,
+            Action::BreedRanchPair { a, b } => self.breed_ranch_pair(a, b, now)?,
+            Action::RenameRanchAnimal { pen, name } => {
+                self.rename_ranch_animal(pen, &name, now)?
+            }
             Action::BuildWorkshop => self.build_workshop(now)?,
             Action::ExpandWorkshop => self.expand_workshop(now)?,
             Action::InstallEquipment { slot, kind } => self.install_equipment(slot, kind, now)?,
@@ -2366,13 +2372,16 @@ impl Game {
         }
         self.state.coins -= cost;
         let temper = crate::ranch::roll_trait(now ^ (i64::from(pen) * 7_919), kind.label());
+        self.state.ranch.line_seq = self.state.ranch.line_seq.saturating_add(1);
+        let line_id = self.state.ranch.line_seq;
         if let Some(target) = self.state.ranch.pen_mut(pen) {
             let mut animal = RanchAnimal::new(kind, now);
             animal.temper = temper;
+            animal.line_id = line_id;
             target.animal = Some(animal);
         }
         let text = format!(
-            "你买了一只{}（{}），住进了 {pen} 号畜栏，花费 {cost}",
+            "你买了一只{}（{}，血统 #{line_id}），住进了 {pen} 号畜栏，花费 {cost}",
             kind.label(),
             temper.label()
         );
@@ -2658,67 +2667,169 @@ impl Game {
         Ok(vec![Effect::Log { text }])
     }
 
-    fn breed_ranch(&mut self, now: i64) -> Result<Vec<Effect>, GameError> {
-        let ready: Vec<usize> = self
+    /// 繁殖条件检查：预览与真繁殖共用一份，避免“能点但生不了”。
+    pub(crate) fn ranch_breed_blockers(
+        &self,
+        a: u8,
+        b: u8,
+        now: i64,
+    ) -> Result<Vec<BreedBlocker>, GameError> {
+        let pen_a = self.state.ranch.pen(a).ok_or(GameError::RanchPenEmpty)?;
+        let pen_b = self.state.ranch.pen(b).ok_or(GameError::RanchPenEmpty)?;
+        let animal_a = pen_a.animal.as_ref().ok_or(GameError::RanchPenEmpty)?;
+        let animal_b = pen_b.animal.as_ref().ok_or(GameError::RanchPenEmpty)?;
+        if a == b {
+            return Ok(vec![BreedBlocker::SamePen]);
+        }
+        let mut blockers = Vec::new();
+        for (pen_no, pen, animal) in [(a, pen_a, animal_a), (b, pen_b, animal_b)] {
+            if animal.sick {
+                blockers.push(BreedBlocker::Sick {
+                    pen: pen_no,
+                    name: animal.name.clone(),
+                });
+            }
+            if animal.is_young(now) {
+                blockers.push(BreedBlocker::Young {
+                    pen: pen_no,
+                    name: animal.name.clone(),
+                    remaining_ms: animal.young_remaining(now),
+                });
+            }
+            if !animal.breed_ready(now) {
+                blockers.push(BreedBlocker::Cooldown {
+                    pen: pen_no,
+                    name: animal.name.clone(),
+                    remaining_ms: animal.breed_remaining(now),
+                });
+            }
+            if animal.health < RANCH_BREED_MIN_HEALTH {
+                blockers.push(BreedBlocker::LowHealth {
+                    pen: pen_no,
+                    name: animal.name.clone(),
+                    health: animal.health,
+                });
+            }
+            if pen.cleanliness < RANCH_DIRTY_LINE {
+                blockers.push(BreedBlocker::DirtyPen {
+                    pen: pen_no,
+                    cleanliness: pen.cleanliness,
+                });
+            }
+        }
+        if !self
             .state
             .ranch
             .pens
             .iter()
-            .enumerate()
-            .filter(|(_, pen)| {
-                pen.animal
-                    .as_ref()
-                    .is_some_and(|animal| !animal.sick && !animal.bred)
-            })
-            .map(|(pos, _)| pos)
-            .collect();
-        if ready.len() < 2 {
-            return Err(GameError::RanchNoBreedPair);
-        }
-        let empty = self
-            .state
-            .ranch
-            .pens
-            .iter()
-            .position(|pen| pen.animal.is_none());
-        let Some(target) = empty else {
-            return Err(GameError::RanchNoEmptyPen);
-        };
-        let feed = *self.state.inventory.get("ranch:feed").unwrap_or(&0);
-        if feed == 0 {
-            return Err(GameError::RanchNoFeed);
-        }
-        let (a, b) = (ready[0], ready[1]);
-        let (kind, quality, generation) = {
-            let left = self.state.ranch.pens[a].animal.as_ref().unwrap();
-            let right = self.state.ranch.pens[b].animal.as_ref().unwrap();
-            (
-                left.kind,
-                ((left.quality + right.quality) / 2 + 1).min(3),
-                left.generation.max(right.generation) + 1,
-            )
-        };
+            .any(|pen| pen.animal.is_none())
         {
-            let left = self.state.ranch.pens[a].animal.as_mut().unwrap();
-            left.bred = true;
-            let right = self.state.ranch.pens[b].animal.as_mut().unwrap();
-            right.bred = true;
+            blockers.push(BreedBlocker::NoEmptyPen);
         }
-        let mut child = RanchAnimal::new(kind, now);
-        child.quality = quality;
-        child.generation = generation;
-        child.temper = crate::ranch::roll_trait(
-            now ^ (i64::from(generation) * 131 + i64::from(target as u8)),
-            kind.label(),
-        );
-        child.name = format!("{}幼崽", kind.label());
+        if *self.state.inventory.get("ranch:feed").unwrap_or(&0) == 0 {
+            blockers.push(BreedBlocker::NoFeed);
+        }
+        Ok(blockers)
+    }
+
+    fn breed_ranch_pair(&mut self, a: u8, b: u8, now: i64) -> Result<Vec<Effect>, GameError> {
+        let blockers = self.ranch_breed_blockers(a, b, now)?;
+        if let Some(first) = blockers.first() {
+            return Err(first.error());
+        }
+        let target = self
+            .state
+            .ranch
+            .pens
+            .iter()
+            .position(|pen| pen.animal.is_none())
+            .ok_or(GameError::RanchNoEmptyPen)?;
+        let plan = {
+            let left = self
+                .state
+                .ranch
+                .pen(a)
+                .and_then(|pen| pen.animal.as_ref())
+                .unwrap();
+            let right = self
+                .state
+                .ranch
+                .pen(b)
+                .and_then(|pen| pen.animal.as_ref())
+                .unwrap();
+            crate::ranch::breed_child(left, right, self.state.ranch.breed_seq)
+        };
+        // 父母进入 72h 冷却。
+        for pen_no in [a, b] {
+            if let Some(animal) = self
+                .state
+                .ranch
+                .pen_mut(pen_no)
+                .and_then(|pen| pen.animal.as_mut())
+            {
+                animal.last_breed_at = now.max(1);
+            }
+        }
+        let new_line = plan.line_id == 0;
+        let line_id = if new_line {
+            self.state.ranch.line_seq + 1
+        } else {
+            plan.line_id
+        };
+        let mut child = RanchAnimal::new(plan.kind, now);
+        child.quality = plan.quality;
+        child.generation = plan.generation;
+        child.line_id = line_id;
+        child.temper = plan.temper;
+        child.inbred = plan.inbred;
+        child.parents = plan.parents;
+        child.adult_at = now + RANCH_YOUNG_MS;
+        child.product_ready_at = child.adult_at + child.product_interval();
+        child.name = format!("{}幼崽", plan.kind.label());
         self.state.ranch.pens[target].animal = Some(child);
-        if feed == 1 {
+        if new_line {
+            self.state.ranch.line_seq = line_id;
+        }
+        self.state.ranch.breed_seq = self.state.ranch.breed_seq.saturating_add(1);
+        let feed = *self.state.inventory.get("ranch:feed").unwrap_or(&0);
+        if feed <= 1 {
             self.state.inventory.remove("ranch:feed");
         } else {
             self.state.inventory.insert("ranch:feed".into(), feed - 1);
         }
-        let text = format!("两只动物繁殖出了{}幼崽（{}代）", kind.label(), generation);
+        let note = if plan.inbred {
+            "（近亲，品质上限受罚）"
+        } else {
+            ""
+        };
+        let text = format!(
+            "两只动物繁育出{}幼崽（第{}代，血统 #{line_id}）{note}",
+            plan.kind.label(),
+            plan.generation + 1
+        );
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn rename_ranch_animal(
+        &mut self,
+        pen: u8,
+        name: &str,
+        now: i64,
+    ) -> Result<Vec<Effect>, GameError> {
+        let name = name.trim();
+        let count = name.chars().count();
+        if count == 0 || count > 12 {
+            return Err(GameError::InvalidRanchName);
+        }
+        let animal = self
+            .state
+            .ranch
+            .pen_mut(pen)
+            .and_then(|pen| pen.animal.as_mut())
+            .ok_or(GameError::RanchPenEmpty)?;
+        animal.name = name.to_string();
+        let text = format!("你给 {pen} 号畜栏的动物改名叫「{name}」");
         self.push_log(now, text.clone());
         Ok(vec![Effect::Log { text }])
     }

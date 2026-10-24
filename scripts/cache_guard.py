@@ -21,10 +21,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# 文字农场的 workspace 比夜航大（40+ test 二进制），上限放到 8 GB；
-# 超过 2 GB 只提示，不拦。
-LIMIT_GB = 8.0
-NOTICE_GB = 2.0
+# 文字农场的 workspace 比夜航大（40+ test 二进制），而且 debug+release 两套都要留：
+# 全量 debug 测试约 9.4 GB + release 约 1.6 GB = 11 GB；上限 16 GB，超过 6 GB 只提示。
+LIMIT_GB = 16.0
+NOTICE_GB = 6.0
 MARKERS = ("debug", "release")
 
 CACHE_DIRS = ("deps", "build", "incremental", "examples", ".fingerprint")

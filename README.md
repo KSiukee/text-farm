@@ -6,7 +6,7 @@
 
 ## 现在到哪了
 
-v0.89.1：
+v0.90.0：
 
 - **A0 骨架**：Rust `farm-core` + Tauri 2 壳 + Vue 3 前端，命令往返、原子存档、关闭保存已通。
 - **A1 内核**：播种 / 浇水 / 生长 / 多季 / 收获 / 买卖 / 经验 / 升级 / 开地 / 日志，已有测试与 30 天无头模拟。
@@ -124,7 +124,8 @@ v0.89.1：
 - **A112 家具与装饰商店**：家具纯金币购买，不接制造屋/材料；拥有数与摆放分离，没买不能摆；16 件普通家具明码标价；地板/墙纸每天随机 2+2 件（只出未拥有）；等级/成就/纪念日送绑定家具（旧档补发）；神秘商店每日 1 件稀有/传说家具；牧村独立家具图鉴面板共 23 件收集。详见 [docs/家具与装饰商店.md](docs/家具与装饰商店.md)。
 - **A113 标本室交互与收藏**：制作标本后弹「标本完成」结果卡（作物/种子×数量/金币），不再只看广播；标本室显示已收藏 X/13、每种收藏次数；每天一种「今日推荐」金币 +50%；3/6/9/13 种收藏里程碑可领 3k/8k/18k/50k 金币；旧档默认空。详见 [docs/标本室.md](docs/标本室.md)。
 - **A114 牧场生产与管理**：每只动物有固定生产特性（高产/省料/壮实/娇气/双产），只影响产物间隔、省料、生病与增产；栏舍卫生按畜栏管理（收产物 −12、每天清理 +50），卫生影响高品质与生病；特殊产物改按最终品质（优良 8% / 精品 25%）出金蛋/大鸭蛋/奶油/细羊毛；牧场不引入亲密度/心情/互动（陪伴只属于宠物）；旧档 schema 37 把卫生搬到畜栏并清掉陪伴字段。详见 [docs/牧场生产与管理.md](docs/牧场生产与管理.md)。
-- 牧场与制造屋到 v0.89（品质售价 + 制造屋 + 宠物岗位 + 调平 + 作物礼盒 + 加工坊设备 + 钓鱼 + 动物个体化/日常照料/特殊产物）；鱼塘/矿场/太空舱等扩展位未做；牧场繁殖血统（#139）与订单/评比/图鉴（#140）未做。
+- **A115 牧场血统 2.0**：手动选两只亲本并预览后代（种类/品质/代数/生产特性/血统线与真繁殖一致）；72 小时繁殖冷却、幼崽 24 小时成年、近亲（同血统线）品质上限 −1 且生病率 +8%；新增血统线/亲本记录/改名；繁殖条件改看健康 ≥60、栏舍卫生 ≥30、1 份饲料、空栏；schema v38。详见 [docs/牧场血统.md](docs/牧场血统.md)。
+- 牧场与制造屋到 v0.90（品质售价 + 制造屋 + 宠物岗位 + 调平 + 作物礼盒 + 加工坊设备 + 钓鱼 + 生产特性/栏舍卫生 + 血统繁殖）；鱼塘/矿场/太空舱等扩展位未做；牧场订单/评比/图鉴（#140）未做。
 
 进度与任务以 `.codex/state.json` 为准；架构见 `架构规划.md`，玩法清单见 `任务清单.md`，调参结论见 `docs/调参报告.md`。
 
@@ -162,7 +163,7 @@ node scripts/version-guard.mjs --kind fix
 
 它会校验 `Cargo.toml` / `Cargo.lock` / `tauri.conf.json` / 前端 `package.json` / `README.md` / `.codex/state.json` / `CHANGELOG.md` 七处一致，并只允许 `fix` 升第三位、`feat` 升中位；一次性纠正旧号可加 `--allow-downgrade`。本次不改版本（纯文档/纯记录）就不要带 `--kind`，直接 `node scripts/version-guard.mjs` 只查一致。
 
-构建缓存体积门卫（磁盘；上限 8 GB，超了直接失败）：
+构建缓存体积门卫（磁盘；上限 16 GB，超了直接失败）：
 
 ```powershell
 python scripts/cache_guard.py --check      # 只量，不删
@@ -170,7 +171,7 @@ python scripts/cache_guard.py --clean      # 显式清理：删 deps/build/incre
 python scripts/cache_guard.py --selftest   # 临时目录自检清理口径
 ```
 
-清理口径：删 `deps/ build/ incremental/ examples/ .fingerprint/`、`doc/ tmp/`、`*.pdb/*.rlib/*.rmeta/*.d/*.lib/*.exp/*.obj/*.ilk`；保留 `*.exe/*.dll/*.so/*.dylib` 与 bundle 产物。2026-10-24 首次接入时 `target/` 为 **248.93 GB**（debug/incremental 145 GB + debug/deps 78.9 GB），清理后 **0.04 GB**（保留 `target/release/text-farm.exe`）。
+清理口径：删 `deps/ build/ incremental/ examples/ .fingerprint/`、`doc/ tmp/`、`*.pdb/*.rlib/*.rmeta/*.d/*.lib/*.exp/*.obj/*.ilk`；保留 `*.exe/*.dll/*.so/*.dylib` 与 bundle 产物。2026-10-24 首次接入时 `target/` 为 **248.93 GB**（debug/incremental 145 GB + debug/deps 78.9 GB），清理后 **0.04 GB**；全量 debug 测试约 **9.4 GB**、debug+release 约 **11 GB**，所以上限定 16 GB。
 
 一键跑门卫 + 两边单测：
 

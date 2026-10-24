@@ -1,6 +1,7 @@
 use farm_core::{
     migrate_save, Action, EquipmentKind, EquipmentRecipe, Game, GameError, PetBreed, PetLocation,
     PetState, RanchAnimal, RanchAnimalKind, RanchRecipe, RanchTrait, WorkshopJob,
+    RANCH_BREED_COOLDOWN_MS, RANCH_YOUNG_MS,
 };
 
 fn job_ready_at(game: &Game, slot: u8) -> i64 {
@@ -126,7 +127,8 @@ fn premium_feed_raises_quality_and_breeding_makes_calf() {
         2
     );
     game.dispatch(Action::BuyRanchFeed, 0).unwrap();
-    game.dispatch(Action::BreedRanch, 0).unwrap();
+    game.dispatch(Action::BreedRanchPair { a: 1, b: 2 }, 0)
+        .unwrap();
     let child = game.state().ranch.pen(3).unwrap().animal.as_ref().unwrap();
     assert_eq!(child.generation, 1);
     assert_eq!(child.quality, 2);
@@ -978,7 +980,7 @@ fn v37_save_moves_cleanliness_to_pen_and_drops_companion_fields() {
         "content": {}
     });
     let migrated = migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], 37);
+    assert_eq!(migrated["schema"], farm_core::SAVE_SCHEMA);
     let pen = &migrated["state"]["ranch"]["pens"][0];
     assert_eq!(pen["cleanliness"], 65);
     assert_eq!(pen["lastCleanDay"], "");
@@ -987,6 +989,8 @@ fn v37_save_moves_cleanliness_to_pen_and_drops_companion_fields() {
     assert!(pen["animal"].get("lastGroomDay").is_none());
     assert_eq!(pen["animal"]["trait"], "efficient");
     assert_eq!(migrated["state"]["ranch"]["pens"][1]["cleanliness"], 80);
+    assert_eq!(pen["animal"]["lineId"], 1);
+    assert_eq!(migrated["state"]["ranch"]["lineSeq"], 1);
 
     // 再跑一次（schema 已是 37）不改特性。
     let again = migrate_save(migrated.clone()).unwrap();
@@ -999,4 +1003,250 @@ fn v37_save_moves_cleanliness_to_pen_and_drops_companion_fields() {
     let old: RanchAnimal =
         serde_json::from_value(serde_json::json!({"kind": "chicken", "name": "老母鸡"})).unwrap();
     assert_eq!(old.temper, RanchTrait::Efficient);
+}
+
+fn breeding_game() -> Game {
+    let mut game = Game::new(0);
+    game.state_mut().coins = 50_000;
+    for pen in 1..=2 {
+        game.dispatch(
+            Action::BuyRanchAnimal {
+                pen,
+                kind: RanchAnimalKind::Chicken,
+            },
+            0,
+        )
+        .unwrap();
+    }
+    for _ in 0..2 {
+        game.dispatch(Action::BuyRanchFeed, 0).unwrap();
+    }
+    game
+}
+
+#[test]
+fn preview_matches_actual_child() {
+    let mut game = breeding_game();
+    let preview = game.preview_ranch_breeding(1, 2, 0).unwrap();
+    assert!(preview.ok, "{:?}", preview.missing);
+    game.dispatch(Action::BreedRanchPair { a: 1, b: 2 }, 0)
+        .unwrap();
+    let child = game.state().ranch.pen(3).unwrap().animal.as_ref().unwrap();
+    assert_eq!(child.kind, preview.kind);
+    assert_eq!(child.quality, preview.quality);
+    assert_eq!(child.generation, preview.generation);
+    assert_eq!(child.line_id, preview.line_id);
+    assert_eq!(child.temper.label(), preview.trait_label);
+    assert!(child.is_young(0));
+    assert_eq!(child.adult_at, RANCH_YOUNG_MS);
+    assert!(child.parents.contains("第1代"));
+    assert_eq!(game.state().ranch.breed_seq, 1);
+}
+
+#[test]
+fn breeding_blockers_are_reported_and_enforced() {
+    // 幼年
+    let mut game = breeding_game();
+    animal_mut(&mut game, 1).adult_at = RANCH_YOUNG_MS;
+    let preview = game.preview_ranch_breeding(1, 2, 0).unwrap();
+    assert!(!preview.ok);
+    assert!(preview.missing.iter().any(|item| item.contains("成年")));
+    assert!(matches!(
+        game.dispatch(Action::BreedRanchPair { a: 1, b: 2 }, 0),
+        Err(GameError::RanchAnimalYoung)
+    ));
+
+    // 健康不足
+    let mut game = breeding_game();
+    animal_mut(&mut game, 1).health = 50;
+    assert!(matches!(
+        game.dispatch(Action::BreedRanchPair { a: 1, b: 2 }, 0),
+        Err(GameError::RanchBreedUnhealthy)
+    ));
+
+    // 畜栏太脏
+    let mut game = breeding_game();
+    game.state_mut().ranch.pen_mut(1).unwrap().cleanliness = 20;
+    assert!(matches!(
+        game.dispatch(Action::BreedRanchPair { a: 1, b: 2 }, 0),
+        Err(GameError::RanchPenDirty)
+    ));
+
+    // 没有饲料
+    let mut game = breeding_game();
+    game.state_mut().inventory.remove("ranch:feed");
+    assert!(matches!(
+        game.dispatch(Action::BreedRanchPair { a: 1, b: 2 }, 0),
+        Err(GameError::RanchNoFeed)
+    ));
+
+    // 没有空栏
+    let mut game = breeding_game();
+    game.dispatch(
+        Action::BuyRanchAnimal {
+            pen: 3,
+            kind: RanchAnimalKind::Duck,
+        },
+        0,
+    )
+    .unwrap();
+    assert!(matches!(
+        game.dispatch(Action::BreedRanchPair { a: 1, b: 2 }, 0),
+        Err(GameError::RanchNoEmptyPen)
+    ));
+
+    // 同一只
+    let mut game = breeding_game();
+    assert!(matches!(
+        game.dispatch(Action::BreedRanchPair { a: 1, b: 1 }, 0),
+        Err(GameError::RanchBreedSamePen)
+    ));
+}
+
+#[test]
+fn breeding_cooldown_is_72_hours() {
+    let mut game = breeding_game();
+    game.dispatch(Action::BreedRanchPair { a: 1, b: 2 }, 0)
+        .unwrap();
+    game.dispatch(Action::BuyRanchFeed, 0).unwrap();
+    game.dispatch(Action::ExpandRanch, 0).unwrap();
+
+    let preview = game.preview_ranch_breeding(1, 2, 3_600_000).unwrap();
+    assert!(!preview.ok);
+    assert!(preview.missing.iter().any(|item| item.contains("冷却")));
+    assert!(matches!(
+        game.dispatch(Action::BreedRanchPair { a: 1, b: 2 }, 3_600_000),
+        Err(GameError::RanchBreedCooldown)
+    ));
+    game.dispatch(
+        Action::BreedRanchPair { a: 1, b: 2 },
+        RANCH_BREED_COOLDOWN_MS + 1_000,
+    )
+    .unwrap();
+    assert_eq!(game.state().ranch.breed_seq, 2);
+}
+
+#[test]
+fn young_cannot_collect_until_adult() {
+    let mut game = breeding_game();
+    game.dispatch(Action::BreedRanchPair { a: 1, b: 2 }, 0)
+        .unwrap();
+    assert!(matches!(
+        game.dispatch(Action::CollectRanchProduct { pen: 3 }, 0),
+        Err(GameError::RanchProductNotReady)
+    ));
+    assert!(matches!(
+        game.dispatch(
+            Action::CollectRanchProduct { pen: 3 },
+            RANCH_YOUNG_MS
+        ),
+        Err(GameError::RanchProductNotReady)
+    ));
+    game.dispatch(
+        Action::CollectRanchProduct { pen: 3 },
+        RANCH_YOUNG_MS + 8 * 3_600_000,
+    )
+    .unwrap();
+    assert!(
+        game.state()
+            .inventory
+            .keys()
+            .any(|key| key.starts_with("ranch:egg"))
+    );
+}
+
+#[test]
+fn inbreeding_caps_quality_and_marks_child() {
+    let mut game = breeding_game();
+    for pen in [1, 2] {
+        let animal = animal_mut(&mut game, pen);
+        animal.line_id = 7;
+        animal.quality = 3;
+    }
+    let preview = game.preview_ranch_breeding(1, 2, 0).unwrap();
+    assert!(preview.inbred);
+    assert_eq!(preview.quality, 2);
+    assert!(preview.warnings.iter().any(|item| item.contains("近亲")));
+
+    game.dispatch(Action::BreedRanchPair { a: 1, b: 2 }, 0)
+        .unwrap();
+    let child = game.state().ranch.pen(3).unwrap().animal.as_ref().unwrap();
+    assert!(child.inbred);
+    assert_eq!(child.quality, 2);
+    assert_eq!(child.line_id, 7);
+}
+
+#[test]
+fn rename_ranch_animal_validates_length() {
+    let mut game = breeding_game();
+    game.dispatch(
+        Action::RenameRanchAnimal {
+            pen: 1,
+            name: "小花".into(),
+        },
+        0,
+    )
+    .unwrap();
+    assert_eq!(
+        game.state()
+            .ranch
+            .pen(1)
+            .unwrap()
+            .animal
+            .as_ref()
+            .unwrap()
+            .name,
+        "小花"
+    );
+    assert!(matches!(
+        game.dispatch(
+            Action::RenameRanchAnimal {
+                pen: 1,
+                name: "  ".into(),
+            },
+            0,
+        ),
+        Err(GameError::InvalidRanchName)
+    ));
+    assert!(matches!(
+        game.dispatch(
+            Action::RenameRanchAnimal {
+                pen: 1,
+                name: "一二三四五六七八九十一二三".into(),
+            },
+            0,
+        ),
+        Err(GameError::InvalidRanchName)
+    ));
+}
+
+#[test]
+fn v38_save_migrates_breeding_fields() {
+    let value = serde_json::json!({
+        "schema": 37,
+        "savedAt": 12_345,
+        "state": {"ranch": {"pens": [
+            {"index": 1, "cleanliness": 90, "lastCleanDay": "", "animal": {
+                "kind": "chicken", "name": "甲", "bred": true
+            }},
+            {"index": 2, "cleanliness": 90, "lastCleanDay": "", "animal": {
+                "kind": "chicken", "name": "乙", "bred": false
+            }}
+        ]}},
+        "content": {}
+    });
+    let migrated = migrate_save(value).unwrap();
+    assert_eq!(migrated["schema"], farm_core::SAVE_SCHEMA);
+    let ranch = &migrated["state"]["ranch"];
+    assert_eq!(ranch["breedSeq"], 0);
+    assert_eq!(ranch["lineSeq"], 2);
+    let first = &ranch["pens"][0]["animal"];
+    assert_eq!(first["lineId"], 1);
+    assert_eq!(first["lastBreedAt"], 12_345);
+    assert_eq!(first["adultAt"], 0);
+    assert_eq!(first["inbred"], false);
+    assert_eq!(first["parents"], "");
+    assert!(first.get("bred").is_none());
+    assert_eq!(ranch["pens"][1]["animal"]["lineId"], 2);
+    assert_eq!(ranch["pens"][1]["animal"]["lastBreedAt"], 0);
 }

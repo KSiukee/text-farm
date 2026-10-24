@@ -941,6 +941,44 @@ pub fn migrate_save(mut value: Value) -> Result<Value, SaveError> {
         value["schema"] = json!(37);
     }
 
+    if schema < 38 {
+        let saved_at = value.get("savedAt").and_then(Value::as_u64).unwrap_or(0);
+        let state = value
+            .get_mut("state")
+            .and_then(Value::as_object_mut)
+            .ok_or(SaveError::Unknown(schema))?;
+        if let Some(ranch) = state.get_mut("ranch").and_then(Value::as_object_mut) {
+            let mut line = 0u64;
+            if let Some(pens) = ranch.get_mut("pens").and_then(Value::as_array_mut) {
+                for pen in pens {
+                    let Some(pen) = pen.as_object_mut() else {
+                        continue;
+                    };
+                    let Some(animal) = pen.get_mut("animal").and_then(Value::as_object_mut) else {
+                        continue;
+                    };
+                    // 老档每只动物各开一条血统线，避免一上来就全是近亲。
+                    line += 1;
+                    animal.entry("lineId").or_insert_with(|| json!(line));
+                    let bred = animal
+                        .remove("bred")
+                        .and_then(|value| value.as_bool())
+                        .unwrap_or(false);
+                    animal
+                        .entry("lastBreedAt")
+                        .or_insert_with(|| json!(if bred { saved_at } else { 0 }));
+                    animal.entry("adultAt").or_insert_with(|| json!(0));
+                    animal.entry("inbred").or_insert_with(|| json!(false));
+                    animal.entry("parents").or_insert_with(|| json!(""));
+                }
+            }
+            ranch.entry("breedSeq").or_insert_with(|| json!(0));
+            ranch.entry("lineSeq").or_insert_with(|| json!(line));
+        }
+        state.insert("schema".into(), json!(38));
+        value["schema"] = json!(38);
+    }
+
     Ok(value)
 }
 

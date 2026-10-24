@@ -101,6 +101,31 @@ export interface RanchAnimalView {
   ageDays: number;
   specialName: string;
   specialHint: string;
+  lineId: number;
+  lineLabel: string;
+  young: boolean;
+  youngRemainingMs: number;
+  inbred: boolean;
+  parents: string;
+  breedReady: boolean;
+  breedRemainingMs: number;
+}
+
+export interface RanchBreedPreview {
+  ok: boolean;
+  kind: RanchAnimalKind;
+  kindLabel: string;
+  quality: number;
+  qualityLabel: string;
+  generation: number;
+  lineId: number;
+  lineLabel: string;
+  traitLabel: string;
+  traitHint: string;
+  inbred: boolean;
+  parents: string;
+  warnings: string[];
+  missing: string[];
 }
 
 export interface RanchPenView {
@@ -247,7 +272,6 @@ export interface RanchView {
   expandCost: number;
   maxPens: number;
   feedCount: number;
-  canBreed: boolean;
 }
 
 export interface PetCareView {
@@ -1169,7 +1193,8 @@ export type Action =
   | { type: "expandRanch" }
   | { type: "feedRanchPremium"; pen: number }
   | { type: "buyRanchFeed" }
-  | { type: "breedRanch" }
+  | { type: "breedRanchPair"; a: number; b: number }
+  | { type: "renameRanchAnimal"; pen: number; name: string }
   | { type: "buildWorkshop" }
   | { type: "expandWorkshop" }
   | { type: "installEquipment"; slot: number; kind: EquipmentKind }

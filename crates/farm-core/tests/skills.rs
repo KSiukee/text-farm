@@ -19,7 +19,7 @@ fn new_game_has_four_disciplines_at_level_one() {
         assert_eq!(d.points, 0, "{kind:?}");
         assert!(d.perks.is_empty(), "{kind:?}");
     }
-    assert_eq!(SAVE_SCHEMA, 37);
+    assert_eq!(SAVE_SCHEMA, 38);
 }
 
 #[test]

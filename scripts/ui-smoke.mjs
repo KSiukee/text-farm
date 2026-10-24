@@ -682,8 +682,35 @@ try {
   check("专用饲料提升品质", saveState().ranch.pens[0].animal.quality === 2);
   await clickText("母鸡 800", false);
   await clickText("[买专用饲料 300]");
+  // 手动选两只亲本 → 预览 → 繁殖。
+  await clickText("[选为亲本]", false);
+  await clickText("[选为亲本]", false);
+  await waitFor(async () => (await bodyText()).includes("后代："));
+  const breedPreviewText = await bodyText();
+  check(
+    "繁殖预览显示后代与血统",
+    breedPreviewText.includes("后代：") && breedPreviewText.includes("血统 #"),
+  );
   await clickText("[繁殖]");
-  check("繁殖出幼崽", saveState().ranch.pens[2].animal?.generation === 1);
+  await waitFor(async () => saveState().ranch.pens[2].animal?.generation === 1);
+  check("手动选父母繁殖出幼崽", saveState().ranch.pens[2].animal?.generation === 1);
+  check(
+    "父母进入 72h 繁殖冷却",
+    saveState().ranch.pens[0].animal.lastBreedAt > 0 &&
+      saveState().ranch.pens[1].animal.lastBreedAt > 0,
+  );
+  const calf = saveState().ranch.pens[2].animal;
+  check("幼崽有 24h 幼年期", calf.adultAt > 0);
+  await waitFor(async () => (await bodyText()).includes("幼年"));
+  check("牧场页显示幼年", (await bodyText()).includes("幼年"));
+  check("幼崽亲本记录已保存", (calf.parents || "").includes("第1代"));
+  // 改名。
+  await clickText("[详情]", false);
+  await setInput(".ranch-rename-input", "小黄");
+  await clickText("[改名]");
+  await waitFor(async () => saveState().ranch.pens[0].animal.name === "小黄");
+  check("牧场动物可改名", saveState().ranch.pens[0].animal.name === "小黄");
+  await clickText("[收起]", false);
   await clickText("[买专用饲料 300]");
   await clickText("[喂专用饲料]");
   await new Promise((r) => setTimeout(r, 300));

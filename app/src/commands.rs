@@ -2,7 +2,7 @@ use std::path::Path;
 
 use farm_core::{
     economy_preview, generate_seeds, review_batch, Action, ContentPack, CropDef, EconomyPreview,
-    Effect, GameError, SeedReview, Snapshot, CORE_VERSION, SAVE_SCHEMA,
+    Effect, GameError, RanchBreedPreview, SeedReview, Snapshot, CORE_VERSION, SAVE_SCHEMA,
 };
 use serde::Serialize;
 use tauri::State;
@@ -25,6 +25,18 @@ pub fn get_snapshot(state: State<'_, AppState>) -> Snapshot {
 #[tauri::command]
 pub fn get_content(state: State<'_, AppState>) -> ContentPack {
     state.game.lock().content().clone()
+}
+
+/// 繁殖预览（只读）：与真繁殖共用 breedSeq，看到什么就生什么。
+#[tauri::command]
+pub fn preview_ranch_breeding(
+    a: u8,
+    b: u8,
+    state: State<'_, AppState>,
+) -> Result<RanchBreedPreview, ApiError> {
+    let game = state.game.lock();
+    game.preview_ranch_breeding(a, b, now_ms())
+        .map_err(game_error)
 }
 
 #[derive(Debug, Serialize)]

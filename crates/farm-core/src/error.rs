@@ -208,13 +208,24 @@ pub enum GameError {
     RanchAnimalSick,
     #[error("今天已经清理过这间畜栏了，明天再来")]
     RanchPenCleanDone,
+    #[error("不能选同一只动物繁殖")]
+    RanchBreedSamePen,
+    #[error("动物还没成年")]
+    RanchAnimalYoung,
+    #[error("动物还在繁殖冷却中")]
+    RanchBreedCooldown,
+    #[error("动物健康不足，先养好")]
+    RanchBreedUnhealthy,
+    #[error("畜栏太脏，先清理")]
+    RanchPenDirty,
+    #[error("名字需要 1–12 个字")]
+    InvalidRanchName,
     #[error("畜栏已经扩到上限")]
     RanchMaxPens,
     #[error("没有专用饲料")]
     RanchNoFeed,
     #[error("没有可繁殖的动物组合")]
-    RanchNoBreedPair,
-    #[error("没有空畜栏放幼崽")]
+    RanchNoBreedPair,    #[error("没有空畜栏放幼崽")]
     RanchNoEmptyPen,
     #[error("已经建过制造屋了")]
     RanchWorkshopOwned,
@@ -369,6 +380,12 @@ impl GameError {
             GameError::RanchAnimalHealthy => "ranch_animal_healthy",
             GameError::RanchAnimalSick => "ranch_animal_sick",
             GameError::RanchPenCleanDone => "ranch_pen_clean_done",
+            GameError::RanchBreedSamePen => "ranch_breed_same_pen",
+            GameError::RanchAnimalYoung => "ranch_animal_young",
+            GameError::RanchBreedCooldown => "ranch_breed_cooldown",
+            GameError::RanchBreedUnhealthy => "ranch_breed_unhealthy",
+            GameError::RanchPenDirty => "ranch_pen_dirty",
+            GameError::InvalidRanchName => "invalid_ranch_name",
             GameError::RanchMaxPens => "ranch_max_pens",
             GameError::RanchNoFeed => "ranch_no_feed",
             GameError::RanchNoBreedPair => "ranch_no_breed_pair",

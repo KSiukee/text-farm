@@ -128,7 +128,16 @@ pub enum Action {
         pen: u8,
     },
     BuyRanchFeed,
-    BreedRanch,
+    /// 手动选两只动物繁殖；预览与真繁殖用同一个序号，结果一致。
+    BreedRanchPair {
+        a: u8,
+        b: u8,
+    },
+    /// 给牧场动物改名（1–12 个字）。
+    RenameRanchAnimal {
+        pen: u8,
+        name: String,
+    },
     BuildWorkshop,
     ExpandWorkshop,
     InstallEquipment {

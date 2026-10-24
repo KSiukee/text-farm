@@ -14,6 +14,7 @@ import {
   importContent,
   importSave,
   previewContent,
+  previewRanchBreeding,
   reviewSeeds,
   saveNow,
   sync as syncGame,
@@ -45,6 +46,7 @@ import type {
   PetTalent,
   PlotView,
   RanchAnimalKind,
+  RanchBreedPreview,
   RanchRecipe,
   Region,
   RodKind,
@@ -141,6 +143,9 @@ const seedReviewNotes = ref<string[]>([]);
 const activeTab = ref("我的农场");
 const seedPickerPlot = ref<number | null>(null);
 const ranchDetail = ref(0);
+const ranchBreedSel = ref<number[]>([]);
+const ranchPreview = ref<RanchBreedPreview | null>(null);
+const ranchRenameDrafts = ref<Record<number, string>>({});
 const playerMode = ref(false);
 const PLAYER_AVATAR_KEY = "farm.ui.playerAvatar";
 const PLAYER_AVATAR_IMAGE_KEY = "farm.ui.playerAvatarImage";
@@ -993,8 +998,8 @@ function claimLevelReward(level: number) {
   void act({ type: "claimLevelReward", level });
 }
 
-async function act(action: Action) {
-  if (acting.value) return;
+async function act(action: Action): Promise<boolean> {
+  if (acting.value) return false;
   acting.value = true;
   notice.value = "";
   try {
@@ -1015,8 +1020,10 @@ async function act(action: Action) {
     if (reply.saveError) {
       saveMessage.value = `已生效，但保存失败：${reply.saveError}`;
     }
+    return true;
   } catch (e) {
     notice.value = errorText(e);
+    return false;
   } finally {
     acting.value = false;
   }
@@ -1205,6 +1212,19 @@ function cleanRanchPen(pen: number) {
 
 function toggleRanchDetail(index: number) {
   ranchDetail.value = ranchDetail.value === index ? 0 : index;
+  if (ranchDetail.value === index) {
+    const animal = ranch?.value?.pens.find((pen) => pen.index === index)?.animal;
+    ranchRenameDrafts.value[index] = animal?.name ?? "";
+  }
+}
+
+function renameRanchAnimal(pen: number) {
+  const name = (ranchRenameDrafts.value[pen] ?? "").trim();
+  if (!name) {
+    notice.value = "名字不能为空";
+    return;
+  }
+  void act({ type: "renameRanchAnimal", pen, name });
 }
 
 function collectRanchProduct(pen: number) {
@@ -1227,8 +1247,57 @@ function feedRanchPremium(pen: number) {
   void act({ type: "feedRanchPremium", pen });
 }
 
-function breedRanch() {
-  void act({ type: "breedRanch" });
+const ranchBreedNames = computed(() =>
+  ranchBreedSel.value
+    .map((pen) => ranch.value?.pens.find((item) => item.index === pen)?.animal?.name ?? `${pen} 号`)
+    .join(" × "),
+);
+
+function isRanchBreedSelected(pen: number) {
+  return ranchBreedSel.value.includes(pen);
+}
+
+function toggleRanchBreed(pen: number) {
+  const list = [...ranchBreedSel.value];
+  const at = list.indexOf(pen);
+  if (at >= 0) {
+    list.splice(at, 1);
+  } else if (list.length < 2) {
+    list.push(pen);
+  } else {
+    list.splice(1, 1, pen);
+  }
+  ranchBreedSel.value = list;
+  ranchPreview.value = null;
+  if (list.length === 2) {
+    void loadRanchPreview();
+  }
+}
+
+async function loadRanchPreview() {
+  const [a, b] = ranchBreedSel.value;
+  if (!a || !b) return;
+  try {
+    ranchPreview.value = await previewRanchBreeding(a, b);
+  } catch (error) {
+    ranchPreview.value = null;
+    notice.value = errorText(error);
+  }
+}
+
+async function breedSelectedRanch() {
+  const [a, b] = ranchBreedSel.value;
+  if (!a || !b) return;
+  const ok = await act({ type: "breedRanchPair", a, b });
+  if (ok) {
+    ranchBreedSel.value = [];
+    ranchPreview.value = null;
+  }
+}
+
+function clearRanchBreed() {
+  ranchBreedSel.value = [];
+  ranchPreview.value = null;
 }
 
 function buildWorkshop() {
@@ -3329,8 +3398,7 @@ onUnmounted(() => {
           <div class="ranch-feed-bar">
             <span>专用饲料 ×{{ ranch?.feedCount ?? 0 }}</span>
             <button class="link" type="button" :disabled="acting" @click="buyRanchFeed">[买专用饲料 300]</button>
-            <button v-if="ranch?.canBreed" class="link" type="button" :disabled="acting" @click="breedRanch">[繁殖]</button>
-            <span class="muted">专用饲料提升品质；繁殖消耗 1 份饲料，需要空栏</span>
+            <span class="muted">专用饲料提升品质；繁殖消耗 1 份饲料、需要空栏</span>
           </div>
           <div class="ranch-pens">
             <div v-for="pen in ranch?.pens ?? []" :key="pen.index" class="ranch-pen">
@@ -3351,20 +3419,43 @@ onUnmounted(() => {
                     <div class="ranch-animal-name">
                       <strong>{{ pen.animal.name }}</strong>
                       <span class="ranch-trait">{{ pen.animal.traitLabel }}</span>
+                      <span v-if="pen.animal.young" class="ranch-trait young">幼年</span>
+                      <span v-if="pen.animal.inbred" class="ranch-trait inbred">近亲</span>
+                      <span class="muted">{{ pen.animal.lineLabel }}</span>
                       <button class="link ranch-detail-toggle" type="button" @click="toggleRanchDetail(pen.index)">
                         {{ ranchDetail === pen.index ? "[收起]" : "[详情]" }}
+                      </button>
+                      <button class="link ranch-detail-toggle" type="button" @click="toggleRanchBreed(pen.index)">
+                        {{ isRanchBreedSelected(pen.index) ? "[已选]" : "[选为亲本]" }}
                       </button>
                     </div>
                     <div class="muted">{{ pen.animal.label }} · {{ pen.animal.qualityLabel }} · 第{{ pen.animal.generation + 1 }}代 · {{ pen.animal.ageDays }} 天</div>
                     <div class="muted">饱食 {{ pen.animal.satiety }}/100 · 健康 {{ pen.animal.health }}/100</div>
                     <div v-if="pen.animal.sick" class="warn">生病了，需要兽医</div>
+                    <div v-else-if="pen.animal.young" class="muted">
+                      幼年，还要 {{ formatRemain(pen.animal.youngRemainingMs) }} 成年
+                    </div>
                     <div v-else class="muted">
                       {{ pen.animal.canCollect ? `${pen.animal.product}可以收了` : `${pen.animal.product}还要 ${formatRemain(pen.animal.remainingMs)}` }}
                     </div>
                     <div v-if="ranchDetail === pen.index" class="ranch-detail">
                       <div>生产特性：{{ pen.animal.traitLabel }}（{{ pen.animal.traitHint }}）</div>
+                      <div>血统：{{ pen.animal.lineLabel }} · 第{{ pen.animal.generation + 1 }}代</div>
+                      <div v-if="pen.animal.young">幼年：还要 {{ formatRemain(pen.animal.youngRemainingMs) }} 成年</div>
+                      <div v-else-if="!pen.animal.breedReady" class="muted">繁殖冷却：还要 {{ formatRemain(pen.animal.breedRemainingMs) }}</div>
+                      <div v-if="pen.animal.parents" class="muted">亲本：{{ pen.animal.parents }}</div>
                       <div>特殊产物：{{ pen.animal.specialName }}（{{ pen.animal.specialHint }}）</div>
                       <div>栏舍卫生影响高品质概率和生病率；收产物会弄脏，记得清理。</div>
+                      <div class="ranch-rename">
+                        <input
+                          v-model="ranchRenameDrafts[pen.index]"
+                          class="ranch-rename-input"
+                          type="text"
+                          maxlength="12"
+                          placeholder="新名字"
+                        />
+                        <button class="link" type="button" :disabled="acting" @click="renameRanchAnimal(pen.index)">[改名]</button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3400,6 +3491,34 @@ onUnmounted(() => {
                   <button class="link" type="button" :disabled="acting" @click="buyRanchAnimal(pen.index, 'sheep')">🐑 绵羊 3500</button>
                 </div>
               </template>
+            </div>
+          </div>
+          <div class="ranch-breed">
+            <div class="ranch-breed-head">
+              <strong>繁殖</strong>
+              <span class="muted">选两只成年动物；双方 72 小时内只繁一次，幼崽 24 小时成年</span>
+            </div>
+            <div v-if="!ranchBreedSel.length" class="muted">在畜栏里点 [选为亲本] 选两只动物</div>
+            <div v-else class="ranch-breed-picked">
+              <span>已选：{{ ranchBreedNames }}</span>
+              <button class="link" type="button" :disabled="acting || ranchBreedSel.length < 2" @click="loadRanchPreview">[刷新预览]</button>
+              <button
+                class="link"
+                type="button"
+                :disabled="acting || ranchBreedSel.length < 2 || !ranchPreview?.ok"
+                @click="breedSelectedRanch"
+              >
+                [繁殖]
+              </button>
+              <button class="link" type="button" :disabled="acting" @click="clearRanchBreed">[清空]</button>
+            </div>
+            <div v-if="ranchPreview" class="ranch-breed-preview">
+              <div>
+                后代：{{ ranchPreview.kindLabel }} · {{ ranchPreview.qualityLabel }} · 第{{ ranchPreview.generation + 1 }}代 · {{ ranchPreview.traitLabel }} · {{ ranchPreview.lineLabel }}
+              </div>
+              <div v-if="ranchPreview.parents" class="muted">亲本：{{ ranchPreview.parents }}</div>
+              <div v-for="warning in ranchPreview.warnings" :key="warning" class="warn">{{ warning }}</div>
+              <div v-for="missing in ranchPreview.missing" :key="missing" class="warn">{{ missing }}</div>
             </div>
           </div>
           <div class="ranch-workshop">

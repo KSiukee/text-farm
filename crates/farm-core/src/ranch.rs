@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::error::GameError;
+
 pub const RANCH_PEN_COUNT: u8 = 3;
 pub const RANCH_MAX_PENS: u8 = 5;
 /// 扩建花费：3→4 栏 5,000；4→5 栏 20,000（第 5 栏是后期目标）。
@@ -19,6 +21,12 @@ pub const RANCH_DIRTY_LINE: u32 = 30;
 pub const RANCH_FEED_SATIETY: u32 = 30;
 /// 特殊产物概率（百分比），按最终品质取：普通/优良/精品。
 pub const RANCH_SPECIAL_PCT: [u32; 3] = [0, 8, 25];
+/// 繁殖冷却：72 小时。
+pub const RANCH_BREED_COOLDOWN_MS: i64 = 72 * 60 * 60 * 1000;
+/// 幼崽期：24 小时，成年后才能产出/繁殖。
+pub const RANCH_YOUNG_MS: i64 = 24 * 60 * 60 * 1000;
+/// 繁殖的健康门槛（低于这条线先养好）。
+pub const RANCH_BREED_MIN_HEALTH: u32 = 60;
 
 /// 生产特性：买来（或出生）时固定，只影响产出与饲养成本。
 /// 牧场不碰“亲密度/心情/陪伴”这套语义——那是宠物的领域。
@@ -118,6 +126,144 @@ pub fn special_chance(quality: u8) -> u32 {
 /// 按种子挑一个生产特性：购买/出生时用，同一只动物结果固定。
 pub fn roll_trait(seed: i64, salt: &str) -> RanchTrait {
     RanchTrait::ALL[(roll(seed, salt) % RanchTrait::ALL.len() as u64) as usize]
+}
+
+/// 一次繁殖的后代（预览与真繁殖共用）。
+#[derive(Debug, Clone)]
+pub struct RanchBreedPlan {
+    pub kind: RanchAnimalKind,
+    pub quality: u8,
+    pub generation: u32,
+    pub line_id: u32,
+    pub temper: RanchTrait,
+    pub inbred: bool,
+    pub parents: String,
+}
+
+/// 由父母 + 繁殖序号确定下一次后代。
+/// 用 `breedSeq` 当随机源：预览看到的就是下一发，生完序号 +1 才变。
+pub fn breed_child(a: &RanchAnimal, b: &RanchAnimal, seq: u32) -> RanchBreedPlan {
+    let seed = 0x9E37_79B9_7F4A_7C15u64
+        ^ u64::from(seq)
+        ^ (u64::from(a.line_id) << 17)
+        ^ (u64::from(b.line_id) << 33)
+        ^ (u64::from(a.generation) << 7)
+        ^ u64::from(b.generation);
+    let kind = if roll(seed as i64, "kind") % 2 == 0 {
+        a.kind
+    } else {
+        b.kind
+    };
+    // 同一条血统线（且不是 0 号未登记线）算近亲：品质上限降到 2。
+    let inbred = a.line_id != 0 && a.line_id == b.line_id;
+    let base_quality = (a.quality + b.quality) / 2 + 1;
+    let quality = if inbred {
+        base_quality.min(2)
+    } else {
+        base_quality.min(3)
+    };
+    let generation = a.generation.max(b.generation) + 1;
+    let line_id = if roll(seed as i64, "line") % 2 == 0 {
+        a.line_id
+    } else {
+        b.line_id
+    };
+    // 10% 突变，否则父母各 50%。
+    let temper = if roll(seed as i64, "mutate") % 100 < 10 {
+        RanchTrait::ALL[(roll(seed as i64, "mutate_trait") % 5) as usize]
+    } else if roll(seed as i64, "trait") % 2 == 0 {
+        a.temper
+    } else {
+        b.temper
+    };
+    RanchBreedPlan {
+        kind,
+        quality,
+        generation,
+        line_id,
+        temper,
+        inbred,
+        parents: format!(
+            "{}（第{}代） × {}（第{}代）",
+            a.name,
+            a.generation + 1,
+            b.name,
+            b.generation + 1
+        ),
+    }
+}
+
+/// 繁殖条件检查项；消息给预览看，`error()` 给真动作返回。
+#[derive(Debug, Clone)]
+pub enum BreedBlocker {
+    SamePen,
+    Sick { pen: u8, name: String },
+    Young { pen: u8, name: String, remaining_ms: i64 },
+    Cooldown { pen: u8, name: String, remaining_ms: i64 },
+    LowHealth { pen: u8, name: String, health: u32 },
+    DirtyPen { pen: u8, cleanliness: u32 },
+    NoEmptyPen,
+    NoFeed,
+}
+
+impl BreedBlocker {
+    pub fn message(&self) -> String {
+        match self {
+            BreedBlocker::SamePen => "不能选同一只动物".into(),
+            BreedBlocker::Sick { pen, name } => {
+                format!("{pen} 号畜栏的{name}生病了，先治疗")
+            }
+            BreedBlocker::Young {
+                pen,
+                name,
+                remaining_ms,
+            } => format!(
+                "{pen} 号畜栏的{name}还没成年（还要 {}）",
+                remaining_text(*remaining_ms)
+            ),
+            BreedBlocker::Cooldown {
+                pen,
+                name,
+                remaining_ms,
+            } => format!(
+                "{pen} 号畜栏的{name}还在繁殖冷却（还要 {}）",
+                remaining_text(*remaining_ms)
+            ),
+            BreedBlocker::LowHealth {
+                pen,
+                name,
+                health,
+            } => format!("{pen} 号畜栏的{name}健康只有 {health}，先养到 {RANCH_BREED_MIN_HEALTH}"),
+            BreedBlocker::DirtyPen { pen, cleanliness } => {
+                format!("{pen} 号畜栏卫生只有 {cleanliness}，先清理")
+            }
+            BreedBlocker::NoEmptyPen => "没有空畜栏放幼崽".into(),
+            BreedBlocker::NoFeed => "没有专用饲料（繁殖要 1 份）".into(),
+        }
+    }
+
+    pub fn error(&self) -> GameError {
+        match self {
+            BreedBlocker::SamePen => GameError::RanchBreedSamePen,
+            BreedBlocker::Sick { .. } => GameError::RanchAnimalSick,
+            BreedBlocker::Young { .. } => GameError::RanchAnimalYoung,
+            BreedBlocker::Cooldown { .. } => GameError::RanchBreedCooldown,
+            BreedBlocker::LowHealth { .. } => GameError::RanchBreedUnhealthy,
+            BreedBlocker::DirtyPen { .. } => GameError::RanchPenDirty,
+            BreedBlocker::NoEmptyPen => GameError::RanchNoEmptyPen,
+            BreedBlocker::NoFeed => GameError::RanchNoFeed,
+        }
+    }
+}
+
+/// 把毫秒说成人话（向上取整到分钟）。
+pub fn remaining_text(ms: i64) -> String {
+    let minutes = (ms.max(0) + 59_999) / 60_000;
+    if minutes >= 60 {
+        format!("{} 小时 {} 分", minutes / 60, minutes % 60)
+    } else {
+        format!("{minutes} 分钟")
+    }
 }
 
 pub fn quality_name(quality: u8) -> &'static str {
@@ -447,8 +593,21 @@ pub struct RanchAnimal {
     pub quality: u8,
     #[serde(default)]
     pub generation: u32,
+    /// 血统线；同一线的两只动物繁殖算近亲。
     #[serde(default)]
-    pub bred: bool,
+    pub line_id: u32,
+    /// 上次繁殖时间；72 小时内不能再繁殖。
+    #[serde(default)]
+    pub last_breed_at: i64,
+    /// 成年时间；买来的直接成年，出生的幼崽 +24h。
+    #[serde(default)]
+    pub adult_at: i64,
+    /// 近亲后代：生病率 +8%。
+    #[serde(default)]
+    pub inbred: bool,
+    /// 亲本记录：`名字（第N代） × 名字（第N代）`。
+    #[serde(default)]
+    pub parents: String,
     /// 固定生产特性；JSON 里叫 `trait`，Rust 里避开关键字。
     #[serde(rename = "trait")]
     pub temper: RanchTrait,
@@ -467,7 +626,11 @@ impl Default for RanchAnimal {
             last_tick_at: 0,
             quality: 1,
             generation: 0,
-            bred: false,
+            line_id: 0,
+            last_breed_at: 0,
+            adult_at: 0,
+            inbred: false,
+            parents: String::new(),
             temper: RanchTrait::Efficient,
         }
     }
@@ -496,11 +659,37 @@ impl RanchAnimal {
             last_tick_at: now,
             quality: 1,
             generation: 0,
-            bred: false,
+            line_id: 0,
+            last_breed_at: 0,
+            adult_at: now,
+            inbred: false,
+            parents: String::new(),
             temper: roll_trait(now, kind.label()),
         };
         animal.product_ready_at = now + animal.product_interval();
         animal
+    }
+
+    /// 幼崽期：不能产出、不能繁殖。
+    pub fn is_young(&self, now: i64) -> bool {
+        now < self.adult_at
+    }
+
+    pub fn young_remaining(&self, now: i64) -> i64 {
+        (self.adult_at - now).max(0)
+    }
+
+    /// 繁殖冷却是否结束（`lastBreedAt = 0` 表示从没繁殖过）。
+    pub fn breed_ready(&self, now: i64) -> bool {
+        self.last_breed_at <= 0 || now - self.last_breed_at >= RANCH_BREED_COOLDOWN_MS
+    }
+
+    pub fn breed_remaining(&self, now: i64) -> i64 {
+        if self.last_breed_at <= 0 {
+            0
+        } else {
+            (self.last_breed_at + RANCH_BREED_COOLDOWN_MS - now).max(0)
+        }
     }
 
     /// 个体产物间隔：受「高产」修正。
@@ -542,7 +731,8 @@ impl RanchAnimal {
             if dirty || hungry {
                 let base = 12
                     + self.temper.sickness_delta()
-                    + if dirty { 6 } else { 0 };
+                    + if dirty { 6 } else { 0 }
+                    + if self.inbred { 8 } else { 0 };
                 let chance = u32::try_from(base.clamp(0, 100)).unwrap_or(0);
                 let roll = roll(now / 3_600_000, &self.name);
                 if roll % 100 < u64::from(chance) {
@@ -594,7 +784,7 @@ impl RanchAnimal {
     }
 
     pub fn collect(&mut self, now: i64) -> bool {
-        if now < self.product_ready_at {
+        if now < self.adult_at || now < self.product_ready_at {
             return false;
         }
         self.product_ready_at = now + self.product_interval();
@@ -653,12 +843,20 @@ impl RanchPen {
 #[serde(rename_all = "camelCase", default)]
 pub struct RanchState {
     pub pens: Vec<RanchPen>,
+    /// 繁殖序号：预览与真繁殖共用，保证“预览什么就生什么”。
+    #[serde(default)]
+    pub breed_seq: u32,
+    /// 血统线序号：每只买来的动物开一条新线。
+    #[serde(default)]
+    pub line_seq: u32,
 }
 
 impl RanchState {
     pub fn new() -> Self {
         Self {
             pens: (1..=RANCH_PEN_COUNT).map(RanchPen::new).collect(),
+            breed_seq: 0,
+            line_seq: 0,
         }
     }
 
