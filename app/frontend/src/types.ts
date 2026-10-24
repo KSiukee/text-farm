@@ -98,20 +98,16 @@ export interface RanchAnimalView {
   generation: number;
   traitLabel: string;
   traitHint: string;
-  affection: number;
-  cleanliness: number;
   ageDays: number;
-  mood: string;
   specialName: string;
-  specialAffection: number;
-  canGroom: boolean;
-  canGraze: boolean;
-  canPet: boolean;
+  specialHint: string;
 }
 
 export interface RanchPenView {
   index: number;
   animal: RanchAnimalView | null;
+  cleanliness: number;
+  canClean: boolean;
 }
 
 export interface RanchRecipeView {
@@ -1167,9 +1163,7 @@ export type Action =
   | { type: "settleBoardingDebt" }
   | { type: "buyRanchAnimal"; pen: number; kind: RanchAnimalKind }
   | { type: "feedRanchAnimal"; pen: number }
-  | { type: "groomRanchAnimal"; pen: number }
-  | { type: "grazeRanchAnimal"; pen: number }
-  | { type: "petRanchAnimal"; pen: number }
+  | { type: "cleanRanchPen"; pen: number }
   | { type: "collectRanchProduct"; pen: number }
   | { type: "healRanchAnimal"; pen: number }
   | { type: "expandRanch" }

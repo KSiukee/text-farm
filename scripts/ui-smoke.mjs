@@ -643,35 +643,36 @@ try {
   );
   const ranchAnimalText = await bodyText();
   check(
-    "牧场动物显示性格",
-    ["高产", "温顺", "挑食", "娇气", "恋家"].some((trait) => ranchAnimalText.includes(trait)),
+    "牧场动物显示生产特性",
+    ["高产", "省料", "壮实", "娇气", "双产"].some((trait) => ranchAnimalText.includes(trait)),
+  );
+  check("牧场显示栏舍卫生", ranchAnimalText.includes("卫生"));
+  check(
+    "牧场不再有陪伴语义",
+    !ranchAnimalText.includes("亲密") &&
+      !ranchAnimalText.includes("梳毛") &&
+      !ranchAnimalText.includes("放牧"),
+  );
+  const cleanBefore = saveState().ranch.pens[0].lastCleanDay || "";
+  await clickText("[清理畜栏]");
+  await waitFor(async () => (saveState().ranch.pens[0].lastCleanDay || "") !== cleanBefore);
+  check(
+    "清理畜栏记进当日管理",
+    (saveState().ranch.pens[0].lastCleanDay || "") !== cleanBefore,
   );
   check(
-    "牧场动物显示亲密与清洁",
-    ranchAnimalText.includes("亲密") && ranchAnimalText.includes("清洁"),
-  );
-  const careBefore = saveState().ranch.pens[0].animal;
-  await clickText("[梳毛]");
-  await waitFor(async () => (saveState().ranch.pens[0].animal.lastGroomDay || "") !== "");
-  check("梳毛记进当日照料", (saveState().ranch.pens[0].animal.lastGroomDay || "") !== "");
-  check(
-    "梳毛涨亲密度",
-    saveState().ranch.pens[0].animal.affection > careBefore.affection,
-    `${careBefore.affection} → ${saveState().ranch.pens[0].animal.affection}`,
-  );
-  await clickText("[互动]");
-  await waitFor(async () => (saveState().ranch.pens[0].animal.lastPetDay || "") !== "");
-  check("互动涨亲密度", saveState().ranch.pens[0].animal.affection > careBefore.affection);
-  const grazeBefore = saveState().ranch.pens[0].animal.satiety;
-  await clickText("[放牧]");
-  await waitFor(async () => (saveState().ranch.pens[0].animal.lastGrazeDay || "") !== "");
-  check(
-    "放牧涨饱食",
-    saveState().ranch.pens[0].animal.satiety > grazeBefore,
-    `${grazeBefore} → ${saveState().ranch.pens[0].animal.satiety}`,
+    "清理畜栏后按钮置灰",
+    await evaluate(`(() => {
+      const btn = [...document.querySelectorAll('button')].find((el) => (el.innerText || '').trim() === '[清理畜栏]');
+      return !!btn && btn.disabled;
+    })()`),
   );
   await clickText("[详情]", false);
-  check("牧场详情显示性格说明", (await bodyText()).includes("性格："));
+  const ranchDetailText = await bodyText();
+  check(
+    "牧场详情显示生产特性与特殊产物",
+    ranchDetailText.includes("生产特性：") && ranchDetailText.includes("特殊产物："),
+  );
   await clickText("[收起]", false);
   const feedBefore = saveState().inventory["ranch:feed"] || 0;
   await clickText("[买专用饲料 300]");

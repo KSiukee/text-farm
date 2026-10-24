@@ -7,61 +7,53 @@ pub const RANCH_EXPAND_COSTS: [u64; 2] = [5_000, 20_000];
 /// 品质对售价的百分比：普通 / 优良 / 精品。
 /// 不做得太陡：精品是长期目标，不是一次专用饲料就翻倍。
 pub const RANCH_QUALITY_PCT: [u64; 3] = [100, 115, 130];
-/// 亲密度的上限与“能出特殊产物”的门槛。
-pub const RANCH_AFFECTION_MAX: u32 = 100;
-/// 清洁度上限。
+/// 栏舍卫生上限。
 pub const RANCH_CLEAN_MAX: u32 = 100;
-/// 亲密度到这条线，收产物才有机会出特殊产物。
-pub const RANCH_SPECIAL_AFFECTION: u32 = 80;
-/// 达到门槛后，每次收产物出特殊产物的百分比。
-pub const RANCH_SPECIAL_PCT: u32 = 15;
-/// 普通喂食一次加多少饱食；挑食动物打八折。
-pub const RANCH_FEED_SATIETY: u32 = 30;
-/// 梳毛 / 放牧 / 互动各加多少（亲密度由性格再修正）。
-pub const RANCH_GROOM_CLEAN: u32 = 40;
-pub const RANCH_GROOM_AFFECTION: u32 = 2;
-pub const RANCH_GRAZE_SATIETY: u32 = 15;
-pub const RANCH_GRAZE_AFFECTION: u32 = 3;
-pub const RANCH_PET_AFFECTION: u32 = 5;
-/// 清洁度每小时掉多少（离线也照掉）。
-pub const RANCH_CLEAN_DECAY_PER_HOUR: u32 = 1;
-/// 清洁度低于这条线会掉品质概率、加生病概率。
+/// 收一次产物，栏舍卫生掉多少。
+pub const RANCH_COLLECT_DIRT: u32 = 12;
+/// 清理一次畜栏恢复多少卫生。
+pub const RANCH_CLEAN_GAIN: u32 = 50;
+/// 卫生低于这条线会掉品质概率、加生病概率。
 pub const RANCH_DIRTY_LINE: u32 = 30;
+/// 普通喂食一次加多少饱食。
+pub const RANCH_FEED_SATIETY: u32 = 30;
+/// 特殊产物概率（百分比），按最终品质取：普通/优良/精品。
+pub const RANCH_SPECIAL_PCT: [u32; 3] = [0, 8, 25];
 
-/// 动物性格：买来（或出生）时固定，不能改。
-/// 每种只改一件事，方便玩家一眼比较；不做“纯负面”性格。
+/// 生产特性：买来（或出生）时固定，只影响产出与饲养成本。
+/// 牧场不碰“亲密度/心情/陪伴”这套语义——那是宠物的领域。
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum RanchTrait {
     /// 高产：产物间隔 −10%。
     HighYield,
-    /// 温顺：互动涨亲密度 +50%。
+    /// 省料：喂食时省下一份作物的概率 +12 个百分点。
     #[default]
-    Gentle,
-    /// 挑食：普通喂食饱食 −20%，专用饲料效果更强。
-    Picky,
-    /// 娇气：生病率 +，高品质产物概率 +。
+    Efficient,
+    /// 壮实：生病概率 −8 个百分点。
+    Hardy,
+    /// 娇气：生病率 +8 个百分点，高品质产物概率 +8 个百分点。
     Delicate,
-    /// 恋家：牧场有宠物陪伴时，健康恢复更快、品质概率 +。
-    Homebody,
+    /// 双产：收产物额外 +1 的概率 +15 个百分点。
+    TwinYield,
 }
 
 impl RanchTrait {
     pub const ALL: [RanchTrait; 5] = [
         RanchTrait::HighYield,
-        RanchTrait::Gentle,
-        RanchTrait::Picky,
+        RanchTrait::Efficient,
+        RanchTrait::Hardy,
         RanchTrait::Delicate,
-        RanchTrait::Homebody,
+        RanchTrait::TwinYield,
     ];
 
     pub fn label(self) -> &'static str {
         match self {
             RanchTrait::HighYield => "高产",
-            RanchTrait::Gentle => "温顺",
-            RanchTrait::Picky => "挑食",
+            RanchTrait::Efficient => "省料",
+            RanchTrait::Hardy => "壮实",
             RanchTrait::Delicate => "娇气",
-            RanchTrait::Homebody => "恋家",
+            RanchTrait::TwinYield => "双产",
         }
     }
 
@@ -69,10 +61,10 @@ impl RanchTrait {
     pub fn hint(self) -> &'static str {
         match self {
             RanchTrait::HighYield => "产物间隔 −10%",
-            RanchTrait::Gentle => "梳毛/放牧/互动涨亲密度 +50%",
-            RanchTrait::Picky => "普通喂食饱食 −20%，专用饲料效果更强",
-            RanchTrait::Delicate => "生病率略高，但更容易出高品质产物",
-            RanchTrait::Homebody => "牧场有宠物陪伴时恢复更快、品质概率 +5%",
+            RanchTrait::Efficient => "喂食省料概率 +12%",
+            RanchTrait::Hardy => "生病概率 −8%",
+            RanchTrait::Delicate => "生病率 +8%，高品质概率 +8%",
+            RanchTrait::TwinYield => "收产物额外 +1 概率 +15%",
         }
     }
 
@@ -80,32 +72,32 @@ impl RanchTrait {
     pub fn quality_bonus(self) -> u32 {
         match self {
             RanchTrait::Delicate => 8,
-            RanchTrait::Homebody => 5,
             _ => 0,
         }
     }
 
-    /// 生病概率的额外百分点。
-    pub fn sickness_bonus(self) -> u32 {
+    /// 生病概率修正（百分点，可为负）。
+    pub fn sickness_delta(self) -> i32 {
         match self {
+            RanchTrait::Hardy => -8,
             RanchTrait::Delicate => 8,
             _ => 0,
         }
     }
 
-    /// 亲密度收益（温顺 +50%，向下取整）。
-    pub fn affection_gain(self, base: u32) -> u32 {
+    /// 喂食省料的额外概率（百分点）。
+    pub fn feed_save_bonus(self) -> u32 {
         match self {
-            RanchTrait::Gentle => base + base / 2,
-            _ => base,
+            RanchTrait::Efficient => 12,
+            _ => 0,
         }
     }
 
-    /// 普通喂食的饱食收益（挑食 −20%）。
-    pub fn feed_satiety(self, base: u32) -> u32 {
+    /// 收产物额外 +1 的额外概率（百分点）。
+    pub fn yield_bonus(self) -> u32 {
         match self {
-            RanchTrait::Picky => base * 8 / 10,
-            _ => base,
+            RanchTrait::TwinYield => 15,
+            _ => 0,
         }
     }
 
@@ -118,7 +110,12 @@ impl RanchTrait {
     }
 }
 
-/// 按种子挑一个性格：购买/出生时用，同一只动物结果固定。
+/// 按最终品质给特殊产物概率（%）：普通 0、优良 8、精品 25。
+pub fn special_chance(quality: u8) -> u32 {
+    RANCH_SPECIAL_PCT[usize::from(quality.clamp(1, 3)) - 1]
+}
+
+/// 按种子挑一个生产特性：购买/出生时用，同一只动物结果固定。
 pub fn roll_trait(seed: i64, salt: &str) -> RanchTrait {
     RanchTrait::ALL[(roll(seed, salt) % RanchTrait::ALL.len() as u64) as usize]
 }
@@ -452,20 +449,9 @@ pub struct RanchAnimal {
     pub generation: u32,
     #[serde(default)]
     pub bred: bool,
-    /// 固定性格；JSON 里叫 `trait`，Rust 里避开关键字。
+    /// 固定生产特性；JSON 里叫 `trait`，Rust 里避开关键字。
     #[serde(rename = "trait")]
     pub temper: RanchTrait,
-    /// 亲密度 0–100：影响高品质与特殊产物。
-    pub affection: u32,
-    /// 清洁度 0–100：太低会掉品质、加生病。
-    pub cleanliness: u32,
-    /// 今天是否已经梳毛/放牧/互动过；空字符串表示没记过。
-    #[serde(default)]
-    pub last_groom_day: String,
-    #[serde(default)]
-    pub last_graze_day: String,
-    #[serde(default)]
-    pub last_pet_day: String,
 }
 
 impl Default for RanchAnimal {
@@ -482,12 +468,7 @@ impl Default for RanchAnimal {
             quality: 1,
             generation: 0,
             bred: false,
-            temper: RanchTrait::Gentle,
-            affection: 30,
-            cleanliness: RANCH_CLEAN_MAX,
-            last_groom_day: String::new(),
-            last_graze_day: String::new(),
-            last_pet_day: String::new(),
+            temper: RanchTrait::Efficient,
         }
     }
 }
@@ -517,11 +498,6 @@ impl RanchAnimal {
             generation: 0,
             bred: false,
             temper: roll_trait(now, kind.label()),
-            affection: 30,
-            cleanliness: RANCH_CLEAN_MAX,
-            last_groom_day: String::new(),
-            last_graze_day: String::new(),
-            last_pet_day: String::new(),
         };
         animal.product_ready_at = now + animal.product_interval();
         animal
@@ -532,7 +508,8 @@ impl RanchAnimal {
         self.temper.product_interval(self.kind.product_interval_ms())
     }
 
-    pub fn tick(&mut self, now: i64, guarded: bool) {
+    /// `pen_clean` 是这间畜栏的卫生：脏栏会加生病概率、掉品质。
+    pub fn tick(&mut self, now: i64, guarded: bool, pen_clean: u32) {
         if now <= self.last_tick_at {
             return;
         }
@@ -548,9 +525,6 @@ impl RanchAnimal {
             self.last_tick_at += i64::from(hours) * 3_600_000;
         }
         self.satiety = self.satiety.saturating_sub(hours);
-        self.cleanliness = self
-            .cleanliness
-            .saturating_sub(hours.saturating_mul(RANCH_CLEAN_DECAY_PER_HOUR));
         if self.satiety == 0 {
             self.health = self.health.saturating_sub(hours / 3);
             if !self.sick && self.health < 50 {
@@ -560,21 +534,16 @@ impl RanchAnimal {
         if self.sick {
             self.health = self.health.saturating_sub(hours / 6);
         } else if self.satiety > 30 && self.health < 100 {
-            // 恋家 + 有宠物陪着，恢复更快。
-            let extra = if guarded && self.temper == RanchTrait::Homebody {
-                hours / 2
-            } else {
-                0
-            };
-            self.health = (self.health + hours / 2 + extra).min(100);
+            self.health = (self.health + hours / 2).min(100);
         }
         if !guarded && !self.sick {
-            let dirty = self.cleanliness < RANCH_DIRTY_LINE;
+            let dirty = pen_clean < RANCH_DIRTY_LINE;
             let hungry = self.satiety < 20;
             if dirty || hungry {
-                let chance = 12
-                    + self.temper.sickness_bonus()
+                let base = 12
+                    + self.temper.sickness_delta()
                     + if dirty { 6 } else { 0 };
+                let chance = u32::try_from(base.clamp(0, 100)).unwrap_or(0);
                 let roll = roll(now / 3_600_000, &self.name);
                 if roll % 100 < u64::from(chance) {
                     self.sick = true;
@@ -590,10 +559,8 @@ impl RanchAnimal {
     /// 喂食；`care_pct` 是「照料」专精的加成百分比（0/10/20/30/40）。
     pub fn feed_with_care(&mut self, care_pct: u32) {
         let bonus = 100 + care_pct;
-        let base = self.temper.feed_satiety(RANCH_FEED_SATIETY);
-        self.satiety = (self.satiety + base * bonus / 100).min(100);
+        self.satiety = (self.satiety + RANCH_FEED_SATIETY * bonus / 100).min(100);
         self.health = (self.health + 5 * bonus / 100).min(100);
-        self.affection = (self.affection + 1).min(RANCH_AFFECTION_MAX);
     }
 
     /// 治疗；`care_pct` 同上。
@@ -603,75 +570,19 @@ impl RanchAnimal {
     }
 
     pub fn feed_premium(&mut self) {
-        // 挑食的动物偏爱专用饲料：饱食与亲密度都更高。
-        let (satiety, affection) = if self.temper == RanchTrait::Picky {
-            (50, 8)
-        } else {
-            (40, 5)
-        };
-        self.satiety = (self.satiety + satiety).min(100);
+        self.satiety = (self.satiety + 40).min(100);
         self.health = (self.health + 10).min(100);
         self.quality = (self.quality + 1).min(3);
-        self.affection = (self.affection + affection).min(RANCH_AFFECTION_MAX);
     }
 
-    /// 梳毛：清洁 +40，亲密 +2（温顺 ×1.5）。返回实际亲密收益。
-    pub fn groom(&mut self) -> u32 {
-        self.cleanliness = (self.cleanliness + RANCH_GROOM_CLEAN).min(RANCH_CLEAN_MAX);
-        let gain = self.temper.affection_gain(RANCH_GROOM_AFFECTION);
-        self.affection = (self.affection + gain).min(RANCH_AFFECTION_MAX);
-        gain
-    }
-
-    /// 放牧：饱食 +15、亲密 +3（温顺 ×1.5），清洁 −10；冬天收益减半。
-    /// 返回（实际饱食收益、实际亲密收益）。
-    pub fn graze(&mut self, winter: bool) -> (u32, u32) {
-        let base_satiety = if winter {
-            RANCH_GRAZE_SATIETY / 2
-        } else {
-            RANCH_GRAZE_SATIETY
-        };
-        let before = self.satiety;
-        self.satiety = (self.satiety + base_satiety).min(100);
-        self.cleanliness = self.cleanliness.saturating_sub(10);
-        let base_affection = if winter {
-            RANCH_GRAZE_AFFECTION.saturating_sub(1)
-        } else {
-            RANCH_GRAZE_AFFECTION
-        };
-        let gain = self.temper.affection_gain(base_affection);
-        self.affection = (self.affection + gain).min(RANCH_AFFECTION_MAX);
-        (self.satiety - before, gain)
-    }
-
-    /// 互动：亲密 +5（温顺 ×1.5）。返回实际亲密收益。
-    pub fn pet_interact(&mut self) -> u32 {
-        let gain = self.temper.affection_gain(RANCH_PET_AFFECTION);
-        self.affection = (self.affection + gain).min(RANCH_AFFECTION_MAX);
-        gain
-    }
-
-    /// 高品质产物的基础概率（百分点）：照料 + 性格；专精/加成由引擎另加。
-    pub fn care_quality_chance(&self, guarded: bool) -> u32 {
-        let mut chance = 8 + self.affection / 5 + self.cleanliness / 10;
-        if self.temper == RanchTrait::Delicate {
-            chance += self.temper.quality_bonus();
-        }
-        if self.temper == RanchTrait::Homebody && guarded {
-            chance += 5;
-        }
-        if self.cleanliness < RANCH_DIRTY_LINE {
+    /// 高品质产物的基础概率（百分点）：栏舍卫生 + 生产特性；专精/加成由引擎另加。
+    pub fn quality_chance(&self, pen_clean: u32) -> u32 {
+        let mut chance = 8 + pen_clean / 4;
+        chance += self.temper.quality_bonus();
+        if pen_clean < RANCH_DIRTY_LINE {
             chance = chance.saturating_sub(5);
         }
         chance
-    }
-
-    /// 亲密度够高时，这次收产物是否出特殊产物。
-    pub fn special_ready(&self, now: i64, pen: u8) -> bool {
-        self.affection >= RANCH_SPECIAL_AFFECTION
-            && self.cleanliness >= RANCH_DIRTY_LINE
-            && roll(now.max(0) ^ 0x5eed, &format!("{pen}:{}", self.name)) % 100
-                < u64::from(RANCH_SPECIAL_PCT)
     }
 
     pub fn quality_label(&self) -> &'static str {
@@ -679,23 +590,6 @@ impl RanchAnimal {
             1 => "普通",
             2 => "优良",
             _ => "精品",
-        }
-    }
-
-    /// 一眼能看懂的状态，给牧场卡片看。
-    pub fn mood_label(&self) -> &'static str {
-        if self.sick {
-            "不舒服"
-        } else if self.satiety < 30 {
-            "饿了"
-        } else if self.cleanliness < RANCH_DIRTY_LINE {
-            "有点脏"
-        } else if self.affection >= RANCH_SPECIAL_AFFECTION {
-            "很亲近你"
-        } else if self.affection >= 50 {
-            "认得你"
-        } else {
-            "还不太熟"
         }
     }
 
@@ -708,11 +602,51 @@ impl RanchAnimal {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct RanchPen {
     pub index: u8,
     pub animal: Option<RanchAnimal>,
+    /// 栏舍卫生 0–100：收产物会掉，太低掉品质、加生病。
+    pub cleanliness: u32,
+    /// 今天是否已经清理过；空字符串表示没记过。
+    pub last_clean_day: String,
+}
+
+impl Default for RanchPen {
+    fn default() -> Self {
+        Self {
+            index: 0,
+            animal: None,
+            cleanliness: RANCH_CLEAN_MAX,
+            last_clean_day: String::new(),
+        }
+    }
+}
+
+impl RanchPen {
+    pub fn new(index: u8) -> Self {
+        Self {
+            index,
+            ..Self::default()
+        }
+    }
+
+    /// 清理：卫生 +50，返回实际恢复量。
+    pub fn clean(&mut self) -> u32 {
+        let before = self.cleanliness;
+        self.cleanliness = (self.cleanliness + RANCH_CLEAN_GAIN).min(RANCH_CLEAN_MAX);
+        self.cleanliness - before
+    }
+
+    /// 收一次产物弄脏栏舍。
+    pub fn get_dirty(&mut self) {
+        self.cleanliness = self.cleanliness.saturating_sub(RANCH_COLLECT_DIRT);
+    }
+
+    pub fn can_clean(&self, today: &str) -> bool {
+        today.is_empty() || self.last_clean_day != today
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -724,22 +658,14 @@ pub struct RanchState {
 impl RanchState {
     pub fn new() -> Self {
         Self {
-            pens: (1..=RANCH_PEN_COUNT)
-                .map(|index| RanchPen {
-                    index,
-                    animal: None,
-                })
-                .collect(),
+            pens: (1..=RANCH_PEN_COUNT).map(RanchPen::new).collect(),
         }
     }
 
     pub fn ensure(&mut self) {
         if self.pens.len() < usize::from(RANCH_PEN_COUNT) {
             for index in (self.pens.len() as u8 + 1)..=RANCH_PEN_COUNT {
-                self.pens.push(RanchPen {
-                    index,
-                    animal: None,
-                });
+                self.pens.push(RanchPen::new(index));
             }
         }
     }
@@ -774,10 +700,7 @@ impl RanchState {
             return false;
         }
         let index = self.pens.len() as u8 + 1;
-        self.pens.push(RanchPen {
-            index,
-            animal: None,
-        });
+        self.pens.push(RanchPen::new(index));
         true
     }
 }

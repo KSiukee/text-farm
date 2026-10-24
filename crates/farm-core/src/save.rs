@@ -891,6 +891,56 @@ pub fn migrate_save(mut value: Value) -> Result<Value, SaveError> {
         value["schema"] = json!(36);
     }
 
+    if schema < 37 {
+        let state = value
+            .get_mut("state")
+            .and_then(Value::as_object_mut)
+            .ok_or(SaveError::Unknown(schema))?;
+        if let Some(pens) = state
+            .get_mut("ranch")
+            .and_then(|ranch| ranch.get_mut("pens"))
+            .and_then(Value::as_array_mut)
+        {
+            for pen in pens {
+                let Some(pen) = pen.as_object_mut() else {
+                    continue;
+                };
+                // v0.89.0 的卫生挂在动物身上；v0.89.1 起改按畜栏。
+                let animal_clean = pen
+                    .get("animal")
+                    .and_then(|animal| animal.get("cleanliness"))
+                    .and_then(Value::as_u64)
+                    .unwrap_or(80);
+                pen.entry("cleanliness")
+                    .or_insert_with(|| json!(animal_clean));
+                pen.entry("lastCleanDay").or_insert_with(|| json!(""));
+                if let Some(animal) = pen.get_mut("animal").and_then(Value::as_object_mut) {
+                    // 陪伴语义的字段整批删掉，别留在存档里。
+                    for key in [
+                        "affection",
+                        "cleanliness",
+                        "lastGroomDay",
+                        "lastGrazeDay",
+                        "lastPetDay",
+                    ] {
+                        animal.remove(key);
+                    }
+                    // 旧性格名映射成生产特性。
+                    if let Some(old) = animal.get("trait").and_then(Value::as_str) {
+                        let mapped = match old {
+                            "gentle" | "picky" => "efficient",
+                            "homebody" => "twin_yield",
+                            other => other,
+                        };
+                        animal.insert("trait".into(), json!(mapped));
+                    }
+                }
+            }
+        }
+        state.insert("schema".into(), json!(37));
+        value["schema"] = json!(37);
+    }
+
     Ok(value)
 }
 

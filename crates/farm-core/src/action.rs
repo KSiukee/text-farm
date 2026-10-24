@@ -113,13 +113,8 @@ pub enum Action {
     FeedRanchAnimal {
         pen: u8,
     },
-    GroomRanchAnimal {
-        pen: u8,
-    },
-    GrazeRanchAnimal {
-        pen: u8,
-    },
-    PetRanchAnimal {
+    /// 清理畜栏（每天一次，卫生 +50）。
+    CleanRanchPen {
         pen: u8,
     },
     CollectRanchProduct {

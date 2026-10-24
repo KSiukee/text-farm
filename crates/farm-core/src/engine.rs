@@ -119,9 +119,7 @@ impl Game {
             Action::SettleBoardingDebt => self.settle_boarding_debt(now)?,
             Action::BuyRanchAnimal { pen, kind } => self.buy_ranch_animal(pen, kind, now)?,
             Action::FeedRanchAnimal { pen } => self.feed_ranch_animal(pen, now)?,
-            Action::GroomRanchAnimal { pen } => self.groom_ranch_animal(pen, now)?,
-            Action::GrazeRanchAnimal { pen } => self.graze_ranch_animal(pen, now)?,
-            Action::PetRanchAnimal { pen } => self.pet_ranch_animal(pen, now)?,
+            Action::CleanRanchPen { pen } => self.clean_ranch_pen(pen, now)?,
             Action::CollectRanchProduct { pen } => self.collect_ranch_product(pen, now)?,
             Action::HealRanchAnimal { pen } => self.heal_ranch_animal(pen, now)?,
             Action::ExpandRanch => self.expand_ranch(now)?,
@@ -2402,8 +2400,11 @@ impl Game {
             return Err(GameError::NotEnoughItems);
         };
         let left = self.state.inventory.get(&key).copied().unwrap_or(0);
-        let feed_save =
-            ranching::feed_save_chance(self.state.skills.ranching.skill_level("ranch_feed"));
+        let trait_save = animal.temper.feed_save_bonus();
+        let feed_save = (ranching::feed_save_chance(
+            self.state.skills.ranching.skill_level("ranch_feed"),
+        ) + trait_save)
+            .min(100);
         let saved = feed_save > 0
             && roll_pest(now.max(0) as u64 ^ 0xfeed, pen, "feed") % 100 < u64::from(feed_save);
         if !saved {
@@ -2434,130 +2435,67 @@ impl Game {
         Ok(vec![Effect::Log { text }])
     }
 
-    fn groom_ranch_animal(&mut self, pen: u8, now: i64) -> Result<Vec<Effect>, GameError> {
+    fn clean_ranch_pen(&mut self, pen: u8, now: i64) -> Result<Vec<Effect>, GameError> {
         let today = self.state.daily.day.clone();
-        let animal = self
+        let target = self
             .state
             .ranch
             .pen(pen)
-            .and_then(|pen| pen.animal.as_ref())
             .ok_or(GameError::RanchPenEmpty)?;
-        if animal.sick {
-            return Err(GameError::RanchAnimalSick);
+        if target.animal.is_none() {
+            return Err(GameError::RanchPenEmpty);
         }
-        if !today.is_empty() && animal.last_groom_day == today {
-            return Err(GameError::RanchCareDone);
+        if !target.can_clean(&today) {
+            return Err(GameError::RanchPenCleanDone);
         }
-        let (name, gain, clean) = {
-            let animal = self
+        let (gain, clean) = {
+            let target = self
                 .state
                 .ranch
                 .pen_mut(pen)
-                .and_then(|pen| pen.animal.as_mut())
                 .ok_or(GameError::RanchPenEmpty)?;
-            let gain = animal.groom();
-            animal.last_groom_day = today;
-            (animal.name.clone(), gain, animal.cleanliness)
+            let gain = target.clean();
+            target.last_clean_day = today;
+            (gain, target.cleanliness)
         };
-        let text = format!("你给{name}梳了毛，毛顺了不少（清洁 {clean}，亲密 +{gain}）");
-        self.push_log(now, text.clone());
-        Ok(vec![Effect::Log { text }])
-    }
-
-    fn graze_ranch_animal(&mut self, pen: u8, now: i64) -> Result<Vec<Effect>, GameError> {
-        let today = self.state.daily.day.clone();
-        let winter = self.state.season == Season::Winter;
-        let animal = self
-            .state
-            .ranch
-            .pen(pen)
-            .and_then(|pen| pen.animal.as_ref())
-            .ok_or(GameError::RanchPenEmpty)?;
-        if animal.sick {
-            return Err(GameError::RanchAnimalSick);
-        }
-        if !today.is_empty() && animal.last_graze_day == today {
-            return Err(GameError::RanchCareDone);
-        }
-        let (name, satiety, gain) = {
-            let animal = self
-                .state
-                .ranch
-                .pen_mut(pen)
-                .and_then(|pen| pen.animal.as_mut())
-                .ok_or(GameError::RanchPenEmpty)?;
-            let (satiety, gain) = animal.graze(winter);
-            animal.last_graze_day = today;
-            (animal.name.clone(), satiety, gain)
-        };
-        let text = if winter {
-            format!("天冷了，你带{name}在牧场走了走就回来（饱食 +{satiety}，亲密 +{gain}）")
+        let text = if gain > 0 {
+            format!("你清理了 {pen} 号畜栏，卫生回到 {clean}（+{gain}）")
         } else {
-            format!("你带{name}在牧场吃了几口嫩草（饱食 +{satiety}，亲密 +{gain}）")
+            format!("你清理了 {pen} 号畜栏，本来就很干净（卫生 {clean}）")
         };
         self.push_log(now, text.clone());
         Ok(vec![Effect::Log { text }])
     }
 
-    fn pet_ranch_animal(&mut self, pen: u8, now: i64) -> Result<Vec<Effect>, GameError> {
-        let today = self.state.daily.day.clone();
-        let animal = self
-            .state
-            .ranch
-            .pen(pen)
-            .and_then(|pen| pen.animal.as_ref())
-            .ok_or(GameError::RanchPenEmpty)?;
-        if animal.sick {
-            return Err(GameError::RanchAnimalSick);
-        }
-        if !today.is_empty() && animal.last_pet_day == today {
-            return Err(GameError::RanchCareDone);
-        }
-        let (name, gain) = {
-            let animal = self
-                .state
-                .ranch
-                .pen_mut(pen)
-                .and_then(|pen| pen.animal.as_mut())
-                .ok_or(GameError::RanchPenEmpty)?;
-            let gain = animal.pet_interact();
-            animal.last_pet_day = today;
-            (animal.name.clone(), gain)
-        };
-        let text = format!("你蹲下来陪{name}待了一会儿，它蹭了蹭你的手（亲密 +{gain}）");
-        self.push_log(now, text.clone());
-        Ok(vec![Effect::Log { text }])
-    }
     fn collect_ranch_product(&mut self, pen: u8, now: i64) -> Result<Vec<Effect>, GameError> {
-        let guarded = self
-            .state
-            .pets
-            .iter()
-            .any(|pet| !pet.boarded && pet.location == PetLocation::Ranch);
-        let (kind, base_quality, name, care_chance, special) = {
-            let animal = self
-                .state
-                .ranch
-                .pen_mut(pen)
-                .and_then(|pen| pen.animal.as_mut())
-                .ok_or(GameError::RanchPenEmpty)?;
-            if !animal.collect(now) {
-                return Err(GameError::RanchProductNotReady);
-            }
+        let (kind, base_quality, name, care_chance, trait_yield) = {
+            let pen = self.state.ranch.pen(pen).ok_or(GameError::RanchPenEmpty)?;
+            let animal = pen.animal.as_ref().ok_or(GameError::RanchPenEmpty)?;
             (
                 animal.kind,
                 animal.quality,
                 animal.name.clone(),
-                animal.care_quality_chance(guarded),
-                animal.special_ready(now, pen),
+                animal.quality_chance(pen.cleanliness),
+                animal.temper.yield_bonus(),
             )
         };
+        let ready = self
+            .state
+            .ranch
+            .pen_mut(pen)
+            .and_then(|pen| pen.animal.as_mut())
+            .map(|animal| animal.collect(now))
+            .unwrap_or(false);
+        if !ready {
+            return Err(GameError::RanchProductNotReady);
+        }
         let product = kind.product_name();
         let quality_level =
             ranching::quality_chance(self.state.skills.ranching.skill_level("ranch_quality"))
                 + buffs::ranch_quality_pct(&self.state.buffs, now);
         let yield_level =
-            ranching::yield_chance(self.state.skills.ranching.skill_level("ranch_yield"));
+            ranching::yield_chance(self.state.skills.ranching.skill_level("ranch_yield"))
+                + trait_yield;
         let mut quality = base_quality;
         if quality < 3 {
             let chance = care_chance + quality_level;
@@ -2568,6 +2506,9 @@ impl Game {
                 quality = (quality + 1).min(3);
             }
         }
+        let special = crate::ranch::special_chance(quality) > 0
+            && roll_pest(now.max(0) as u64 ^ 0x5eed, pen, kind.product_key()) % 100
+                < u64::from(crate::ranch::special_chance(quality));
         let extra = !special
             && yield_level > 0
             && roll_pest(now.max(0) as u64 ^ 0x9e11, pen, kind.product_key()) % 100
@@ -2579,6 +2520,9 @@ impl Game {
             crate::ranch::with_quality(kind.product_key(), quality)
         };
         *self.state.inventory.entry(key).or_insert(0) += qty;
+        if let Some(pen) = self.state.ranch.pen_mut(pen) {
+            pen.get_dirty();
+        }
         self.state.daily.ranch_collects = self.state.daily.ranch_collects.saturating_add(1);
         let exp = ranching::collect_exp(quality) + if special { 10 } else { 0 };
         let pct = buffs::exp_pct(&self.state.buffs, now, DisciplineKind::Ranching);
@@ -2589,8 +2533,9 @@ impl Game {
             .add_exp(exp * u64::from(100 + pct) / 100);
         let text = if special {
             format!(
-                "你从{name}那里收了 {}（它今天跟你特别亲，出了特殊产物）",
-                kind.special_name()
+                "你从{name}那里收了 {}（{}产物，出了特殊产物）",
+                kind.special_name(),
+                crate::ranch::quality_name(quality)
             )
         } else {
             let mut parts = Vec::new();
@@ -3607,9 +3552,10 @@ impl Game {
         let mut changed = false;
         let mut sick = Vec::new();
         for pen in &mut self.state.ranch.pens {
+            let pen_clean = pen.cleanliness;
             if let Some(animal) = pen.animal.as_mut() {
                 let was_sick = animal.sick;
-                animal.tick(now, guarded);
+                animal.tick(now, guarded, pen_clean);
                 if !was_sick && animal.sick {
                     sick.push(animal.name.clone());
                 }
