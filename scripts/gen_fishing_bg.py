@@ -29,6 +29,10 @@ P = {
     "creek_grass_light": (111, 175, 95),
     "creek_rock": (138, 154, 138),
     "creek_rock_dark": (104, 122, 108),
+    "creek_soil": (126, 94, 62),
+    "creek_soil_dark": (96, 70, 47),
+    "creek_wood": (124, 86, 52),
+    "creek_wood_light": (158, 112, 68),
     # 河流：冷蓝 + 灰岩
     "river_surface": (168, 216, 224),
     "river_1": (90, 166, 184),
@@ -117,38 +121,86 @@ def tiny_fish(d: ImageDraw.ImageDraw, x: int, y: int, color: tuple) -> None:
 def creek() -> Image.Image:
     img = Image.new("RGB", (W, H), P["creek_1"])
     d = ImageDraw.Draw(img)
-    # 暖绿浅水，底床很高（小溪浅）
-    water(d, (P["creek_surface"], P["creek_1"], P["creek_2"], P["creek_3"]), (6, 26, 54, 76))
+    # 浅水：水面到 62，下面是沙底
+    water(d, (P["creek_surface"], P["creek_1"], P["creek_2"], P["creek_3"]), (7, 25, 44, 62))
     surface_waves(d, P["creek_surface"])
-    # 左右斜坡河岸：暖沙 + 草
-    d.polygon([(0, 8), (30, 18), (54, 100), (0, 100)], fill=P["creek_sand"])
-    d.polygon([(0, 8), (30, 18), (39, 58), (0, 58)], fill=P["creek_grass"])
-    d.polygon([(230, 20), (202, 26), (178, 100), (230, 100)], fill=P["creek_sand"])
-    d.polygon([(230, 20), (202, 26), (196, 44), (230, 52)], fill=P["creek_grass"])
+    # 河岸用逐列画法，边缘有自然台阶，不是两块大三角
+    for y in range(10, 63):
+        left = 11 + int((y - 10) * 0.52) + rng.randint(-1, 1)
+        right = W - left
+        for x in range(0, left):
+            if y < 22:
+                color = P["creek_grass"]
+            elif y < 50:
+                color = P["creek_soil"]
+            else:
+                color = P["creek_sand_dark"]
+            d.point((x, y), fill=color)
+        for x in range(right, W):
+            if y < 22:
+                color = P["creek_grass"]
+            elif y < 50:
+                color = P["creek_soil"]
+            else:
+                color = P["creek_sand_dark"]
+            d.point((x, y), fill=color)
+    # 草皮亮边和土粒
+    for y in (20, 21):
+        for x in range(0, 30):
+            if rng.random() < 0.5:
+                d.point((x, y), fill=P["creek_grass_light"])
+        for x in range(W - 30, W):
+            if rng.random() < 0.5:
+                d.point((x, y), fill=P["creek_grass_light"])
+    for _ in range(70):
+        side = rng.choice((0, 1))
+        y = rng.randint(24, 58)
+        edge = 11 + int((y - 10) * 0.52)
+        x = rng.randint(0, edge - 1) if side == 0 else rng.randint(W - edge, W - 1)
+        d.point((x, y), fill=P["creek_soil_dark"])
     # 岸边草丛
-    for x, h in ((8, 11), (14, 15), (21, 9), (27, 13), (208, 12), (215, 16), (222, 9)):
+    for x, base, h in ((4, 22, 12), (9, 22, 16), (15, 23, 10), (21, 25, 13), (214, 23, 11), (220, 22, 15), (225, 23, 9)):
         for i in range(h):
-            d.point((x + (i // 5), 58 - i), fill=P["creek_grass_light"])
-    # 浅滩沙底
-    hband(d, 76, 99, P["creek_sand"])
+            d.point((x + (i // 5), base - i), fill=P["creek_grass_light"])
+    # 沙底
+    hband(d, 63, 99, P["creek_sand"])
     for x in range(0, W, 5):
-        d.point((x, 77 + rng.randint(0, 2)), fill=P["creek_sand_dark"])
-    # 鹅卵石
-    for _ in range(26):
-        x, y = rng.randint(4, W - 6), rng.randint(80, 96)
+        d.point((x, 64 + rng.randint(0, 2)), fill=P["creek_sand_dark"])
+    # 鹅卵石 + 踏脚石
+    for _ in range(24):
+        x, y = rng.randint(8, W - 10), rng.randint(68, 96)
         d.ellipse([x, y, x + rng.randint(2, 5), y + 1], fill=P["creek_rock"])
         d.point((x, y), fill=P["creek_rock_dark"])
+    for x, y, w in ((84, 80, 10), (101, 84, 9), (118, 87, 8), (136, 92, 7)):
+        d.ellipse([x, y, x + w, y + 3], fill=P["creek_rock"])
+        d.ellipse([x + 1, y + 1, x + w - 1, y + 2], fill=P["creek_rock_dark"])
+        d.point((x + w // 2, y + 2), fill=P["creek_grass"])
+    # 岸边水线碎石
+    for _ in range(18):
+        side = rng.choice((0, 1))
+        y = rng.randint(20, 40)
+        edge = 11 + int((y - 10) * 0.52)
+        x = edge - rng.randint(1, 4) if side == 0 else W - edge + rng.randint(1, 4)
+        d.point((x, y), fill=P["creek_rock"])
+        d.point((x, y + 1), fill=P["creek_rock_dark"])
     # 水草
-    for x in (34, 40, 190, 196, 202):
-        for i in range(rng.randint(12, 22)):
-            d.point((x + (i // 6) % 2, 94 - i), fill=P["creek_grass"])
-    # 浮萍
-    for x in (58, 66, 142, 150, 158):
+    for x in (58, 64, 176, 182, 188):
+        for i in range(rng.randint(12, 24)):
+            d.point((x + (i // 6) % 2, 96 - i), fill=P["creek_grass"])
+    # 浮萍 / 水面
+    for x in (70, 78, 146, 154, 162):
         d.ellipse([x, 3, x + 7, 7], fill=P["creek_grass"])
         d.point((x + 3, 2), fill=P["creek_grass_light"])
-    for x, y in ((86, 50), (120, 38), (168, 60)):
+    # 水面反光
+    for x in range(30, 200, 13):
+        y = 8 + rng.randint(0, 3)
+        d.rectangle([x, y, x + rng.randint(2, 6), y], fill=P["creek_surface"])
+    for x, y in ((92, 50), (126, 40), (166, 56)):
         tiny_fish(d, x, y, P["creek_3"])
-    return rays(img, 4, 34)
+    for _ in range(16):
+        x, y = rng.randint(56, 176), rng.randint(24, 58)
+        d.point((x, y), fill=P["creek_surface"])
+    return rays(img, 3, 30)
 
 
 def river() -> Image.Image:
