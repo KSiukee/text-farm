@@ -531,7 +531,7 @@ function tick(now: number) {
     targetY = keepInPond(
       targetY * (1 - bias) + (minY + Math.random() * (maxY - minY)) * bias,
     );
-    if (behavior.value === "migratory") {
+    if (behavior.value === "migratory" && frameDist >= session.params.fleeRadiusPct) {
       const farX = fishX.value < 50 ? 70 + Math.random() * 13 : 17 + Math.random() * 13;
       targetX = keepInPond(targetX * 0.3 + farX * 0.7);
     }
@@ -557,17 +557,19 @@ function tick(now: number) {
   const dist = Math.hypot(dx, dy);
   const escaping = frameDist < 30;
   // 行为：贴底/上层垂直慢，洄游更平；爆发鱼周期性冲一下。
+  // 逃逸时不再叠满爆发倍率，否则“逃逸×爆发”会把江面稀有鱼放大成疯狗。
+  const burstSpeed = escaping ? 1.35 : 1.8;
   let behaviorSpeed = 1;
   if (behavior.value === "burst") {
     if (burstLeft > 0) {
       burstLeft = Math.max(0, burstLeft - dt);
-      behaviorSpeed = 1.8;
+      behaviorSpeed = burstSpeed;
     } else {
       burstCooldown -= dt;
       if (burstCooldown <= 0) {
         burstLeft = 0.55;
         burstCooldown = 2.6 + Math.random() * 1.2;
-        behaviorSpeed = 1.8;
+        behaviorSpeed = burstSpeed;
       } else {
         behaviorSpeed = 0.9;
       }
