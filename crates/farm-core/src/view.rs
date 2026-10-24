@@ -487,6 +487,66 @@ pub struct RanchCodexTraitView {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct PondWaterView {
+    pub temperature_tenths: i32,
+    pub temperature_label: String,
+    pub oxygen: u32,
+    pub cleanliness: u32,
+    pub ammonia: u32,
+    pub score: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PondFishView {
+    pub fish_id: String,
+    pub name: String,
+    pub count: u32,
+    pub weight_tenths: u32,
+    pub weight_label: String,
+    pub quality: u8,
+    pub quality_label: String,
+    pub market_weight_tenths: u32,
+    pub market_weight_label: String,
+    pub ready: bool,
+    pub progress_pct: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PondStockView {
+    pub fish_id: String,
+    pub name: String,
+    pub have: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PondView {
+    pub built: bool,
+    pub build_level: u32,
+    pub build_cost: u64,
+    pub can_build: bool,
+    pub build_missing: String,
+    pub water: Option<PondWaterView>,
+    pub fish: Vec<PondFishView>,
+    pub stock: Vec<PondStockView>,
+    pub capacity: u32,
+    pub stock_count: u32,
+    pub species_cap: usize,
+    pub species_count: usize,
+    pub aerator: bool,
+    pub plants: bool,
+    pub aerator_cost: u64,
+    pub plants_cost: u64,
+    pub feed_today: u32,
+    pub feed_max: u32,
+    pub can_feed: bool,
+    pub can_clean: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RanchCodexKindView {
     pub kind: RanchAnimalKind,
     pub label: String,
@@ -1113,6 +1173,7 @@ pub struct Snapshot {
     pub pets: Vec<PetView>,
     pub pet_care: PetCareView,
     pub ranch: RanchView,
+    pub pond: PondView,
     pub workshop: WorkshopView,
     pub fishing: FishingView,
     pub room: RoomView,
@@ -2556,6 +2617,120 @@ impl Game {
                 })
                 .collect(),
         };
+        let pond_view = if let Some(pond) = self.state.pond.pond() {
+            let today = &self.state.daily.day;
+            let feed_today = if pond.last_feed_day == *today {
+                pond.feed_today
+            } else {
+                0
+            };
+            let fish_views: Vec<PondFishView> = pond
+                .fish
+                .iter()
+                .map(|fish| {
+                    let def = fishing::fish(&fish.fish_id);
+                    let market = crate::pond::market_weight_tenths(&fish.fish_id);
+                    PondFishView {
+                        fish_id: fish.fish_id.clone(),
+                        name: def
+                            .map(|def| def.name)
+                            .unwrap_or(&fish.fish_id)
+                            .to_string(),
+                        count: fish.count,
+                        weight_tenths: fish.weight_tenths,
+                        weight_label: format!("{:.1} kg", f64::from(fish.weight_tenths) / 10.0),
+                        quality: fish.quality,
+                        quality_label: crate::ranch::quality_name(fish.quality).into(),
+                        market_weight_tenths: market,
+                        market_weight_label: format!("{:.1} kg", f64::from(market) / 10.0),
+                        ready: fish.weight_tenths >= market,
+                        progress_pct: if market == 0 {
+                            100
+                        } else {
+                            fish.weight_tenths.saturating_mul(100).min(market * 100) / market
+                        },
+                    }
+                })
+                .collect();
+            let stock: Vec<PondStockView> = self
+                .state
+                .inventory
+                .iter()
+                .filter(|(key, qty)| key.starts_with("fish:") && **qty > 0)
+                .filter_map(|(key, qty)| {
+                    let id = key.strip_prefix("fish:")?;
+                    let def = fishing::fish(id)?;
+                    if def.rarity == fishing::FishRarity::King {
+                        return None;
+                    }
+                    Some(PondStockView {
+                        fish_id: id.to_string(),
+                        name: def.name.to_string(),
+                        have: *qty,
+                    })
+                })
+                .collect();
+            PondView {
+                built: true,
+                build_level: crate::pond::POND_BUILD_LEVEL,
+                build_cost: crate::pond::POND_BUILD_COST,
+                can_build: false,
+                build_missing: String::new(),
+                water: Some(PondWaterView {
+                    temperature_tenths: pond.temperature_tenths,
+                    temperature_label: format!("{:.1}°C", f64::from(pond.temperature_tenths) / 10.0),
+                    oxygen: pond.oxygen,
+                    cleanliness: pond.cleanliness,
+                    ammonia: pond.ammonia,
+                    score: pond.water_score(),
+                }),
+                fish: fish_views,
+                stock,
+                capacity: crate::pond::POND_CAPACITY,
+                stock_count: pond.total_count(),
+                species_cap: crate::pond::POND_SPECIES_CAP,
+                species_count: pond.species_count(),
+                aerator: pond.aerator,
+                plants: pond.plants,
+                aerator_cost: crate::pond::POND_AERATOR_COST,
+                plants_cost: crate::pond::POND_PLANTS_COST,
+                feed_today,
+                feed_max: crate::pond::POND_FEED_PER_DAY,
+                can_feed: feed_today < crate::pond::POND_FEED_PER_DAY,
+                can_clean: today.is_empty() || pond.last_clean_day != *today,
+            }
+        } else {
+            let level_ok = self.state.level >= crate::pond::POND_BUILD_LEVEL;
+            let coins_ok = self.state.coins >= crate::pond::POND_BUILD_COST;
+            PondView {
+                built: false,
+                build_level: crate::pond::POND_BUILD_LEVEL,
+                build_cost: crate::pond::POND_BUILD_COST,
+                can_build: level_ok && coins_ok,
+                build_missing: if !level_ok {
+                    format!("需要农场 {} 级", crate::pond::POND_BUILD_LEVEL)
+                } else if !coins_ok {
+                    format!("金币不够（{}）", crate::pond::POND_BUILD_COST)
+                } else {
+                    String::new()
+                },
+                water: None,
+                fish: Vec::new(),
+                stock: Vec::new(),
+                capacity: crate::pond::POND_CAPACITY,
+                stock_count: 0,
+                species_cap: crate::pond::POND_SPECIES_CAP,
+                species_count: 0,
+                aerator: false,
+                plants: false,
+                aerator_cost: crate::pond::POND_AERATOR_COST,
+                plants_cost: crate::pond::POND_PLANTS_COST,
+                feed_today: 0,
+                feed_max: crate::pond::POND_FEED_PER_DAY,
+                can_feed: false,
+                can_clean: false,
+            }
+        };
         let pet_care = PetCareView {
             dog_bed: self.state.pet_care.dog_bed,
             cat_bed: self.state.pet_care.cat_bed,
@@ -2694,6 +2869,7 @@ impl Game {
             pets,
             pet_care,
             ranch,
+            pond: pond_view,
             workshop,
             fishing,
             room: self.room_view(crate::room::LIVING_ROOM, now).expect("living room"),

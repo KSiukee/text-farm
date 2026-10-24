@@ -25,6 +25,7 @@ const mysteryWalletScreenshotPath = join(root, "docs", "mystery-wallet-v083.png"
 const decorScreenshotPath = join(root, "docs", "decor-shop-v085.png");
 const furnitureCodexScreenshotPath = join(root, "docs", "furniture-codex-v087.png");
 const specimenScreenshotPath = join(root, "docs", "specimen-v088.png");
+const pondScreenshotPath = join(root, "docs", "pond-v093.png");
 const port = 9333;
 const checks = [];
 let child = null;
@@ -103,6 +104,7 @@ function seedSave() {
   state.pets.push(boarded);
   state.petSeq = 4;
   state.ranch = { pens: [] };
+  state.pond = { ponds: [] };
   // 真机档里邻居牧场可能今天已经帮过/偷过；测试档统一重置，否则帮忙按钮全是灰的。
   state.npcs = (state.npcs || []).map((npc) => ({
     ...npc,
@@ -152,6 +154,15 @@ function seedSave() {
       state.inventory[base + suffix] = 10;
     }
   }
+  state.inventory["fish:crucian"] = 5;
+  state.fishing = state.fishing || {};
+  state.fishing.fishBatches = state.fishing.fishBatches || {};
+  state.fishing.fishBatches["crucian"] = {
+    count: 5,
+    totalWeightTenths: 100,
+    totalQuality: 10,
+    totalValue: 1000,
+  };
   state.lastBoardingMonth = "2026-09";
   state.boardingDebt = 0;
   state.facilities = state.facilities || {};
@@ -519,7 +530,7 @@ try {
   );
   check(
     "tab 导航已收敛",
-    tabNames.join(",") === "我的农场,牧村,邻居农场,宠物,标本室,图鉴",
+    tabNames.join(",") === "我的农场,牧村,邻居农场,宠物,鱼塘,标本室,图鉴",
     tabNames.join(","),
   );  check("矿场图标已隐藏", !(await bodyText()).includes("矿场"));
   await clickText("图鉴");
@@ -728,8 +739,10 @@ try {
   await waitFor(async () => (saveState().inventory["ranch:feed"] || 0) > feedBefore);
   check("买到专用饲料", (saveState().inventory["ranch:feed"] || 0) > feedBefore);
   await clickText("[喂专用饲料]");
+  await waitFor(async () => saveState().ranch.pens[0].animal.quality === 2);
   check("专用饲料提升品质", saveState().ranch.pens[0].animal.quality === 2);
   await clickText("母鸡 800", false);
+  await waitFor(async () => (saveState().ranch.pens[1]?.animal?.kind ?? "") === "chicken");
   await clickText("[买专用饲料 300]");
   // 手动选两只亲本 → 预览 → 繁殖。
   await clickText("[选为亲本]", false);
@@ -1194,6 +1207,43 @@ try {
   await screenshot(furnitureCodexScreenshotPath);
   check("家具图鉴截图已保存", existsSync(furnitureCodexScreenshotPath), furnitureCodexScreenshotPath);
 
+  await clickText("鱼塘", false);
+  await waitFor(async () => {
+    const text = await bodyText();
+    return text.includes("还没有鱼塘") || text.includes("水质");
+  });
+  check("鱼塘页已打开", (await bodyText()).includes("还没有鱼塘") || (await bodyText()).includes("水质"));
+  if (!saveState().pond.ponds.length) {
+    await clickText("[建鱼塘", false);
+    await waitFor(async () => saveState().pond.ponds.length === 1);
+  }
+  check("建鱼塘", saveState().pond.ponds.length === 1);
+  check("鱼塘水质已显示", (await bodyText()).includes("溶氧"));
+  await clickText("[放养", false);
+  await waitFor(async () => (saveState().pond.ponds[0]?.fish.length ?? 0) === 1);
+  check("放养进鱼塘", (saveState().pond.ponds[0]?.fish[0]?.count ?? 0) === 5);
+  await clickText("[投喂", false);
+  await waitFor(async () => (saveState().pond.ponds[0]?.feedToday ?? 0) === 1);
+  check("鱼塘投喂", (saveState().pond.ponds[0]?.feedToday ?? 0) === 1);
+  await clickText("[清理鱼塘]");
+  await waitFor(async () => (saveState().pond.ponds[0]?.lastCleanDay || "") !== "");
+  check("清理鱼塘", (saveState().pond.ponds[0]?.lastCleanDay || "") !== "");
+  await clickText("[装增氧机", false);
+  await waitFor(async () => saveState().pond.ponds[0]?.aerator === true);
+  check("装增氧机", saveState().pond.ponds[0]?.aerator === true);
+  await advanceTimeControl("+7 天");
+  await clickText("鱼塘", false);
+  await waitFor(async () => (await bodyText()).includes("水质"));
+  await clickText("[捕捞]");
+  await waitFor(async () => saveState().pond.ponds[0]?.fish.length === 0);
+  check("捕捞商品鱼", (saveState().inventory["fish:crucian"] || 0) === 5);
+  check(
+    "捕捞回写鱼批次",
+    (saveState().fishing.fishBatches["crucian"]?.count ?? 0) >= 10,
+  );
+  await screenshot(pondScreenshotPath);
+  check("鱼塘截图已保存", existsSync(pondScreenshotPath), pondScreenshotPath);
+
   const failed = checks.filter((c) => !c.ok);
   const lines = [
     "# 文字农场 UI 点击冒烟报告",
@@ -1215,6 +1265,13 @@ try {
   if (failed.length) process.exitCode = 1;
 } catch (error) {
   console.error("UI 测试失败：", error);
+  try {
+    const body = await bodyText();
+    console.error("失败时页面：", body.slice(0, 1200));
+    await screenshot(join(root, "docs", "smoke-fail.png"));
+  } catch (inner) {
+    console.error("失败现场抓取也失败：", inner);
+  }
   process.exitCode = 2;
 } finally {
   await stopApp();

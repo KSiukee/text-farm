@@ -205,7 +205,7 @@ const topIcons = [
   { icon: "🛒", name: "神秘商店" },
 ];
 
-const tabs = ["我的农场", "牧村", "邻居农场", "宠物", "标本室", "图鉴"];
+const tabs = ["我的农场", "牧村", "邻居农场", "宠物", "鱼塘", "标本室", "图鉴"];
 
 const levelLine = computed(() => {
   const s = snapshot.value;
@@ -219,6 +219,7 @@ const produce = computed(() =>
 );
 
 const ranch = computed(() => snapshot.value?.ranch ?? null);
+const pond = computed(() => snapshot.value?.pond ?? null);
 const fishing = computed(() => snapshot.value?.fishing ?? null);
 const disciplines = computed(() => snapshot.value?.skills?.disciplines ?? []);
 const buffList = computed(() => snapshot.value?.skills?.buffs ?? []);
@@ -585,6 +586,7 @@ function selectTab(tab: string) {
     tab === "标本室" ||
     tab === "畜牧场" ||
     tab === "制造屋" ||
+    tab === "鱼塘" ||
     tab === "钓鱼" ||
     tab === "神秘商店"
   ) {
@@ -1257,6 +1259,34 @@ function deliverRanchOrder(id: string) {
 
 function enterRanchContest(pen: number) {
   void act({ type: "enterRanchContest", pen });
+}
+
+function buildPond() {
+  void act({ type: "buildPond" });
+}
+
+function stockPond(fishId: string, qty: number) {
+  void act({ type: "stockPond", fishId, qty });
+}
+
+function feedPond() {
+  void act({ type: "feedPond" });
+}
+
+function cleanPond() {
+  void act({ type: "cleanPond" });
+}
+
+function installPondAerator() {
+  void act({ type: "installPondAerator" });
+}
+
+function plantPondWeeds() {
+  void act({ type: "plantPondWeeds" });
+}
+
+function harvestPond(fishId: string) {
+  void act({ type: "harvestPond", fishId });
 }
 
 const ranchBreedNames = computed(() =>
@@ -2157,12 +2187,14 @@ onUnmounted(() => {
       <button class="tab active" type="button" disabled>畜牧场</button>
       <button class="tab" type="button" @click="selectTab('我的农场')">返回农场</button>
       <button class="tab" type="button" @click="selectTab('制造屋')">制造屋</button>
+      <button class="tab" type="button" @click="selectTab('鱼塘')">鱼塘</button>
       <button class="tab" type="button" @click="selectTab('宠物')">宠物</button>
     </nav>
     <nav v-else class="tabs ranch-tabs">
       <button class="tab active" type="button" disabled>制造屋</button>
       <button class="tab" type="button" @click="selectTab('我的农场')">返回农场</button>
       <button class="tab" type="button" @click="selectTab('畜牧场')">畜牧场</button>
+      <button class="tab" type="button" @click="selectTab('鱼塘')">鱼塘</button>
       <button class="tab" type="button" @click="selectTab('宠物')">宠物</button>
     </nav>
 
@@ -3991,6 +4023,73 @@ onUnmounted(() => {
             <span class="muted">可卖的东西都能在这里直接卖掉</span>
           </div>
         </section>
+      </div>
+
+      <div v-show="activeTab === '鱼塘'" class="pond-page">
+        <div class="level">鱼塘</div>
+        <div class="sub">
+          {{ currency }} {{ snapshot?.coins ?? 0 }}
+          <span class="muted">· 把钓到的鱼暂养催肥，长到商品规格再捕</span>
+        </div>
+        <div class="rule"></div>
+        <template v-if="!pond?.built">
+          <section class="panel">
+            <div class="panel-title">还没有鱼塘<span class="muted">需要农场 {{ pond?.buildLevel }} 级</span></div>
+            <div class="row">
+              <button class="link" type="button" :disabled="acting || !pond?.canBuild" @click="buildPond">[建鱼塘 {{ pond?.buildCost }}]</button>
+              <span class="muted">{{ pond?.buildMissing }}</span>
+            </div>
+          </section>
+        </template>
+        <template v-else>
+          <section class="panel">
+            <div class="panel-title">水质<span class="muted">评分 {{ pond?.water?.score }}/100 · 水温 {{ pond?.water?.temperatureLabel }}</span></div>
+            <div class="pond-water-grid">
+              <span>溶氧 {{ pond?.water?.oxygen }}/100</span>
+              <span>清洁 {{ pond?.water?.cleanliness }}/100</span>
+              <span>氨氮 {{ pond?.water?.ammonia }}/100</span>
+              <span>容量 {{ pond?.stockCount }}/{{ pond?.capacity }} · {{ pond?.speciesCount }}/{{ pond?.speciesCap }} 种</span>
+            </div>
+            <div class="ranch-meters">
+              <span class="ranch-meter"><em>溶氧</em><span class="ranch-meter-track"><i :style="{ width: `${pond?.water?.oxygen ?? 0}%` }"></i></span></span>
+              <span class="ranch-meter"><em>清洁</em><span class="ranch-meter-track clean"><i :style="{ width: `${pond?.water?.cleanliness ?? 0}%` }"></i></span></span>
+              <span class="ranch-meter"><em>氨氮</em><span class="ranch-meter-track dirty"><i :style="{ width: `${pond?.water?.ammonia ?? 0}%` }"></i></span></span>
+            </div>
+            <div class="ranch-actions">
+              <button class="link" type="button" :disabled="acting || !pond?.canFeed" @click="feedPond">[投喂 {{ pond?.feedToday }}/{{ pond?.feedMax }}]</button>
+              <button class="link" type="button" :disabled="acting || !pond?.canClean" @click="cleanPond">[清理鱼塘]</button>
+              <button v-if="!pond?.aerator" class="link" type="button" :disabled="acting" @click="installPondAerator">[装增氧机 {{ pond?.aeratorCost }}]</button>
+              <button v-if="!pond?.plants" class="link" type="button" :disabled="acting" @click="plantPondWeeds">[种水草 {{ pond?.plantsCost }}]</button>
+              <span class="muted">{{ pond?.aerator ? "增氧机已开" : "" }}{{ pond?.plants ? " · 水草已种" : "" }}</span>
+            </div>
+          </section>
+          <section class="panel">
+            <div class="panel-title">放养<span class="muted">背包里的鱼，一次最多 5 条；最多混养 4 种</span></div>
+            <div v-if="!(pond?.stock.length)" class="muted">背包里没有鱼，先去钓鱼。</div>
+            <div v-for="item in pond?.stock ?? []" :key="item.fishId" class="pond-stock">
+              <span>{{ item.name }} ×{{ item.have }}</span>
+              <button class="link" type="button" :disabled="acting" @click="stockPond(item.fishId, Math.min(5, item.have))">
+                [放养×{{ Math.min(5, item.have) }}]
+              </button>
+            </div>
+          </section>
+          <section class="panel">
+            <div class="panel-title">塘里<span class="muted">长到商品规格才能捕，捕上来按重量/品质进鱼篓</span></div>
+            <div v-if="!(pond?.fish.length)" class="muted">还没有放鱼。</div>
+            <div v-for="fish in pond?.fish ?? []" :key="fish.fishId" class="pond-fish">
+              <div>
+                <strong>{{ fish.name }}</strong> ×{{ fish.count }}
+                <span class="muted">· {{ fish.qualityLabel }} · {{ fish.weightLabel }} / {{ fish.marketWeightLabel }}</span>
+              </div>
+              <div class="ranch-meter">
+                <em>成长</em>
+                <span class="ranch-meter-track"><i :style="{ width: `${fish.progressPct}%` }"></i></span>
+                <span class="muted">{{ fish.progressPct }}%</span>
+              </div>
+              <button class="link" type="button" :disabled="acting || !fish.ready" @click="harvestPond(fish.fishId)">[捕捞]</button>
+            </div>
+          </section>
+        </template>
       </div>
 
       <div v-show="activeTab === '钓鱼'">

@@ -135,6 +135,13 @@ impl Game {
             Action::AcceptRanchOrder { id } => self.accept_ranch_order(&id, now)?,
             Action::DeliverRanchOrder { id } => self.deliver_ranch_order(&id, now)?,
             Action::EnterRanchContest { pen } => self.enter_ranch_contest(pen, now)?,
+            Action::BuildPond => self.build_pond(now)?,
+            Action::StockPond { fish_id, qty } => self.stock_pond(&fish_id, qty, now)?,
+            Action::FeedPond => self.feed_pond(now)?,
+            Action::CleanPond => self.clean_pond(now)?,
+            Action::InstallPondAerator => self.install_pond_aerator(now)?,
+            Action::PlantPondWeeds => self.plant_pond_weeds(now)?,
+            Action::HarvestPond { fish_id } => self.harvest_pond(&fish_id, now)?,
             Action::BuildWorkshop => self.build_workshop(now)?,
             Action::ExpandWorkshop => self.expand_workshop(now)?,
             Action::InstallEquipment { slot, kind } => self.install_equipment(slot, kind, now)?,
@@ -2985,6 +2992,218 @@ impl Game {
         Ok(effects)
     }
 
+    fn build_pond(&mut self, now: i64) -> Result<Vec<Effect>, GameError> {
+        if self.state.pond.built() {
+            return Err(GameError::PondExists);
+        }
+        if self.state.level < crate::pond::POND_BUILD_LEVEL {
+            return Err(GameError::LevelTooLow {
+                need: crate::pond::POND_BUILD_LEVEL,
+            });
+        }
+        let cost = crate::pond::POND_BUILD_COST;
+        if self.state.coins < cost {
+            return Err(GameError::NotEnoughCoins { need: cost });
+        }
+        self.state.coins -= cost;
+        let mut pond = crate::pond::Pond::new(1, now);
+        pond.set_season(self.state.season);
+        self.state.pond.ponds.push(pond);
+        let text = format!("你挖了一口鱼塘，花费 {cost}。钓到的鱼可以放进来养大");
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn stock_pond(&mut self, fish_id: &str, qty: u32, now: i64) -> Result<Vec<Effect>, GameError> {
+        let def = crate::fishing::fish(fish_id).ok_or(GameError::UnknownFish)?;
+        if def.rarity == crate::fishing::FishRarity::King {
+            return Err(GameError::PondKingRefused);
+        }
+        let qty = qty.clamp(1, 5);
+        let key = format!("fish:{fish_id}");
+        let have = self.state.inventory.get(&key).copied().unwrap_or(0);
+        if have < qty {
+            return Err(GameError::NotEnoughItems);
+        }
+        let (total, species, has_species) = {
+            let pond = self.state.pond.pond().ok_or(GameError::PondMissing)?;
+            (
+                pond.total_count(),
+                pond.species_count(),
+                pond.fish.iter().any(|fish| fish.fish_id == fish_id),
+            )
+        };
+        if total + qty > crate::pond::POND_CAPACITY {
+            return Err(GameError::PondFull);
+        }
+        if !has_species && species >= crate::pond::POND_SPECIES_CAP {
+            return Err(GameError::PondSpeciesFull);
+        }
+        let (weight, quality) = self
+            .state
+            .fishing
+            .fish_batches
+            .get(fish_id)
+            .map(|batch| {
+                (
+                    batch.avg_weight_tenths().max(1),
+                    batch.avg_quality().clamp(1, 3) as u8,
+                )
+            })
+            .unwrap_or((12, 1));
+        if have == qty {
+            self.state.inventory.remove(&key);
+        } else {
+            self.state.inventory.insert(key, have - qty);
+        }
+        if let Some(pond) = self.state.pond.pond_mut() {
+            pond.stock(fish_id, qty, weight, quality, now);
+        }
+        let text = format!(
+            "你把 {qty} 条{}{}放进鱼塘（平均 {:.1} kg）",
+            crate::ranch::quality_name(quality),
+            def.name,
+            f64::from(weight) / 10.0
+        );
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn feed_pond(&mut self, now: i64) -> Result<Vec<Effect>, GameError> {
+        let today = self.state.daily.day.clone();
+        {
+            let pond = self.state.pond.pond_mut().ok_or(GameError::PondMissing)?;
+            if pond.last_feed_day != today {
+                pond.last_feed_day = today.clone();
+                pond.feed_today = 0;
+            }
+            if pond.feed_today >= crate::pond::POND_FEED_PER_DAY {
+                return Err(GameError::PondFeedLimit);
+            }
+        }
+        let Some(key) = self
+            .state
+            .inventory
+            .iter()
+            .find(|(key, qty)| key.starts_with("crop:") && **qty > 0)
+            .map(|(key, _)| key.clone())
+        else {
+            return Err(GameError::NotEnoughItems);
+        };
+        let left = self.state.inventory.get(&key).copied().unwrap_or(0);
+        if left <= 1 {
+            self.state.inventory.remove(&key);
+        } else {
+            self.state.inventory.insert(key, left - 1);
+        }
+        if let Some(pond) = self.state.pond.pond_mut() {
+            pond.feed();
+            pond.feed_today = pond.feed_today.saturating_add(1);
+        }
+        let text = "你给鱼塘投喂了一份作物，鱼开始抢食".to_string();
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn clean_pond(&mut self, now: i64) -> Result<Vec<Effect>, GameError> {
+        let today = self.state.daily.day.clone();
+        let pond = self.state.pond.pond_mut().ok_or(GameError::PondMissing)?;
+        if !today.is_empty() && pond.last_clean_day == today {
+            return Err(GameError::PondCleanDone);
+        }
+        pond.clean();
+        pond.last_clean_day = today;
+        let text = format!(
+            "你清理了鱼塘，水质回到 {}，氨氮降到 {}",
+            pond.cleanliness, pond.ammonia
+        );
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn install_pond_aerator(&mut self, now: i64) -> Result<Vec<Effect>, GameError> {
+        let pond = self.state.pond.pond_mut().ok_or(GameError::PondMissing)?;
+        if pond.aerator {
+            return Err(GameError::PondUpgradeOwned);
+        }
+        let cost = crate::pond::POND_AERATOR_COST;
+        if self.state.coins < cost {
+            return Err(GameError::NotEnoughCoins { need: cost });
+        }
+        self.state.coins -= cost;
+        if let Some(pond) = self.state.pond.pond_mut() {
+            pond.aerator = true;
+        }
+        let text = format!("你在鱼塘装了增氧机，花费 {cost}，溶氧上限提高");
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn plant_pond_weeds(&mut self, now: i64) -> Result<Vec<Effect>, GameError> {
+        let pond = self.state.pond.pond_mut().ok_or(GameError::PondMissing)?;
+        if pond.plants {
+            return Err(GameError::PondUpgradeOwned);
+        }
+        let cost = crate::pond::POND_PLANTS_COST;
+        if self.state.coins < cost {
+            return Err(GameError::NotEnoughCoins { need: cost });
+        }
+        self.state.coins -= cost;
+        if let Some(pond) = self.state.pond.pond_mut() {
+            pond.plants = true;
+        }
+        let text = format!("你在鱼塘种了水草，花费 {cost}，水质更稳");
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn harvest_pond(&mut self, fish_id: &str, now: i64) -> Result<Vec<Effect>, GameError> {
+        let (count, weight, quality, name) = {
+            let pond = self.state.pond.pond().ok_or(GameError::PondMissing)?;
+            let fish = pond
+                .fish
+                .iter()
+                .find(|fish| fish.fish_id == fish_id)
+                .ok_or(GameError::PondFishNotReady)?;
+            let market = crate::pond::market_weight_tenths(fish_id);
+            if fish.weight_tenths < market {
+                return Err(GameError::PondFishNotReady);
+            }
+            let def = crate::fishing::fish(fish_id).ok_or(GameError::UnknownFish)?;
+            (
+                fish.count,
+                fish.weight_tenths,
+                fish.quality,
+                def.name.to_string(),
+            )
+        };
+        let def = crate::fishing::fish(fish_id).ok_or(GameError::UnknownFish)?;
+        let price = crate::pond::harvest_price(def, weight, quality);
+        if let Some(pond) = self.state.pond.pond_mut() {
+            pond.remove_fish(fish_id);
+        }
+        *self
+            .state
+            .inventory
+            .entry(format!("fish:{fish_id}"))
+            .or_insert(0) += count;
+        for _ in 0..count {
+            self.state
+                .fishing
+                .fish_batches
+                .entry(fish_id.to_string())
+                .or_default()
+                .add(weight, u32::from(quality), price);
+        }
+        let text = format!(
+            "你从鱼塘捕了 {count} 条{name}（平均 {:.1} kg，{}）",
+            f64::from(weight) / 10.0,
+            crate::ranch::quality_name(quality)
+        );
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
     fn ranch_item_count(&self, base: &str) -> u32 {
         (1..=3)
             .map(|quality| {
@@ -5148,6 +5367,26 @@ impl Game {
         let contest_week = crate::orders::week_start(today);
         if self.state.ranch_contest.ensure_week(&contest_week) {
             let text = format!("新的一周牧场评比开始了（{contest_week}）");
+            self.push_log(now, text.clone());
+            effects.push(Effect::Log { text });
+            changed = true;
+        }
+        let season = self.state.season;
+        let mut low_oxygen = false;
+        if let Some(pond) = self.state.pond.pond_mut() {
+            pond.set_season(season);
+            if pond.tick(now) {
+                changed = true;
+            }
+            if pond.oxygen < 20 && !pond.low_oxygen_logged {
+                pond.low_oxygen_logged = true;
+                low_oxygen = true;
+            } else if pond.oxygen >= 30 {
+                pond.low_oxygen_logged = false;
+            }
+        }
+        if low_oxygen {
+            let text = "鱼塘缺氧，鱼开始浮头：装增氧机或清理鱼塘".to_string();
             self.push_log(now, text.clone());
             effects.push(Effect::Log { text });
             changed = true;

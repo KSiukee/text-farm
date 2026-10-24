@@ -15,7 +15,7 @@ use crate::room::RoomState;
 use crate::skills::PlayerSkills;
 use crate::workshop::WorkshopState;
 
-pub const SAVE_SCHEMA: u32 = 40;
+pub const SAVE_SCHEMA: u32 = 41;
 pub const MAX_LEVEL: u32 = 30;
 pub const PLOT_COUNT: usize = 8;
 pub const PLOT_MAX_TIER: u8 = 3;
@@ -410,6 +410,8 @@ pub struct GameState {
     #[serde(default)]
     pub ranch_contest: crate::ranch_contest::RanchContestState,
     #[serde(default)]
+    pub pond: crate::pond::PondState,
+    #[serde(default)]
     pub workshop: WorkshopState,
     #[serde(default)]
     pub fishing: FishingState,
@@ -496,6 +498,7 @@ impl Game {
             ranch: RanchState::new(),
             ranch_orders: Default::default(),
             ranch_contest: Default::default(),
+            pond: Default::default(),
             workshop: WorkshopState::new(),
             fishing: FishingState::new(),
             skills: PlayerSkills::new(),
@@ -636,6 +639,12 @@ impl Game {
         shift(&mut self.state.last_tick_at);
         shift(&mut self.state.last_npc_tick_at);
         shift(&mut self.state.last_seen_at);
+        for pond in &mut self.state.pond.ponds {
+            shift(&mut pond.last_tick_at);
+            for fish in &mut pond.fish {
+                shift(&mut fish.stocked_at);
+            }
+        }
 
         let days = delta_ms / 86_400_000;
         if days > 0 {

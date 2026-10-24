@@ -150,6 +150,27 @@ pub enum Action {
     EnterRanchContest {
         pen: u8,
     },
+    /// 建鱼塘（8 级 / 8,000）。
+    BuildPond,
+    /// 把背包里的鱼放进鱼塘（每次最多 5 条）。
+    StockPond {
+        #[serde(rename = "fishId")]
+        fish_id: String,
+        qty: u32,
+    },
+    /// 给鱼塘投喂一份作物。
+    FeedPond,
+    /// 清理鱼塘。
+    CleanPond,
+    /// 装增氧机。
+    InstallPondAerator,
+    /// 种水草。
+    PlantPondWeeds,
+    /// 捕捞一种鱼（达到商品规格才可捕）。
+    HarvestPond {
+        #[serde(rename = "fishId")]
+        fish_id: String,
+    },
     BuildWorkshop,
     ExpandWorkshop,
     InstallEquipment {

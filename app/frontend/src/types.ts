@@ -289,6 +289,58 @@ export interface RanchOrderView {
   canDeliver: boolean;
 }
 
+export interface PondWaterView {
+  temperatureTenths: number;
+  temperatureLabel: string;
+  oxygen: number;
+  cleanliness: number;
+  ammonia: number;
+  score: number;
+}
+
+export interface PondFishView {
+  fishId: string;
+  name: string;
+  count: number;
+  weightTenths: number;
+  weightLabel: string;
+  quality: number;
+  qualityLabel: string;
+  marketWeightTenths: number;
+  marketWeightLabel: string;
+  ready: boolean;
+  progressPct: number;
+}
+
+export interface PondStockView {
+  fishId: string;
+  name: string;
+  have: number;
+}
+
+export interface PondView {
+  built: boolean;
+  buildLevel: number;
+  buildCost: number;
+  canBuild: boolean;
+  buildMissing: string;
+  water: PondWaterView | null;
+  fish: PondFishView[];
+  stock: PondStockView[];
+  capacity: number;
+  stockCount: number;
+  speciesCap: number;
+  speciesCount: number;
+  aerator: boolean;
+  plants: boolean;
+  aeratorCost: number;
+  plantsCost: number;
+  feedToday: number;
+  feedMax: number;
+  canFeed: boolean;
+  canClean: boolean;
+}
+
 export interface RanchCodexTraitView {
   key: string;
   label: string;
@@ -1192,6 +1244,7 @@ export interface Snapshot {
   pets: PetView[];
   petCare: PetCareView;
   ranch: RanchView;
+  pond: PondView;
   workshop: WorkshopView;
   fishing: FishingView;
   room: RoomView;
@@ -1273,6 +1326,13 @@ export type Action =
   | { type: "acceptRanchOrder"; id: string }
   | { type: "deliverRanchOrder"; id: string }
   | { type: "enterRanchContest"; pen: number }
+  | { type: "buildPond" }
+  | { type: "stockPond"; fishId: string; qty: number }
+  | { type: "feedPond" }
+  | { type: "cleanPond" }
+  | { type: "installPondAerator" }
+  | { type: "plantPondWeeds" }
+  | { type: "harvestPond"; fishId: string }
   | { type: "buildWorkshop" }
   | { type: "expandWorkshop" }
   | { type: "installEquipment"; slot: number; kind: EquipmentKind }

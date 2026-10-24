@@ -1,6 +1,6 @@
 use farm_core::{
     migrate_save, ranch_contest_rank_for, ranch_contest_score, Action, EquipmentKind,
-    EquipmentRecipe, Game, GameError, PetBreed, PetLocation, PetState, RanchAnimal,
+    EquipmentRecipe, FishBatch, Game, GameError, PetBreed, PetLocation, PetState, RanchAnimal,
     RanchAnimalKind, RanchRecipe, RanchTrait, WorkshopJob, RANCH_BREED_COOLDOWN_MS, RANCH_YOUNG_MS,
 };
 
@@ -1412,6 +1412,164 @@ fn v40_save_adds_ranch_contest() {
     assert_eq!(migrated["state"]["ranchContest"]["entered"], false);
     assert_eq!(migrated["state"]["ranchContest"]["medals"], 0);
     assert_eq!(migrated["state"]["ranchContest"]["bestRank"], 0);
+}
+
+#[test]
+fn v41_save_adds_pond() {
+    let value = serde_json::json!({
+        "schema": 40,
+        "savedAt": 0,
+        "state": {},
+        "content": {}
+    });
+    let migrated = migrate_save(value).unwrap();
+    assert_eq!(migrated["schema"], farm_core::SAVE_SCHEMA);
+    assert_eq!(migrated["state"]["pond"]["ponds"], serde_json::json!([]));
+}
+
+fn pond_game() -> Game {
+    let mut game = Game::new(0);
+    game.state_mut().level = 8;
+    game.state_mut().coins = 20_000;
+    game.state_mut().daily.day = "2026-10-24".into();
+    game.state_mut()
+        .inventory
+        .insert("crop:xiaobaicai".into(), 3);
+    game.state_mut().inventory.insert("fish:crucian".into(), 5);
+    game.state_mut().fishing.fish_batches.insert(
+        "crucian".into(),
+        FishBatch {
+            count: 5,
+            total_weight_tenths: 100,
+            total_quality: 10,
+            total_value: 1_000,
+        },
+    );
+    game
+}
+
+#[test]
+fn pond_build_stock_feed_and_harvest() {
+    let mut game = pond_game();
+    game.dispatch(Action::BuildPond, 0).unwrap();
+    game.dispatch(
+        Action::StockPond {
+            fish_id: "crucian".into(),
+            qty: 5,
+        },
+        0,
+    )
+    .unwrap();
+    let pond = game.state().pond.pond().unwrap();
+    assert_eq!(pond.total_count(), 5);
+    assert_eq!(game.state().inventory.get("fish:crucian"), None);
+
+    game.dispatch(Action::FeedPond, 0).unwrap();
+    assert_eq!(game.state().pond.pond().unwrap().feed_today, 1);
+    game.dispatch(Action::CleanPond, 0).unwrap();
+    game.dispatch(Action::InstallPondAerator, 0).unwrap();
+    game.dispatch(Action::PlantPondWeeds, 0).unwrap();
+    assert!(game.state().pond.pond().unwrap().aerator);
+    assert!(game.state().pond.pond().unwrap().plants);
+
+    game.dispatch(
+        Action::HarvestPond {
+            fish_id: "crucian".into(),
+        },
+        0,
+    )
+    .unwrap();
+    assert_eq!(game.state().inventory.get("fish:crucian"), Some(&5));
+    assert_eq!(game.state().pond.pond().unwrap().total_count(), 0);
+    assert_eq!(
+        game.state().fishing.fish_batches.get("crucian").unwrap().count,
+        10
+    );
+}
+
+#[test]
+fn pond_harvest_needs_market_size_and_refuses_kings() {
+    let mut game = pond_game();
+    game.state_mut().fishing.fish_batches.insert(
+        "crucian".into(),
+        FishBatch {
+            count: 5,
+            total_weight_tenths: 40,
+            total_quality: 5,
+            total_value: 400,
+        },
+    );
+    game.dispatch(Action::BuildPond, 0).unwrap();
+    game.dispatch(
+        Action::StockPond {
+            fish_id: "crucian".into(),
+            qty: 5,
+        },
+        0,
+    )
+    .unwrap();
+    assert!(matches!(
+        game.dispatch(
+            Action::HarvestPond {
+                fish_id: "crucian".into()
+            },
+            0
+        ),
+        Err(GameError::PondFishNotReady)
+    ));
+
+    let mut game = pond_game();
+    game.state_mut()
+        .inventory
+        .insert("fish:jiang_king".into(), 1);
+    game.state_mut().fishing.fish_batches.insert(
+        "jiang_king".into(),
+        FishBatch {
+            count: 1,
+            total_weight_tenths: 40,
+            total_quality: 3,
+            total_value: 1_000,
+        },
+    );
+    game.dispatch(Action::BuildPond, 0).unwrap();
+    assert!(matches!(
+        game.dispatch(
+            Action::StockPond {
+                fish_id: "jiang_king".into(),
+                qty: 1
+            },
+            0
+        ),
+        Err(GameError::PondKingRefused)
+    ));
+}
+
+#[test]
+fn pond_time_shift_lets_fish_grow() {
+    let mut game = pond_game();
+    game.state_mut().fishing.fish_batches.insert(
+        "crucian".into(),
+        FishBatch {
+            count: 5,
+            total_weight_tenths: 40,
+            total_quality: 5,
+            total_value: 400,
+        },
+    );
+    game.dispatch(Action::BuildPond, 0).unwrap();
+    game.dispatch(
+        Action::StockPond {
+            fish_id: "crucian".into(),
+            qty: 5,
+        },
+        0,
+    )
+    .unwrap();
+    let before = game.state().pond.pond().unwrap().fish[0].weight_tenths;
+    game.shift_time(7 * 24 * 60 * 60 * 1000);
+    game.sync(0, "2026-10-31");
+    let after = game.state().pond.pond().unwrap().fish[0].weight_tenths;
+    assert!(after > before, "快进 7 天后应该长重：{before} → {after}");
 }
 
 #[test]
