@@ -465,6 +465,24 @@ try {
       existsSync(join(shadowDir, "custom", name)),
     ),
   );
+  const assetProbe = await evaluate(`(async () => {
+    try {
+      const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Zl1sAAAAASUVORK5CYII=';
+      await window.__TAURI_INTERNALS__.invoke('save_custom_asset', {
+        kind: 'avatars',
+        name: 'probe.png',
+        dataUrl: png,
+      });
+      const data = await window.__TAURI_INTERNALS__.invoke('read_custom_asset', {
+        kind: 'avatars',
+        name: 'probe.png',
+      });
+      return String(data || '').startsWith('data:image/png;base64,');
+    } catch (error) {
+      return String(error);
+    }
+  })()`);
+  check("头像文件读写可用", assetProbe === true, String(assetProbe));
   await screenshot(playerScreenshotPath);
   check("玩家页截图已保存", existsSync(playerScreenshotPath), playerScreenshotPath);
   await clickText("[返回农场]");
