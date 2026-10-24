@@ -1,8 +1,8 @@
 {
-  "version": 1,
+  "version": 2,
   "source": "generated/pil",
   "license": "in-house",
-  "style": "light pixel, underwater cross-section",
+  "style": "light pixel, underwater cross-section, distinct per water body",
   "master": [
     230,
     100

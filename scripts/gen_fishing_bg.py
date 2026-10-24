@@ -1,6 +1,7 @@
 """生成钓鱼小游戏的轻像素水域背景（creek/river/jiang/sea）。
 
-母版 230x100，最近邻放大 4x -> 920x400；无文字、无第三方素材、可重复生成。
+目标是四种水域一眼能分清：色温、地貌、主体剪影都不同。
+母版 230x100，最近邻放大 4x -> 920x400；无文字、无第三方素材。
 运行：python scripts/gen_fishing_bg.py
 """
 
@@ -16,206 +17,274 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "app" / "frontend" / "public" / "fishing"
 W, H, SCALE = 230, 100, 4
 
-PALETTE = {
-    "surface": (137, 210, 196),
-    "surface2": (99, 180, 174),
-    "shallow": (58, 140, 140),
-    "mid": (35, 104, 116),
-    "deep": (20, 73, 88),
-    "abyss": (13, 48, 63),
-    "sand": (196, 174, 120),
-    "sand_dark": (158, 133, 88),
-    "stone": (104, 118, 120),
-    "stone_dark": (76, 88, 92),
-    "silt": (96, 91, 76),
-    "plant": (74, 128, 86),
-    "plant_dark": (52, 96, 66),
-    "coral": (196, 104, 92),
-    "coral_light": (224, 144, 126),
-    "kelp": (67, 116, 72),
-    "kelp_light": (94, 146, 90),
-    "ray": (120, 196, 194),
-    "boat": (54, 50, 47),
-    "boat_light": (84, 78, 68),
+P = {
+    # 小溪：暖绿浅水
+    "creek_surface": (176, 226, 188),
+    "creek_1": (111, 191, 154),
+    "creek_2": (63, 154, 130),
+    "creek_3": (42, 116, 104),
+    "creek_sand": (217, 192, 137),
+    "creek_sand_dark": (185, 154, 98),
+    "creek_grass": (79, 139, 79),
+    "creek_grass_light": (111, 175, 95),
+    "creek_rock": (138, 154, 138),
+    "creek_rock_dark": (104, 122, 108),
+    # 河流：冷蓝 + 灰岩
+    "river_surface": (168, 216, 224),
+    "river_1": (90, 166, 184),
+    "river_2": (46, 127, 150),
+    "river_3": (29, 92, 116),
+    "river_4": (18, 66, 86),
+    "river_rock": (125, 138, 140),
+    "river_rock_light": (158, 170, 170),
+    "river_rock_dark": (90, 103, 107),
+    "river_gravel": (154, 143, 117),
+    "river_log": (122, 90, 58),
+    "river_log_light": (154, 116, 76),
+    # 江面：暗蓝灰 + 船/桥
+    "jiang_surface": (127, 166, 176),
+    "jiang_1": (63, 111, 128),
+    "jiang_2": (36, 79, 99),
+    "jiang_3": (20, 53, 69),
+    "jiang_4": (11, 34, 49),
+    "jiang_silt": (95, 90, 74),
+    "jiang_silt_dark": (70, 66, 54),
+    "jiang_boat": (43, 42, 40),
+    "jiang_boat_light": (72, 68, 62),
+    "jiang_rust": (138, 90, 58),
+    "jiang_rope": (110, 102, 80),
+    # 大海：深蓝 + 珊瑚
+    "sea_surface": (143, 208, 232),
+    "sea_1": (63, 158, 196),
+    "sea_2": (30, 111, 158),
+    "sea_3": (15, 74, 120),
+    "sea_4": (8, 47, 82),
+    "sea_sand": (214, 196, 143),
+    "sea_sand_dark": (180, 158, 112),
+    "coral": (224, 106, 90),
+    "coral_light": (242, 154, 122),
+    "coral_pink": (201, 79, 109),
+    "kelp": (63, 138, 90),
+    "kelp_light": (99, 176, 111),
+    "fish_yellow": (255, 209, 102),
+    "fish_orange": (255, 138, 91),
+    "ray": (170, 232, 238),
 }
 
 rng = random.Random(20261023)
 
 
-def rect(d: ImageDraw.ImageDraw, x0: int, y0: int, x1: int, y1: int, color: str) -> None:
-    d.rectangle([x0, y0, x1, y1], fill=PALETTE[color])
+def rect(d: ImageDraw.ImageDraw, x0: int, y0: int, x1: int, y1: int, color: tuple) -> None:
+    d.rectangle([x0, y0, x1, y1], fill=color)
 
 
-def edge_dither(
-    d: ImageDraw.ImageDraw, y0: int, y1: int, top: str, bottom: str, step: int = 2
-) -> None:
-    for y in range(y0, y1 + 1):
-        for x in range(0, W, step):
-            if (x // step + y // step) % 2 == 0:
-                d.point((x, y), fill=PALETTE[bottom])
-            else:
-                d.point((x, y), fill=PALETTE[top])
+def hband(d: ImageDraw.ImageDraw, y0: int, y1: int, color: tuple) -> None:
+    rect(d, 0, y0, W - 1, y1, color)
 
 
-def water_base(d: ImageDraw.ImageDraw, shallow: str, mid: str, deep: str) -> None:
-    rect(d, 0, 0, W - 1, 6, "surface2")
-    rect(d, 0, 7, W - 1, 17, shallow)
-    rect(d, 0, 18, W - 1, 30, mid)
-    rect(d, 0, 31, W - 1, 44, mid)
-    rect(d, 0, 45, W - 1, 62, deep)
-    rect(d, 0, 63, W - 1, 79, "abyss")
-
-    # 水中悬浮微粒
-    for _ in range(42):
-        x = rng.randint(2, W - 3)
-        y = rng.randint(10, 72)
-        d.point((x, y), fill=PALETTE["surface2"])
+def water(d: ImageDraw.ImageDraw, colors: tuple[tuple, ...], bands: tuple[int, ...]) -> None:
+    start = 0
+    for color, end in zip(colors, bands):
+        hband(d, start, end, color)
+        start = end + 1
 
 
-def light_rays(image: Image.Image, count: int, alpha: int = 34) -> Image.Image:
-    """低透明度斜光柱；只在背景上叠一层，不盖住鱼和框。"""
+def rays(image: Image.Image, count: int, alpha: int = 40) -> Image.Image:
     overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(overlay)
     for i in range(count):
-        x = 14 + i * 28 + rng.randint(-4, 4)
-        width = rng.randint(7, 13)
+        x = 8 + i * (W // max(1, count)) + rng.randint(-4, 4)
+        width = rng.randint(8, 16)
         d.polygon(
-            [
-                (x, 8),
-                (x + width, 8),
-                (x + width + 26, 66),
-                (x + 26, 66),
-            ],
-            fill=(*PALETTE["ray"], alpha),
+            [(x, 6), (x + width, 6), (x + width + 30, 74), (x + 30, 74)],
+            fill=(*P["ray"], alpha),
         )
     return Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB")
 
 
-def floor(d: ImageDraw.ImageDraw, color: str = "sand", top: int = 78) -> None:
-    rect(d, 0, top, W - 1, H - 1, color)
-    for x in range(0, W, 3):
-        y = top + rng.randint(0, 2)
-        d.point((x, y), fill=PALETTE["sand_dark"])
-    edge_dither(d, H - 9, H - 1, color, "sand_dark")
+def surface_waves(d: ImageDraw.ImageDraw, color: tuple, y: int = 4) -> None:
+    for x in range(0, W, 7):
+        if rng.random() < 0.7:
+            d.rectangle([x, y, x + rng.randint(2, 5), y], fill=color)
 
 
-def pebbles(d: ImageDraw.ImageDraw, count: int, base: str = "stone") -> None:
-    for _ in range(count):
-        x = rng.randint(4, W - 8)
-        y = rng.randint(80, H - 5)
-        w = rng.randint(2, 5)
-        h = rng.randint(1, 2)
-        d.ellipse([x, y, x + w, y + h], fill=PALETTE[base])
-        d.point((x, y), fill=PALETTE["stone_dark"])
-
-
-def reed(d: ImageDraw.ImageDraw, x: int, height: int) -> None:
-    for i in range(height):
-        d.point((x, H - 8 - i), fill=PALETTE["plant"])
-    d.rectangle([x - 1, H - 10 - height, x + 1, H - 7 - height], fill=PALETTE["plant_dark"])
+def tiny_fish(d: ImageDraw.ImageDraw, x: int, y: int, color: tuple) -> None:
+    d.rectangle([x, y, x + 3, y + 1], fill=color)
+    d.point((x - 1, y + 1), fill=color)
+    d.point((x + 4, y), fill=color)
 
 
 def creek() -> Image.Image:
-    img = Image.new("RGB", (W, H), PALETTE["shallow"])
+    img = Image.new("RGB", (W, H), P["creek_1"])
     d = ImageDraw.Draw(img)
-    water_base(d, "shallow", "mid", "deep")
-    img = light_rays(img, 4)
-    d = ImageDraw.Draw(img)
-    floor(d, "sand", 79)
-    pebbles(d, 22, "stone")
-    # 左右浅滩和水草
-    for x in (10, 16, 21, 204, 211, 218):
-        reed(d, x, rng.randint(12, 24))
-    # 水面浮萍
-    for x in (38, 44, 150, 157, 163):
-        d.ellipse([x, 4, x + 6, 7], fill=PALETTE["plant"])
-        d.point((x + 2, 3), fill=PALETTE["plant_dark"])
-    # 几条小鱼影（不抢主体）
-    for x, y in ((82, 56), (128, 44), (174, 63)):
-        d.rectangle([x, y, x + 4, y + 1], fill=PALETTE["deep"])
-        d.point((x - 1, y + 1), fill=PALETTE["deep"])
-    return img
+    # 暖绿浅水，底床很高（小溪浅）
+    water(d, (P["creek_surface"], P["creek_1"], P["creek_2"], P["creek_3"]), (6, 26, 54, 76))
+    surface_waves(d, P["creek_surface"])
+    # 左右斜坡河岸：暖沙 + 草
+    d.polygon([(0, 8), (30, 18), (54, 100), (0, 100)], fill=P["creek_sand"])
+    d.polygon([(0, 8), (30, 18), (39, 58), (0, 58)], fill=P["creek_grass"])
+    d.polygon([(230, 20), (202, 26), (178, 100), (230, 100)], fill=P["creek_sand"])
+    d.polygon([(230, 20), (202, 26), (196, 44), (230, 52)], fill=P["creek_grass"])
+    # 岸边草丛
+    for x, h in ((8, 11), (14, 15), (21, 9), (27, 13), (208, 12), (215, 16), (222, 9)):
+        for i in range(h):
+            d.point((x + (i // 5), 58 - i), fill=P["creek_grass_light"])
+    # 浅滩沙底
+    hband(d, 76, 99, P["creek_sand"])
+    for x in range(0, W, 5):
+        d.point((x, 77 + rng.randint(0, 2)), fill=P["creek_sand_dark"])
+    # 鹅卵石
+    for _ in range(26):
+        x, y = rng.randint(4, W - 6), rng.randint(80, 96)
+        d.ellipse([x, y, x + rng.randint(2, 5), y + 1], fill=P["creek_rock"])
+        d.point((x, y), fill=P["creek_rock_dark"])
+    # 水草
+    for x in (34, 40, 190, 196, 202):
+        for i in range(rng.randint(12, 22)):
+            d.point((x + (i // 6) % 2, 94 - i), fill=P["creek_grass"])
+    # 浮萍
+    for x in (58, 66, 142, 150, 158):
+        d.ellipse([x, 3, x + 7, 7], fill=P["creek_grass"])
+        d.point((x + 3, 2), fill=P["creek_grass_light"])
+    for x, y in ((86, 50), (120, 38), (168, 60)):
+        tiny_fish(d, x, y, P["creek_3"])
+    return rays(img, 4, 34)
 
 
 def river() -> Image.Image:
-    img = Image.new("RGB", (W, H), PALETTE["mid"])
+    img = Image.new("RGB", (W, H), P["river_1"])
     d = ImageDraw.Draw(img)
-    water_base(d, "shallow", "mid", "deep")
-    img = light_rays(img, 3)
-    d = ImageDraw.Draw(img)
-    floor(d, "stone_dark", 81)
-    pebbles(d, 18, "stone")
+    water(
+        d,
+        (P["river_surface"], P["river_1"], P["river_2"], P["river_3"], P["river_4"]),
+        (6, 24, 46, 66, 82),
+    )
+    surface_waves(d, (226, 244, 244))
+    # 强水流线
+    for y in (20, 32, 44, 56):
+        for x in range(6, W - 6, 24):
+            d.rectangle([x, y, x + rng.randint(8, 14), y], fill=P["river_surface"])
+    # 底部砾石
+    hband(d, 82, 99, P["river_gravel"])
+    for _ in range(30):
+        x, y = rng.randint(0, W - 5), rng.randint(84, 97)
+        d.rectangle([x, y, x + rng.randint(1, 4), y + 1], fill=P["river_rock_dark"])
+    # 大块圆石（主体）
+    for x, y, w, h in ((10, 70, 38, 22), (62, 76, 30, 18), (186, 68, 38, 26)):
+        d.ellipse([x, y, x + w, y + h], fill=P["river_rock"])
+        d.ellipse([x + 2, y + 2, x + w - 3, y + h // 2], fill=P["river_rock_light"])
+        d.arc([x, y, x + w, y + h], 180, 330, fill=P["river_rock_dark"])
     # 沉木
-    for i in range(38):
-        x = 46 + i
-        y = 84 - i // 4
-        d.rectangle([x, y, x + 1, y + 2], fill=PALETTE["silt"])
-        d.point((x, y), fill=PALETTE["sand_dark"])
-    # 水流线
-    for y in (26, 38, 52):
-        for x in range(12, W - 12, 18):
-            d.rectangle([x, y, x + 9, y], fill=PALETTE["surface2"])
-    # 右岸石块
-    for x, y, w, h in ((196, 72, 14, 9), (210, 76, 12, 8), (188, 80, 9, 6)):
-        d.rectangle([x, y, x + w, y + h], fill=PALETTE["stone"])
-        d.rectangle([x, y, x + w, y + 1], fill=PALETTE["stone_dark"])
-    return img
+    for i in range(48):
+        x, y = 40 + i, 86 - i // 5
+        rect(d, x, y, x + 1, y + 2, P["river_log"])
+        if i % 5 == 0:
+            d.point((x, y), fill=P["river_log_light"])
+    # 水草
+    for x in (172, 177, 182):
+        for i in range(rng.randint(8, 16)):
+            d.point((x, 80 - i), fill=P["kelp"])
+    for x, y in ((128, 40), (142, 52), (100, 62)):
+        tiny_fish(d, x, y, P["river_4"])
+    return rays(img, 3, 30)
 
 
 def jiang() -> Image.Image:
-    img = Image.new("RGB", (W, H), PALETTE["deep"])
+    img = Image.new("RGB", (W, H), P["jiang_2"])
     d = ImageDraw.Draw(img)
-    water_base(d, "mid", "deep", "abyss")
-    img = light_rays(img, 2)
-    d = ImageDraw.Draw(img)
-    # 江面船底剪影
-    d.rectangle([62, 1, 168, 5], fill=PALETTE["boat"])
-    d.rectangle([74, 0, 156, 1], fill=PALETTE["boat_light"])
-    d.rectangle([150, 3, 154, 8], fill=PALETTE["boat"])
-    floor(d, "silt", 84)
-    pebbles(d, 12, "stone_dark")
+    water(
+        d,
+        (P["jiang_surface"], P["jiang_1"], P["jiang_2"], P["jiang_3"], P["jiang_4"]),
+        (7, 20, 42, 64, 84),
+    )
+    # 江面船底：大剪影，一眼认出江面
+    d.rectangle([42, 0, 190, 7], fill=P["jiang_boat"])
+    d.rectangle([58, 0, 174, 1], fill=P["jiang_boat_light"])
+    d.rectangle([120, 0, 136, 3], fill=P["jiang_boat_light"])
+    d.rectangle([150, 4, 158, 12], fill=P["jiang_boat"])
+    for x in (74, 96, 150):
+        d.point((x, 4), fill=P["jiang_rust"])
+    # 桥墩
+    d.rectangle([204, 0, 218, 34], fill=P["jiang_boat"])
+    d.rectangle([204, 0, 218, 2], fill=P["jiang_boat_light"])
+    d.rectangle([200, 30, 222, 34], fill=P["jiang_boat_light"])
+    # 浑浊水平泥带
+    for y in (24, 38, 52, 68):
+        for x in range(0, W, 12):
+            if rng.random() < 0.6:
+                d.rectangle([x, y, x + rng.randint(3, 9), y], fill=P["jiang_1"])
+    # 江底淤泥
+    hband(d, 84, 99, P["jiang_silt"])
+    for x in range(0, W, 4):
+        d.point((x, 85 + rng.randint(0, 1)), fill=P["jiang_silt_dark"])
     # 沉箱
-    d.rectangle([34, 72, 58, 84], fill=PALETTE["silt"])
-    d.rectangle([34, 72, 58, 74], fill=PALETTE["stone"])
-    d.rectangle([40, 76, 52, 77], fill=PALETTE["stone_dark"])
-    # 水草
-    for x in (26, 30, 196, 201, 206):
-        reed(d, x, rng.randint(10, 20))
-    # 远处暗涌
-    for y in (40, 54, 68):
-        for x in range(0, W, 26):
-            d.rectangle([x + 6, y, x + 18, y], fill=PALETTE["abyss"])
-    return img
+    d.rectangle([28, 70, 58, 86], fill=P["jiang_silt_dark"])
+    d.rectangle([28, 70, 58, 72], fill=P["jiang_silt"])
+    d.rectangle([34, 74, 52, 75], fill=P["jiang_rust"])
+    d.rectangle([36, 78, 50, 79], fill=P["jiang_rope"])
+    # 旧锚/铁链
+    d.rectangle([150, 80, 152, 92], fill=P["jiang_boat_light"])
+    d.rectangle([146, 90, 158, 92], fill=P["jiang_boat_light"])
+    for i in range(8):
+        d.point((146 - i, 92 - i // 2), fill=P["jiang_rope"])
+    # 少量水草，显得荒
+    for x in (70, 76, 188):
+        for i in range(rng.randint(6, 12)):
+            d.point((x, 84 - i), fill=P["jiang_3"])
+    return rays(img, 2, 18)
 
 
 def sea() -> Image.Image:
-    img = Image.new("RGB", (W, H), PALETTE["deep"])
+    img = Image.new("RGB", (W, H), P["sea_2"])
     d = ImageDraw.Draw(img)
-    water_base(d, "mid", "deep", "abyss")
-    img = light_rays(img, 4)
-    d = ImageDraw.Draw(img)
-    floor(d, "sand", 82)
-    pebbles(d, 16, "stone")
-    # 珊瑚
-    for base_x, base_y, height in ((32, 92, 18), (42, 92, 12), (190, 92, 16), (200, 92, 10)):
+    water(
+        d,
+        (P["sea_surface"], P["sea_1"], P["sea_2"], P["sea_3"], P["sea_4"]),
+        (6, 22, 44, 68, 86),
+    )
+    surface_waves(d, (222, 246, 250))
+    # 沙底
+    hband(d, 80, 99, P["sea_sand"])
+    for x in range(0, W, 5):
+        d.point((x, 81 + rng.randint(0, 2)), fill=P["sea_sand_dark"])
+    # 珊瑚丛：粗枝 + 亮色，主体
+    for base_x, base_y, height in ((22, 96, 28), (30, 96, 22), (186, 96, 30), (196, 96, 20)):
         for i in range(height):
-            x = base_x + (i // 3) * 2
-            d.point((x, base_y - i), fill=PALETTE["coral"])
-            if i % 4 == 0:
-                d.point((x - 1, base_y - i), fill=PALETTE["coral_light"])
-                d.point((x + 1, base_y - i), fill=PALETTE["coral_light"])
-    # 海草
-    for x in (66, 72, 150, 158, 166):
-        for i in range(rng.randint(12, 26)):
-            d.point((x + (i // 6) % 2, H - 6 - i), fill=PALETTE["kelp"])
+            x = base_x + (i // 4) * 3
+            d.point((x, base_y - i), fill=P["coral"])
+            if i % 5 == 0:
+                d.point((x - 1, base_y - i), fill=P["coral_light"])
+                d.point((x + 1, base_y - i), fill=P["coral_pink"])
+        for b in range(4):
+            bx = base_x + b * 4
+            by = base_y - 10 - b * 3
+            d.rectangle([bx, by, bx + 2, by + 2], fill=P["coral_light"])
+    # 海葵
+    for x in (54, 60, 66):
+        for i in range(10):
+            d.point((x + i % 3 - 1, 90 - i), fill=P["coral_pink"])
+    # 海草森林
+    for x in (82, 88, 94, 152, 158, 164, 170):
+        for i in range(rng.randint(20, 42)):
+            d.point((x + (i // 8) % 2, 96 - i), fill=P["kelp"])
+            if i % 7 == 0:
+                d.point((x + 1, 96 - i), fill=P["kelp_light"])
     # 海星
-    sx, sy = 112, 92
-    d.rectangle([sx, sy, sx + 4, sy + 2], fill=PALETTE["coral"])
-    d.rectangle([sx + 1, sy - 2, sx + 3, sy + 4], fill=PALETTE["coral"])
-    # 鱼群剪影
-    for x, y in ((92, 36), (98, 40), (104, 36), (170, 52), (176, 56)):
-        d.rectangle([x, y, x + 3, y + 1], fill=PALETTE["abyss"])
-    return img
+    sx, sy = 120, 92
+    d.rectangle([sx, sy, sx + 5, sy + 2], fill=P["coral"])
+    d.rectangle([sx + 1, sy - 2, sx + 4, sy + 5], fill=P["coral"])
+    d.point((sx + 2, sy + 1), fill=P["coral_light"])
+    # 热带鱼群（亮色，和蓝色强对比）
+    for x, y in ((100, 30), (108, 36), (116, 30), (124, 40), (132, 34), (140, 42)):
+        d.rectangle([x, y, x + 4, y + 2], fill=P["fish_yellow"])
+        d.point((x - 1, y + 2), fill=P["fish_orange"])
+        d.point((x + 5, y + 1), fill=P["fish_orange"])
+    # 一只海龟剪影
+    d.ellipse([64, 44, 80, 54], fill=P["sea_4"])
+    d.rectangle([60, 47, 64, 49], fill=P["sea_4"])
+    d.rectangle([80, 47, 84, 49], fill=P["sea_4"])
+    d.point((72, 46), fill=P["kelp_light"])
+    return rays(img, 5, 46)
 
 
 def build(name: str, image: Image.Image) -> None:
@@ -223,7 +292,7 @@ def build(name: str, image: Image.Image) -> None:
     big = image.resize((W * SCALE, H * SCALE), Image.Resampling.NEAREST)
     path = OUT / f"bg_{name}.png"
     big.save(path, optimize=True)
-    print(path, big.size)
+    print(path, big.size, path.stat().st_size)
 
 
 def main() -> None:
@@ -235,10 +304,10 @@ def main() -> None:
     ):
         build(name, image)
     manifest = {
-        "version": 1,
+        "version": 2,
         "source": "generated/pil",
         "license": "in-house",
-        "style": "light pixel, underwater cross-section",
+        "style": "light pixel, underwater cross-section, distinct per water body",
         "master": [W, H],
         "scale": SCALE,
         "assets": [
