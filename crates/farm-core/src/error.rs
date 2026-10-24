@@ -226,6 +226,8 @@ pub enum GameError {
     RanchOrderLimit,
     #[error("牧场货物不够交这笔订单")]
     RanchOrderShort,
+    #[error("本周已经报过名了，下周再来")]
+    RanchContestEntered,
     #[error("畜栏已经扩到上限")]
     RanchMaxPens,
     #[error("没有专用饲料")]
@@ -395,6 +397,7 @@ impl GameError {
             GameError::RanchOrderNotFound => "ranch_order_not_found",
             GameError::RanchOrderLimit => "ranch_order_limit",
             GameError::RanchOrderShort => "ranch_order_short",
+            GameError::RanchContestEntered => "ranch_contest_entered",
             GameError::RanchMaxPens => "ranch_max_pens",
             GameError::RanchNoFeed => "ranch_no_feed",
             GameError::RanchNoBreedPair => "ranch_no_breed_pair",

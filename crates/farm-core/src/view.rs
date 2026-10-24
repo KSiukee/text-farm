@@ -513,6 +513,30 @@ pub struct RanchCodexView {
     pub animal_total: u32,
     pub special_done: u32,
     pub special_total: u32,
+    /// 评比累计奖章。
+    pub medals: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RanchContestResultView {
+    pub week: String,
+    pub animal_name: String,
+    pub kind_label: String,
+    pub score: u32,
+    pub rank: u32,
+    pub reward_coins: u64,
+    pub medal: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RanchContestView {
+    pub week: String,
+    pub entered: bool,
+    pub result: Option<RanchContestResultView>,
+    pub medals: u32,
+    pub best_rank: u32,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -525,6 +549,7 @@ pub struct RanchView {
     pub feed_count: u32,
     pub orders: RanchOrdersView,
     pub codex: RanchCodexView,
+    pub contest: RanchContestView,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -2452,6 +2477,28 @@ impl Game {
             animal_total: (RanchAnimalKind::ALL.len() * RanchTrait::ALL.len()) as u32,
             special_done,
             special_total: RanchAnimalKind::ALL.len() as u32,
+            medals: self.state.ranch_contest.medals,
+        };
+
+        let contest = RanchContestView {
+            week: self.state.ranch_contest.week.clone(),
+            entered: self.state.ranch_contest.entered,
+            result: self
+                .state
+                .ranch_contest
+                .result
+                .as_ref()
+                .map(|result| RanchContestResultView {
+                    week: result.week.clone(),
+                    animal_name: result.animal_name.clone(),
+                    kind_label: result.kind_label.clone(),
+                    score: result.score,
+                    rank: result.rank,
+                    reward_coins: result.reward_coins,
+                    medal: result.medal,
+                }),
+            medals: self.state.ranch_contest.medals,
+            best_rank: self.state.ranch_contest.best_rank,
         };
 
         let ranch = RanchView {
@@ -2461,6 +2508,7 @@ impl Game {
             feed_count: premium_feed,
             orders: ranch_orders,
             codex: ranch_codex,
+            contest,
             pens: self
                 .state
                 .ranch

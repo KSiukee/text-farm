@@ -20,6 +20,7 @@ mod pet;
 mod planting;
 mod processing;
 mod ranch;
+mod ranch_contest;
 mod ranch_orders;
 mod ranching;
 mod room;
@@ -109,6 +110,11 @@ pub use ranch::{
     RanchState, RanchTrait, RANCH_BREED_COOLDOWN_MS, RANCH_BREED_MIN_HEALTH, RANCH_CLEAN_GAIN,
     RANCH_CLEAN_MAX, RANCH_COLLECT_DIRT, RANCH_EXPAND_COSTS, RANCH_PEN_COUNT, RANCH_QUALITY_PCT,
     RANCH_SPECIAL_PCT, RANCH_YOUNG_MS,
+};
+pub use ranch_contest::{
+    npc_scores as ranch_contest_npc_scores, rank_for as ranch_contest_rank_for,
+    reward_for as ranch_contest_reward_for, score as ranch_contest_score, RanchContestResult,
+    RanchContestState, RANCH_CONTEST_NPCS, RANCH_CONTEST_OTHER_REWARD, RANCH_CONTEST_REWARDS,
 };
 pub use ranch_orders::{
     RanchOrder, RanchOrderState, RANCH_ORDER_MAX_ACTIVE, RANCH_ORDER_OFFERS,

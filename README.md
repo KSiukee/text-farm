@@ -6,7 +6,7 @@
 
 ## 现在到哪了
 
-v0.91.0：
+v0.92.0：
 
 - **A0 骨架**：Rust `farm-core` + Tauri 2 壳 + Vue 3 前端，命令往返、原子存档、关闭保存已通。
 - **A1 内核**：播种 / 浇水 / 生长 / 多季 / 收获 / 买卖 / 经验 / 升级 / 开地 / 日志，已有测试与 30 天无头模拟。
@@ -126,7 +126,8 @@ v0.91.0：
 - **A114 牧场生产与管理**：每只动物有固定生产特性（高产/省料/壮实/娇气/双产），只影响产物间隔、省料、生病与增产；栏舍卫生按畜栏管理（收产物 −12、每天清理 +50），卫生影响高品质与生病；特殊产物改按最终品质（优良 8% / 精品 25%）出金蛋/大鸭蛋/奶油/细羊毛；牧场不引入亲密度/心情/互动（陪伴只属于宠物）；旧档 schema 37 把卫生搬到畜栏并清掉陪伴字段。详见 [docs/牧场生产与管理.md](docs/牧场生产与管理.md)。
 - **A115 牧场血统 2.0**：手动选两只亲本并预览后代（种类/品质/代数/生产特性/血统线与真繁殖一致）；72 小时繁殖冷却、幼崽 24 小时成年、近亲（同血统线）品质上限 −1 且生病率 +8%；新增血统线/亲本记录/改名；繁殖条件改看健康 ≥60、栏舍卫生 ≥30、1 份饲料、空栏；schema v38。详见 [docs/牧场血统.md](docs/牧场血统.md)。
 - **A116-1 牧场订单 + 特殊产物配方 + 牧场图鉴**：每天 2 条牧场订单（指定品类 + 品质，交付给金币/牧场经验/专用饲料，最多接 2 条，过期不扣）；新增金蛋挞 1,125 / 奶油蛋糕 1,670 / 细羊毛围巾 2,110 三个手工台配方（接特殊产物，按原料 +100/h 定价）；牧场图鉴记录 4 种 × 5 特性的 20 格与 4 种特殊产物；schema v39。详见 [docs/牧场订单与图鉴.md](docs/牧场订单与图鉴.md)。
-- 牧场与制造屋到 v0.91（品质售价 + 制造屋 + 宠物岗位 + 调平 + 作物礼盒 + 加工坊设备 + 钓鱼 + 生产特性/栏舍卫生 + 血统繁殖 + 牧场订单/图鉴/特殊配方）；鱼塘/矿场/太空舱等扩展位未做；牧场每周评比（#143）未做。
+- **A116-2 牧场评比**：每周可提交一只成年健康动物，按品质（0/30/60）+ 代数（封顶 5 代）+ 健康 + 生产特性评分，近亲 −20；和 5 个 NPC 比名次（1–6），第 1/2/3 名给 3,000/1,500/800 金币 + 3/2/1 奖章，参与奖 200 金币；奖章累计进牧场图鉴与评比面板；每周重置、不参加不损失；schema v40。详见 [docs/牧场评比.md](docs/牧场评比.md)。
+- 牧场与制造屋到 v0.92（品质售价 + 制造屋 + 宠物岗位 + 调平 + 作物礼盒 + 加工坊设备 + 钓鱼 + 生产特性/栏舍卫生 + 血统繁殖 + 订单/图鉴/特殊配方 + 每周评比）；鱼塘/矿场/太空舱等扩展位未做。
 
 进度与任务以 `.codex/state.json` 为准；架构见 `架构规划.md`，玩法清单见 `任务清单.md`，调参结论见 `docs/调参报告.md`。
 
@@ -164,7 +165,7 @@ node scripts/version-guard.mjs --kind fix
 
 它会校验 `Cargo.toml` / `Cargo.lock` / `tauri.conf.json` / 前端 `package.json` / `README.md` / `.codex/state.json` / `CHANGELOG.md` 七处一致，并只允许 `fix` 升第三位、`feat` 升中位；一次性纠正旧号可加 `--allow-downgrade`。本次不改版本（纯文档/纯记录）就不要带 `--kind`，直接 `node scripts/version-guard.mjs` 只查一致。
 
-构建缓存体积门卫（磁盘；上限 16 GB，超了直接失败）：
+构建缓存体积门卫（磁盘；上限 24 GB，超了直接失败）：
 
 ```powershell
 python scripts/cache_guard.py --check      # 只量，不删
@@ -172,7 +173,7 @@ python scripts/cache_guard.py --clean      # 显式清理：删 deps/build/incre
 python scripts/cache_guard.py --selftest   # 临时目录自检清理口径
 ```
 
-清理口径：删 `deps/ build/ incremental/ examples/ .fingerprint/`、`doc/ tmp/`、`*.pdb/*.rlib/*.rmeta/*.d/*.lib/*.exp/*.obj/*.ilk`；保留 `*.exe/*.dll/*.so/*.dylib` 与 bundle 产物。2026-10-24 首次接入时 `target/` 为 **248.93 GB**（debug/incremental 145 GB + debug/deps 78.9 GB），清理后 **0.04 GB**；全量 debug 测试约 **9.4 GB**、debug+release 约 **11 GB**，所以上限定 16 GB。
+清理口径：删 `deps/ build/ incremental/ examples/ .fingerprint/`、`doc/ tmp/`、`*.pdb/*.rlib/*.rmeta/*.d/*.lib/*.exp/*.obj/*.ilk`；保留 `*.exe/*.dll/*.so/*.dylib` 与 bundle 产物。2026-10-24 首次接入时 `target/` 为 **248.93 GB**（debug/incremental 145 GB + debug/deps 78.9 GB），清理后 **0.04 GB**；全量 debug+release 约 **11 GB**，开发几轮 incremental 会长到 16 GB+，所以上限定 **24 GB**（超过 12 GB 提示清理）。
 
 一键跑门卫 + 两边单测：
 

@@ -1255,6 +1255,10 @@ function deliverRanchOrder(id: string) {
   void act({ type: "deliverRanchOrder", id });
 }
 
+function enterRanchContest(pen: number) {
+  void act({ type: "enterRanchContest", pen });
+}
+
 const ranchBreedNames = computed(() =>
   ranchBreedSel.value
     .map((pen) => ranch.value?.pens.find((item) => item.index === pen)?.animal?.name ?? `${pen} 号`)
@@ -3483,6 +3487,17 @@ onUnmounted(() => {
                         />
                         <button class="link" type="button" :disabled="acting" @click="renameRanchAnimal(pen.index)">[改名]</button>
                       </div>
+                      <div class="ranch-contest-entry">
+                        <button
+                          class="link"
+                          type="button"
+                          :disabled="acting || ranch?.contest.entered || pen.animal.young || pen.animal.sick"
+                          @click="enterRanchContest(pen.index)"
+                        >
+                          {{ ranch?.contest.entered ? "[本周已报名]" : "[报名参赛]" }}
+                        </button>
+                        <span class="muted">按品质/代数/特性/健康评分；每周一只</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3548,12 +3563,28 @@ onUnmounted(() => {
               <div v-for="missing in ranchPreview.missing" :key="missing" class="warn">{{ missing }}</div>
             </div>
           </div>
+          <div class="ranch-contest">
+            <div class="ranch-contest-head">
+              <strong>牧场评比</strong>
+              <span class="muted">每周一只；不参加不损失，名次给金币 + 奖章</span>
+            </div>
+            <div class="muted">
+              本周 {{ ranch?.contest.week || "—" }} · 累计奖章 {{ ranch?.contest.medals ?? 0 }}
+              <template v-if="(ranch?.contest.bestRank ?? 0) > 0"> · 最好第 {{ ranch?.contest.bestRank }} 名</template>
+            </div>
+            <div v-if="ranch?.contest.result" class="ranch-contest-result">
+              第 {{ ranch.contest.result.rank }} 名 · {{ ranch.contest.result.animalName }}（{{ ranch.contest.result.kindLabel }}）·
+              得分 {{ ranch.contest.result.score }} · {{ ranch.contest.result.rewardCoins }} 金币 · 奖章 +{{ ranch.contest.result.medal }}
+            </div>
+            <div v-else class="muted">在动物详情里点 [报名参赛] 选一只。</div>
+          </div>
           <div class="ranch-codex">
             <div class="ranch-codex-head">
               <strong>牧场图鉴</strong>
               <span class="muted">
                 动物 {{ ranch?.codex.animalDone ?? 0 }}/{{ ranch?.codex.animalTotal ?? 20 }} ·
-                特殊产物 {{ ranch?.codex.specialDone ?? 0 }}/{{ ranch?.codex.specialTotal ?? 4 }}
+                特殊产物 {{ ranch?.codex.specialDone ?? 0 }}/{{ ranch?.codex.specialTotal ?? 4 }} ·
+                奖章 {{ ranch?.codex.medals ?? 0 }}
               </span>
             </div>
             <div v-for="group in ranch?.codex.kinds ?? []" :key="group.kind" class="ranch-codex-row">

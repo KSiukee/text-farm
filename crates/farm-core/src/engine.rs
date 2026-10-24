@@ -134,6 +134,7 @@ impl Game {
             }
             Action::AcceptRanchOrder { id } => self.accept_ranch_order(&id, now)?,
             Action::DeliverRanchOrder { id } => self.deliver_ranch_order(&id, now)?,
+            Action::EnterRanchContest { pen } => self.enter_ranch_contest(pen, now)?,
             Action::BuildWorkshop => self.build_workshop(now)?,
             Action::ExpandWorkshop => self.expand_workshop(now)?,
             Action::InstallEquipment { slot, kind } => self.install_equipment(slot, kind, now)?,
@@ -2921,6 +2922,69 @@ impl Game {
         Ok(effects)
     }
 
+    fn enter_ranch_contest(&mut self, pen: u8, now: i64) -> Result<Vec<Effect>, GameError> {
+        let week = crate::orders::week_start(&self.state.daily.day);
+        self.state.ranch_contest.ensure_week(&week);
+        if self.state.ranch_contest.entered {
+            return Err(GameError::RanchContestEntered);
+        }
+        let animal = self
+            .state
+            .ranch
+            .pen(pen)
+            .and_then(|pen| pen.animal.as_ref())
+            .ok_or(GameError::RanchPenEmpty)?;
+        if animal.sick {
+            return Err(GameError::RanchAnimalSick);
+        }
+        if animal.is_young(now) {
+            return Err(GameError::RanchAnimalYoung);
+        }
+        let score = crate::ranch_contest::score(animal);
+        let rank = crate::ranch_contest::rank_for(&week, score);
+        let (reward_coins, medal) = crate::ranch_contest::reward_for(rank);
+        let name = animal.name.clone();
+        let kind_label = animal.kind.label().to_string();
+        self.state.ranch_contest.entered = true;
+        self.state.ranch_contest.medals = self.state.ranch_contest.medals.saturating_add(medal);
+        if self.state.ranch_contest.best_rank == 0 || rank < self.state.ranch_contest.best_rank {
+            self.state.ranch_contest.best_rank = rank;
+        }
+        self.state.ranch_contest.result = Some(crate::ranch_contest::RanchContestResult {
+            week: week.clone(),
+            animal_name: name.clone(),
+            kind_label,
+            score,
+            rank,
+            reward_coins,
+            medal,
+        });
+        self.state.coins = self.state.coins.saturating_add(reward_coins);
+        let exp = 20 + u64::from(score) / 5;
+        let pct = buffs::exp_pct(&self.state.buffs, now, DisciplineKind::Ranching);
+        let levels = self
+            .state
+            .skills
+            .ranching
+            .add_exp(exp * u64::from(100 + pct) / 100);
+        let text = format!(
+            "你带{name}参加牧场评比：得分 {score}，第 {rank} 名，拿到 {reward_coins} 金币{}",
+            if medal > 0 {
+                format!("和 {medal} 枚奖章")
+            } else {
+                String::new()
+            }
+        );
+        self.push_log(now, text.clone());
+        let mut effects = vec![Effect::Log { text }];
+        for _ in 0..levels {
+            let text = format!("畜牧等级升到 {} 级", self.state.skills.ranching.level);
+            self.push_log(now, text.clone());
+            effects.push(Effect::Log { text });
+        }
+        Ok(effects)
+    }
+
     fn ranch_item_count(&self, base: &str) -> u32 {
         (1..=3)
             .map(|quality| {
@@ -5077,6 +5141,13 @@ impl Game {
                     format!("，{} 条过期", expired_ranch_orders.len())
                 }
             );
+            self.push_log(now, text.clone());
+            effects.push(Effect::Log { text });
+            changed = true;
+        }
+        let contest_week = crate::orders::week_start(today);
+        if self.state.ranch_contest.ensure_week(&contest_week) {
+            let text = format!("新的一周牧场评比开始了（{contest_week}）");
             self.push_log(now, text.clone());
             effects.push(Effect::Log { text });
             changed = true;

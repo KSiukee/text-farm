@@ -650,6 +650,7 @@ try {
   check("畜牧场可扩建", ranchText.includes("扩建畜栏"));
   check("邻居牧场串门入口", ranchText.includes("邻居牧场"));
   check("牧场订单面板已显示", ranchText.includes("牧场订单"));
+  check("牧场评比面板已显示", ranchText.includes("牧场评比"));
   const orderOffer = saveState().ranchOrders.offers[0];
   if (orderOffer) {
     const orderCoins = saveState().coins;
@@ -705,6 +706,21 @@ try {
   check(
     "牧场详情显示生产特性与特殊产物",
     ranchDetailText.includes("生产特性：") && ranchDetailText.includes("特殊产物："),
+  );
+  await clickText("[报名参赛]");
+  await waitFor(async () => saveState().ranchContest.entered === true);
+  const contest = saveState().ranchContest;
+  check("牧场评比可报名", contest.entered === true);
+  check(
+    "评比出结果与奖章",
+    !!contest.result &&
+      contest.result.rank >= 1 &&
+      contest.result.rank <= 6 &&
+      contest.result.score > 0,
+  );
+  check(
+    "牧场评比结果显示",
+    (await bodyText()).includes(`第 ${contest.result.rank} 名`),
   );
   await clickText("[收起]", false);
   const feedBefore = saveState().inventory["ranch:feed"] || 0;

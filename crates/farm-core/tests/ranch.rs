@@ -1,7 +1,7 @@
 use farm_core::{
-    migrate_save, Action, EquipmentKind, EquipmentRecipe, Game, GameError, PetBreed, PetLocation,
-    PetState, RanchAnimal, RanchAnimalKind, RanchRecipe, RanchTrait, WorkshopJob,
-    RANCH_BREED_COOLDOWN_MS, RANCH_YOUNG_MS,
+    migrate_save, ranch_contest_rank_for, ranch_contest_score, Action, EquipmentKind,
+    EquipmentRecipe, Game, GameError, PetBreed, PetLocation, PetState, RanchAnimal,
+    RanchAnimalKind, RanchRecipe, RanchTrait, WorkshopJob, RANCH_BREED_COOLDOWN_MS, RANCH_YOUNG_MS,
 };
 
 fn job_ready_at(game: &Game, slot: u8) -> i64 {
@@ -1396,4 +1396,85 @@ fn v39_save_adds_ranch_orders_and_codex() {
     assert_eq!(migrated["state"]["ranchOrders"]["offers"], serde_json::json!([]));
     assert_eq!(migrated["state"]["ranch"]["codexAnimals"], serde_json::json!([]));
     assert_eq!(migrated["state"]["ranch"]["codexSpecials"], serde_json::json!([]));
+}
+
+#[test]
+fn v40_save_adds_ranch_contest() {
+    let value = serde_json::json!({
+        "schema": 39,
+        "savedAt": 0,
+        "state": {"ranch": {"pens": []}},
+        "content": {}
+    });
+    let migrated = migrate_save(value).unwrap();
+    assert_eq!(migrated["schema"], farm_core::SAVE_SCHEMA);
+    assert_eq!(migrated["state"]["ranchContest"]["week"], "");
+    assert_eq!(migrated["state"]["ranchContest"]["entered"], false);
+    assert_eq!(migrated["state"]["ranchContest"]["medals"], 0);
+    assert_eq!(migrated["state"]["ranchContest"]["bestRank"], 0);
+}
+
+#[test]
+fn ranch_contest_enter_once_and_reset_next_week() {
+    let mut game = Game::new(0);
+    game.state_mut().coins = 5_000;
+    game.state_mut().daily.day = "2026-10-19".into();
+    add_chicken(&mut game, 1);
+    {
+        let animal = animal_mut(&mut game, 1);
+        animal.quality = 3;
+        animal.generation = 3;
+        animal.health = 100;
+    }
+    let expected_score = ranch_contest_score(
+        game.state()
+            .ranch
+            .pen(1)
+            .unwrap()
+            .animal
+            .as_ref()
+            .unwrap(),
+    );
+    let before = game.state().coins;
+    game.dispatch(Action::EnterRanchContest { pen: 1 }, 0)
+        .unwrap();
+    let contest = game.state().ranch_contest.clone();
+    assert!(contest.entered);
+    assert_eq!(contest.medals, contest.result.as_ref().unwrap().medal);
+    assert!(game.state().coins > before);
+    assert_eq!(
+        contest.result.as_ref().unwrap().rank,
+        ranch_contest_rank_for("2026-10-19", expected_score)
+    );
+    assert!(matches!(
+        game.dispatch(Action::EnterRanchContest { pen: 1 }, 0),
+        Err(GameError::RanchContestEntered)
+    ));
+
+    // 下一周重置报名，奖章保留。
+    let medals = game.state().ranch_contest.medals;
+    game.sync(0, "2026-10-26");
+    let contest = game.state().ranch_contest.clone();
+    assert!(!contest.entered);
+    assert!(contest.result.is_none());
+    assert_eq!(contest.medals, medals);
+}
+
+#[test]
+fn ranch_contest_rejects_young_and_sick() {
+    let mut game = Game::new(0);
+    game.state_mut().daily.day = "2026-10-19".into();
+    game.state_mut().coins = 5_000;
+    add_chicken(&mut game, 1);
+    animal_mut(&mut game, 1).adult_at = RANCH_YOUNG_MS;
+    assert!(matches!(
+        game.dispatch(Action::EnterRanchContest { pen: 1 }, 0),
+        Err(GameError::RanchAnimalYoung)
+    ));
+    animal_mut(&mut game, 1).adult_at = 0;
+    animal_mut(&mut game, 1).sick = true;
+    assert!(matches!(
+        game.dispatch(Action::EnterRanchContest { pen: 1 }, 0),
+        Err(GameError::RanchAnimalSick)
+    ));
 }

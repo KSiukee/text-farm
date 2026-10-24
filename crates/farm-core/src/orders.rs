@@ -135,6 +135,18 @@ fn roll(day: &str, salt: u64) -> u64 {
     hash ^ (hash >> 33)
 }
 
+/// 返回 `day` 所在周的周一（YYYY-MM-DD）；坏日期原样返回。
+/// 1970-01-01 是周四，所以 `(z + 3) % 7` 正好是“周一 = 0”。
+pub fn week_start(day: &str) -> String {
+    let Some((year, month, date)) = parse_day(day) else {
+        return day.to_string();
+    };
+    let z = days_from_civil(year, month, date);
+    let offset = (z + 3).rem_euclid(7);
+    let (year, month, date) = civil_from_days(z - offset);
+    format!("{year:04}-{month:02}-{date:02}")
+}
+
 /// 给 YYYY-MM-DD 加天数；解析失败时原样返回，避免坏日期把订单打崩。
 pub fn add_days(day: &str, days: u32) -> String {
     let Some((year, month, date)) = parse_day(day) else {
@@ -191,6 +203,14 @@ mod tests {
         assert_eq!(add_days("2026-12-31", 1), "2027-01-01");
         assert_eq!(add_days("2028-02-28", 1), "2028-02-29");
         assert_eq!(add_days("bad", 1), "bad");
+    }
+
+    #[test]
+    fn week_start_is_monday() {
+        assert_eq!(week_start("2026-10-19"), "2026-10-19");
+        assert_eq!(week_start("2026-10-25"), "2026-10-19");
+        assert_eq!(week_start("2026-10-24"), "2026-10-19");
+        assert_eq!(week_start("bad"), "bad");
     }
 
     #[test]

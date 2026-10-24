@@ -317,6 +317,25 @@ export interface RanchCodexView {
   animalTotal: number;
   specialDone: number;
   specialTotal: number;
+  medals: number;
+}
+
+export interface RanchContestResultView {
+  week: string;
+  animalName: string;
+  kindLabel: string;
+  score: number;
+  rank: number;
+  rewardCoins: number;
+  medal: number;
+}
+
+export interface RanchContestView {
+  week: string;
+  entered: boolean;
+  result: RanchContestResultView | null;
+  medals: number;
+  bestRank: number;
 }
 
 export interface RanchView {
@@ -327,6 +346,7 @@ export interface RanchView {
   feedCount: number;
   orders: RanchOrdersView;
   codex: RanchCodexView;
+  contest: RanchContestView;
 }
 
 export interface PetCareView {
@@ -1252,6 +1272,7 @@ export type Action =
   | { type: "renameRanchAnimal"; pen: number; name: string }
   | { type: "acceptRanchOrder"; id: string }
   | { type: "deliverRanchOrder"; id: string }
+  | { type: "enterRanchContest"; pen: number }
   | { type: "buildWorkshop" }
   | { type: "expandWorkshop" }
   | { type: "installEquipment"; slot: number; kind: EquipmentKind }

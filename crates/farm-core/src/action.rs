@@ -146,6 +146,10 @@ pub enum Action {
     DeliverRanchOrder {
         id: String,
     },
+    /// 报名每周牧场评比（每周一只）。
+    EnterRanchContest {
+        pen: u8,
+    },
     BuildWorkshop,
     ExpandWorkshop,
     InstallEquipment {
