@@ -852,6 +852,7 @@ pub struct RoomView {
     pub catalog: Vec<RoomFurnitureDefView>,
     pub surface_catalog: Vec<RoomSurfaceDefView>,
     pub available_furniture: std::collections::BTreeMap<String, u32>,
+    pub owned_furniture: std::collections::BTreeMap<String, u32>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1078,6 +1079,7 @@ fn room_view_data(room_id: &str, label: &str, width: u32, height: u32, layout: c
             .collect(),
         surface_catalog: surface_catalog_views(),
         available_furniture: std::collections::BTreeMap::new(),
+        owned_furniture: std::collections::BTreeMap::new(),
     }
 }
 
@@ -1191,6 +1193,7 @@ impl Game {
                 .collect(),
             surface_catalog: surface_catalog_views(),
             available_furniture: self.state.room.available_furniture(),
+            owned_furniture: self.state.room.owned_furniture.clone(),
         })
     }
 

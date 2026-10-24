@@ -1016,6 +1016,7 @@ export interface RoomView {
   catalog: RoomFurnitureDefView[];
   surfaceCatalog: RoomSurfaceDefView[];
   availableFurniture: Record<string, number>;
+  ownedFurniture: Record<string, number>;
 }
 
 export interface DecorOfferView {

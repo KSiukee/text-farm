@@ -3159,7 +3159,10 @@ onUnmounted(() => {
             <div class="decor-shop-grid">
               <div v-for="def in currentRoom?.catalog ?? []" :key="def.id" class="decor-card">
                 <strong>{{ def.name }}</strong>
-                <span class="muted">{{ def.price }} 金币 · 可摆 {{ currentRoom?.availableFurniture?.[def.id] ?? 0 }}</span>
+                <span class="muted">
+                  {{ def.price }} 金币 · 已有 {{ currentRoom?.ownedFurniture?.[def.id] ?? 0 }} ·
+                  可摆 {{ currentRoom?.availableFurniture?.[def.id] ?? 0 }}
+                </span>
                 <button
                   class="link"
                   type="button"
