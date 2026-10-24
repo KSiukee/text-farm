@@ -12,7 +12,10 @@ use crate::workshop::craft_item;
 pub const MYSTERY_OFFERS: usize = 8;
 pub const MYSTERY_NORMAL_OFFERS: usize = 7;
 pub const MYSTERY_LEGENDARY_PCT: u64 = 3;
-pub const MYSTERY_VERSION: u32 = 1;
+pub const MYSTERY_VERSION: u32 = 2;
+const RARE_SEED_MULT: u64 = 3;
+const LEGENDARY_SEED_MULT: u64 = 6;
+const BUFF_MULT: u64 = 2;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -174,8 +177,8 @@ fn seed_offer(
         return None;
     }
     let multiplier = match rarity {
-        MysteryRarity::Rare => 4,
-        MysteryRarity::Legendary => 9,
+        MysteryRarity::Rare => RARE_SEED_MULT,
+        MysteryRarity::Legendary => LEGENDARY_SEED_MULT,
     };
     let price = crop
         .seed_price
@@ -232,7 +235,7 @@ fn buff_offer(
         name: format!("稀有·{}", item.name),
         desc: buff.desc.to_string(),
         tag: buff_tag(item_key).into(),
-        price: item.price.saturating_mul(3).max(600),
+        price: item.price.saturating_mul(BUFF_MULT).max(600),
         rarity: MysteryRarity::Rare,
         featured: false,
         sold: false,

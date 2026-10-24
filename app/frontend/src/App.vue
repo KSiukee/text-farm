@@ -2942,6 +2942,7 @@ onUnmounted(() => {
           <div class="panel-title">
             神秘商店
             <span class="muted">{{ mystery?.day }} · 每天刷新一次</span>
+            <span class="mystery-wallet">当前金币 {{ snapshot?.coins ?? 0 }}</span>
           </div>
           <p class="muted mystery-intro">
             物品/加成两栏；加成覆盖农场、牧场、钓鱼、制造。只卖稀有货，专栏每天 3% 概率出传说，价格很贵。

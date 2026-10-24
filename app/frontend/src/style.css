@@ -1112,6 +1112,13 @@ textarea {
   margin: 0 0 10px;
 }
 
+.mystery-wallet {
+  margin-left: 10px;
+  color: var(--gold-strong);
+  font-weight: 400;
+  font-size: 13px;
+}
+
 .mystery-legendary {
   margin-bottom: 10px;
   padding: 7px 10px;

@@ -21,6 +21,7 @@ const farmOrderScreenshotPath = join(root, "docs", "farm-orders-v079.png");
 const playerScreenshotPath = join(root, "docs", "player-panel-v080.png");
 const seedPickerScreenshotPath = join(root, "docs", "seed-picker-v081.png");
 const mysteryScreenshotPath = join(root, "docs", "mystery-shop-v083.png");
+const mysteryWalletScreenshotPath = join(root, "docs", "mystery-wallet-v083.png");
 const port = 9333;
 const checks = [];
 let child = null;
@@ -515,6 +516,7 @@ try {
   );
   await waitFor(async () => (await evaluate(`document.querySelectorAll('.mystery-card').length`)) === 8);
   check("神秘商店 8 格", (await evaluate(`document.querySelectorAll('.mystery-card').length`)) === 8);
+  check("商店显示当前金币", (await bodyText()).includes("当前金币"));
   check(
     "神秘商店有专栏",
     (await evaluate(`document.querySelectorAll('.mystery-card.featured').length`)) === 1,
@@ -538,6 +540,9 @@ try {
   await waitFor(async () => saveState().mystery.offers.some((offer) => offer.sold));
   check("神秘商店购买成功", saveState().mystery.offers.some((offer) => offer.sold));
   check("神秘商店扣款", saveState().coins < mysteryCoins);
+  await evaluate(`window.scrollTo({ top: 0, behavior: 'instant' })`);
+  await screenshot(mysteryWalletScreenshotPath);
+  check("商店金币截图已保存", existsSync(mysteryWalletScreenshotPath), mysteryWalletScreenshotPath);
   await waitFor(async () => (await evaluate(`document.querySelectorAll('.mystery-bag-row').length`)) > 0);
   check("加成买入进背包", (await evaluate(`document.querySelectorAll('.mystery-bag-row').length`)) > 0);
   await evaluate(`document.querySelector('.mystery-backpack')?.scrollIntoView({ block: 'center' })`);
