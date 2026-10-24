@@ -104,8 +104,9 @@ pub use processing::{
     yield_chance as processing_yield_chance,
 };
 pub use ranch::{
-    RanchAnimal, RanchAnimalKind, RanchPen, RanchRecipe, RanchState, RANCH_EXPAND_COSTS,
-    RANCH_PEN_COUNT, RANCH_QUALITY_PCT,
+    roll_trait, RanchAnimal, RanchAnimalKind, RanchPen, RanchRecipe, RanchState, RanchTrait,
+    RANCH_AFFECTION_MAX, RANCH_CLEAN_MAX, RANCH_EXPAND_COSTS, RANCH_PEN_COUNT, RANCH_QUALITY_PCT,
+    RANCH_SPECIAL_AFFECTION, RANCH_SPECIAL_PCT,
 };
 pub use ranching::{
     care_pct, collect_exp as ranching_collect_exp, feed_save_chance,

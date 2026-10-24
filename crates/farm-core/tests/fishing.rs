@@ -292,7 +292,10 @@ fn v26_fish_inventory_backfills_batches() {
         .unwrap()
         .remove("fishBatches");
     let migrated = farm_core::migrate_save(value).unwrap();
-    assert_eq!(migrated["schema"], serde_json::json!(35));
+    assert_eq!(
+        migrated["schema"],
+        serde_json::json!(farm_core::SAVE_SCHEMA)
+    );
     let save: farm_core::SaveFile = serde_json::from_value(migrated).unwrap();
     let game = Game::from_save(save).unwrap();
     let batch = game.state().fishing.fish_batches.get("white_bait").unwrap();

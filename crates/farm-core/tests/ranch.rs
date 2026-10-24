@@ -1,6 +1,6 @@
 use farm_core::{
-    Action, EquipmentKind, EquipmentRecipe, Game, GameError, PetBreed, PetLocation, PetState,
-    RanchAnimalKind, RanchRecipe, WorkshopJob,
+    migrate_save, Action, EquipmentKind, EquipmentRecipe, Game, GameError, PetBreed, PetLocation,
+    PetState, RanchAnimal, RanchAnimalKind, RanchRecipe, RanchTrait, Season, WorkshopJob,
 };
 
 fn job_ready_at(game: &Game, slot: u8) -> i64 {
@@ -839,4 +839,218 @@ fn workshop_job_deserializes_both_variants() {
     }))
     .unwrap();
     assert!(matches!(job, WorkshopJob::CropBox { .. }));
+}
+
+fn add_chicken(game: &mut Game, pen: u8) {
+    game.dispatch(
+        Action::BuyRanchAnimal {
+            pen,
+            kind: RanchAnimalKind::Chicken,
+        },
+        0,
+    )
+    .unwrap();
+}
+
+fn animal_mut(game: &mut Game, pen: u8) -> &mut RanchAnimal {
+    game.state_mut()
+        .ranch
+        .pen_mut(pen)
+        .unwrap()
+        .animal
+        .as_mut()
+        .unwrap()
+}
+
+#[test]
+fn daily_care_once_a_day_and_gentle_gains_more() {
+    let mut game = Game::new(0);
+    game.state_mut().coins = 5_000;
+    game.state_mut().daily.day = "2026-10-24".into();
+    add_chicken(&mut game, 1);
+    {
+        let animal = animal_mut(&mut game, 1);
+        animal.temper = RanchTrait::Gentle;
+        animal.affection = 30;
+        animal.cleanliness = 60;
+        animal.satiety = 60;
+    }
+    game.dispatch(Action::GroomRanchAnimal { pen: 1 }, 0)
+        .unwrap();
+    {
+        let animal = game.state().ranch.pen(1).unwrap().animal.as_ref().unwrap();
+        assert_eq!(animal.affection, 33); // 温顺：2 × 1.5
+        assert_eq!(animal.cleanliness, 100);
+    }
+    assert!(matches!(
+        game.dispatch(Action::GroomRanchAnimal { pen: 1 }, 0),
+        Err(GameError::RanchCareDone)
+    ));
+    game.state_mut().daily.day = "2026-10-25".into();
+    game.dispatch(Action::GroomRanchAnimal { pen: 1 }, 0)
+        .unwrap();
+    assert_eq!(
+        game.state()
+            .ranch
+            .pen(1)
+            .unwrap()
+            .animal
+            .as_ref()
+            .unwrap()
+            .affection,
+        36
+    );
+
+    // 放牧：冬天收益减半；温顺的亲密 +50%。
+    game.state_mut().season = Season::Winter;
+    let before = game
+        .state()
+        .ranch
+        .pen(1)
+        .unwrap()
+        .animal
+        .as_ref()
+        .unwrap()
+        .satiety;
+    game.dispatch(Action::GrazeRanchAnimal { pen: 1 }, 0)
+        .unwrap();
+    let animal = game.state().ranch.pen(1).unwrap().animal.as_ref().unwrap();
+    assert_eq!(animal.satiety, before + 7);
+    assert_eq!(animal.affection, 39); // 冬天基础 +2，温顺 → +3
+
+    // 互动：基础 +5，温顺 → +7。
+    game.dispatch(Action::PetRanchAnimal { pen: 1 }, 0)
+        .unwrap();
+    assert_eq!(
+        game.state()
+            .ranch
+            .pen(1)
+            .unwrap()
+            .animal
+            .as_ref()
+            .unwrap()
+            .affection,
+        46
+    );
+}
+
+#[test]
+fn traits_change_feed_and_product_interval() {
+    let mut animal = RanchAnimal::new(RanchAnimalKind::Chicken, 0);
+    animal.temper = RanchTrait::Picky;
+    animal.satiety = 50;
+    animal.feed();
+    assert_eq!(animal.satiety, 74); // 普通喂食 30 × 0.8
+
+    animal.affection = 30;
+    animal.feed_premium();
+    assert_eq!(animal.quality, 2);
+    assert_eq!(animal.affection, 38); // 挑食更喜欢专用饲料：+8
+
+    let mut fast = RanchAnimal::new(RanchAnimalKind::Cow, 0);
+    fast.temper = RanchTrait::HighYield;
+    assert_eq!(fast.product_interval(), 16 * 60 * 60 * 1000 * 9 / 10);
+    fast.product_ready_at = 0;
+    assert!(fast.collect(1_000));
+    assert_eq!(
+        fast.product_ready_at,
+        1_000 + 16 * 60 * 60 * 1000 * 9 / 10
+    );
+}
+
+#[test]
+fn care_raises_quality_and_unlocks_special_product() {
+    let mut game = Game::new(0);
+    game.state_mut().coins = 5_000;
+    add_chicken(&mut game, 1);
+    {
+        let animal = animal_mut(&mut game, 1);
+        animal.quality = 1;
+        animal.affection = 100;
+        animal.cleanliness = 100;
+    }
+    for step in 0..300i64 {
+        animal_mut(&mut game, 1).product_ready_at = 0;
+        game.dispatch(
+            Action::CollectRanchProduct { pen: 1 },
+            step * 86_400_000,
+        )
+        .unwrap();
+    }
+    let mut fine = 0u32;
+    let mut special = 0u32;
+    for (key, qty) in &game.state().inventory {
+        if key.ends_with(".fine") || key.ends_with(".prime") {
+            fine += *qty;
+        }
+        if key == "ranch:golden_egg" {
+            special += *qty;
+        }
+    }
+    assert!(fine > 0, "照料到位时应该能出优良产物");
+    assert!(special > 0, "亲密度 100 时应有机会出金蛋");
+}
+
+#[test]
+fn cleanliness_decays_and_dirty_lowers_quality_chance() {
+    let mut animal = RanchAnimal::new(RanchAnimalKind::Chicken, 0);
+    animal.affection = 100;
+    let clean = animal.care_quality_chance(false);
+    animal.tick(24 * 3_600_000, true);
+    assert_eq!(animal.cleanliness, 76);
+    animal.cleanliness = 20;
+    assert!(animal.care_quality_chance(false) < clean);
+    assert_eq!(animal.mood_label(), "有点脏");
+}
+
+#[test]
+fn tick_accumulates_sub_hour_syncs() {
+    let mut animal = RanchAnimal::new(RanchAnimalKind::Chicken, 0);
+    // 壳每 30 秒 sync 一次：不满一小时的零头不能把 last_tick_at 推走。
+    animal.tick(30 * 60_000, true);
+    assert_eq!(animal.satiety, 80);
+    assert_eq!(animal.last_tick_at, 0);
+    animal.tick(60 * 60_000, true);
+    assert_eq!(animal.satiety, 79);
+    assert_eq!(animal.last_tick_at, 60 * 60_000);
+    animal.tick(90 * 60_000, true);
+    assert_eq!(animal.satiety, 79);
+    animal.tick(120 * 60_000, true);
+    assert_eq!(animal.satiety, 78);
+}
+
+#[test]
+fn old_save_animals_get_traits_and_defaults() {
+    let value = serde_json::json!({
+        "schema": 35,
+        "savedAt": 0,
+        "state": {"ranch": {"pens": [
+            {"index": 1, "animal": {"kind": "chicken", "name": "小母鸡"}},
+            {"index": 2, "animal": null}
+        ]}},
+        "content": {}
+    });
+    let migrated = migrate_save(value).unwrap();
+    assert_eq!(migrated["schema"], 36);
+    let animal = &migrated["state"]["ranch"]["pens"][0]["animal"];
+    assert_eq!(animal["affection"], 40);
+    assert_eq!(animal["cleanliness"], 80);
+    let trait_name = animal["trait"].as_str().unwrap().to_string();
+    assert!(
+        ["high_yield", "gentle", "picky", "delicate", "homebody"].contains(&trait_name.as_str()),
+        "未知性格：{trait_name}"
+    );
+    // 再跑一次（schema 已是 36）不该改性格。
+    let again = migrate_save(migrated.clone()).unwrap();
+    assert_eq!(
+        again["state"]["ranch"]["pens"][0]["animal"]["trait"],
+        trait_name
+    );
+
+    // 直接反序列化旧动物：缺字段也能拿到默认性格/亲密度。
+    let old: RanchAnimal =
+        serde_json::from_value(serde_json::json!({"kind": "chicken", "name": "老母鸡"})).unwrap();
+    assert_eq!(old.temper, RanchTrait::Gentle);
+    assert_eq!(old.affection, 30);
+    assert_eq!(old.cleanliness, 100);
 }

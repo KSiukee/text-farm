@@ -1926,6 +1926,86 @@ footer {
   line-height: 1;
 }
 
+.ranch-animal-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ranch-animal-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+
+.ranch-trait {
+  padding: 0 7px;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ranch-detail-toggle {
+  font-size: 12px;
+}
+
+.ranch-detail {
+  margin-top: 4px;
+  padding: 6px 8px;
+  border-left: 2px solid var(--accent-line);
+  background: var(--panel-soft);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.ranch-meters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 10px;
+  margin: 2px 0;
+}
+
+.ranch-meter {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--faint);
+  font-size: 11px;
+}
+
+.ranch-meter em {
+  font-style: normal;
+}
+
+.ranch-meter-track {
+  display: inline-block;
+  width: 58px;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--inset);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.ranch-meter-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+  transition: width 0.3s ease;
+}
+
+.ranch-meter-track.clean i {
+  background: var(--accent-text);
+}
+
 .ranch-actions,
 .ranch-buy,
 .ranch-neighbors {
@@ -1933,6 +2013,20 @@ footer {
   padding-top: 8px;
   border-top: 1px dashed var(--line);
   font-size: 13px;
+}
+
+.ranch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.ranch-buy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
 }
 
 .ranch-neighbors-head {

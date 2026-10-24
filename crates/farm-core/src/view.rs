@@ -16,7 +16,7 @@ use crate::pet::{
     PetBreed, PetJob, PetLocation, PetSpecies, PetStage, PetState, PetSupplyKind, PetTalent,
     PET_BOARD_FEE_PER_MONTH, PET_PLAY_COOLDOWN_MS, PET_TOUCH_COOLDOWN_MS,
 };
-use crate::ranch::{RanchAnimalKind, RanchRecipe, RANCH_MAX_PENS};
+use crate::ranch::{RanchAnimalKind, RanchRecipe, RANCH_MAX_PENS, RANCH_SPECIAL_AFFECTION};
 use crate::specimen;
 use crate::workshop::{
     craft_item, crop_box_price, EquipmentKind, EquipmentRecipe, WorkshopJob, CROP_BOX_INPUT,
@@ -270,6 +270,20 @@ pub struct RanchAnimalView {
     pub quality: u8,
     pub quality_label: String,
     pub generation: u32,
+    /// 固定性格与一句话说明。
+    pub trait_label: String,
+    pub trait_hint: String,
+    pub affection: u32,
+    pub cleanliness: u32,
+    pub age_days: u32,
+    pub mood: String,
+    /// 亲密度到门槛后可能出的特殊产物名。
+    pub special_name: String,
+    pub special_affection: u32,
+    /// 今天还能不能梳毛 / 放牧 / 互动。
+    pub can_groom: bool,
+    pub can_graze: bool,
+    pub can_pet: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -2278,23 +2292,38 @@ impl Game {
                 .iter()
                 .map(|pen| RanchPenView {
                     index: pen.index,
-                    animal: pen.animal.as_ref().map(|animal| RanchAnimalView {
-                        kind: animal.kind,
-                        label: animal.kind.label().into(),
-                        emoji: animal.kind.emoji().into(),
-                        name: animal.name.clone(),
-                        satiety: animal.satiety,
-                        health: animal.health,
-                        sick: animal.sick,
-                        product: animal.kind.product_name().into(),
-                        product_ready_at: animal.product_ready_at,
-                        remaining_ms: (animal.product_ready_at - now).max(0),
-                        can_collect: now >= animal.product_ready_at,
-                        can_feed: has_feed && !animal.sick,
-                        can_heal: animal.sick,
-                        quality: animal.quality,
-                        quality_label: animal.quality_label().into(),
-                        generation: animal.generation,
+                    animal: pen.animal.as_ref().map(|animal| {
+                        let today = &self.state.daily.day;
+                        let cared_today = |day: &str| !today.is_empty() && day == today;
+                        RanchAnimalView {
+                            kind: animal.kind,
+                            label: animal.kind.label().into(),
+                            emoji: animal.kind.emoji().into(),
+                            name: animal.name.clone(),
+                            satiety: animal.satiety,
+                            health: animal.health,
+                            sick: animal.sick,
+                            product: animal.kind.product_name().into(),
+                            product_ready_at: animal.product_ready_at,
+                            remaining_ms: (animal.product_ready_at - now).max(0),
+                            can_collect: now >= animal.product_ready_at,
+                            can_feed: has_feed && !animal.sick,
+                            can_heal: animal.sick,
+                            quality: animal.quality,
+                            quality_label: animal.quality_label().into(),
+                            generation: animal.generation,
+                            trait_label: animal.temper.label().into(),
+                            trait_hint: animal.temper.hint().into(),
+                            affection: animal.affection,
+                            cleanliness: animal.cleanliness,
+                            age_days: ((now - animal.adopted_at).max(0) / 86_400_000) as u32,
+                            mood: animal.mood_label().into(),
+                            special_name: animal.kind.special_name().into(),
+                            special_affection: RANCH_SPECIAL_AFFECTION,
+                            can_groom: !animal.sick && !cared_today(&animal.last_groom_day),
+                            can_graze: !animal.sick && !cared_today(&animal.last_graze_day),
+                            can_pet: !animal.sick && !cared_today(&animal.last_pet_day),
+                        }
                     }),
                 })
                 .collect(),

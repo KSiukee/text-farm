@@ -206,6 +206,8 @@ pub enum GameError {
     RanchAnimalHealthy,
     #[error("动物生病了，先治疗")]
     RanchAnimalSick,
+    #[error("今天已经照料过了，明天再来")]
+    RanchCareDone,
     #[error("畜栏已经扩到上限")]
     RanchMaxPens,
     #[error("没有专用饲料")]
@@ -366,6 +368,7 @@ impl GameError {
             GameError::RanchProductNotReady => "ranch_product_not_ready",
             GameError::RanchAnimalHealthy => "ranch_animal_healthy",
             GameError::RanchAnimalSick => "ranch_animal_sick",
+            GameError::RanchCareDone => "ranch_care_done",
             GameError::RanchMaxPens => "ranch_max_pens",
             GameError::RanchNoFeed => "ranch_no_feed",
             GameError::RanchNoBreedPair => "ranch_no_breed_pair",

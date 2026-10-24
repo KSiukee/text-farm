@@ -859,6 +859,38 @@ pub fn migrate_save(mut value: Value) -> Result<Value, SaveError> {
         value["schema"] = json!(35);
     }
 
+    if schema < 36 {
+        let state = value
+            .get_mut("state")
+            .and_then(Value::as_object_mut)
+            .ok_or(SaveError::Unknown(schema))?;
+        if let Some(pens) = state
+            .get_mut("ranch")
+            .and_then(|ranch| ranch.get_mut("pens"))
+            .and_then(Value::as_array_mut)
+        {
+            // 旧档的动物没有性格：按栏位与名字给一个固定的，别每次读档都变。
+            const TRAITS: [&str; 5] = ["high_yield", "gentle", "picky", "delicate", "homebody"];
+            for (pos, pen) in pens.iter_mut().enumerate() {
+                let Some(animal) = pen.get_mut("animal").and_then(Value::as_object_mut) else {
+                    continue;
+                };
+                let name = animal.get("name").and_then(Value::as_str).unwrap_or("");
+                let pick = (pos + name.chars().count()) % TRAITS.len();
+                animal
+                    .entry("trait")
+                    .or_insert_with(|| json!(TRAITS[pick]));
+                animal.entry("affection").or_insert_with(|| json!(40));
+                animal.entry("cleanliness").or_insert_with(|| json!(80));
+                animal.entry("lastGroomDay").or_insert_with(|| json!(""));
+                animal.entry("lastGrazeDay").or_insert_with(|| json!(""));
+                animal.entry("lastPetDay").or_insert_with(|| json!(""));
+            }
+        }
+        state.insert("schema".into(), json!(36));
+        value["schema"] = json!(36);
+    }
+
     Ok(value)
 }
 

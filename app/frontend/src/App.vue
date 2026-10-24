@@ -140,6 +140,7 @@ const seedValue = ref(20261018);
 const seedReviewNotes = ref<string[]>([]);
 const activeTab = ref("我的农场");
 const seedPickerPlot = ref<number | null>(null);
+const ranchDetail = ref(0);
 const playerMode = ref(false);
 const PLAYER_AVATAR_KEY = "farm.ui.playerAvatar";
 const PLAYER_AVATAR_IMAGE_KEY = "farm.ui.playerAvatarImage";
@@ -1196,6 +1197,22 @@ function buyRanchAnimal(pen: number, kind: RanchAnimalKind) {
 
 function feedRanchAnimal(pen: number) {
   void act({ type: "feedRanchAnimal", pen });
+}
+
+function groomRanchAnimal(pen: number) {
+  void act({ type: "groomRanchAnimal", pen });
+}
+
+function grazeRanchAnimal(pen: number) {
+  void act({ type: "grazeRanchAnimal", pen });
+}
+
+function petRanchAnimal(pen: number) {
+  void act({ type: "petRanchAnimal", pen });
+}
+
+function toggleRanchDetail(index: number) {
+  ranchDetail.value = ranchDetail.value === index ? 0 : index;
 }
 
 function collectRanchProduct(pen: number) {
@@ -3329,12 +3346,34 @@ onUnmounted(() => {
               <template v-if="pen.animal">
                 <div class="ranch-animal">
                   <span class="ranch-emoji">{{ pen.animal.emoji }}</span>
-                  <div>
-                    <strong>{{ pen.animal.name }}</strong>
-                    <div class="muted">{{ pen.animal.label }} · {{ pen.animal.qualityLabel }} · 第{{ pen.animal.generation + 1 }}代 · 饱食 {{ pen.animal.satiety }}/100 · 健康 {{ pen.animal.health }}/100</div>
+                  <div class="ranch-animal-main">
+                    <div class="ranch-animal-name">
+                      <strong>{{ pen.animal.name }}</strong>
+                      <span class="ranch-trait">{{ pen.animal.traitLabel }}</span>
+                      <button class="link ranch-detail-toggle" type="button" @click="toggleRanchDetail(pen.index)">
+                        {{ ranchDetail === pen.index ? "[收起]" : "[详情]" }}
+                      </button>
+                    </div>
+                    <div class="muted">{{ pen.animal.label }} · {{ pen.animal.qualityLabel }} · 第{{ pen.animal.generation + 1 }}代 · {{ pen.animal.ageDays }} 天 · {{ pen.animal.mood }}</div>
+                    <div class="muted">饱食 {{ pen.animal.satiety }}/100 · 健康 {{ pen.animal.health }}/100 · 亲密 {{ pen.animal.affection }}/100 · 清洁 {{ pen.animal.cleanliness }}/100</div>
+                    <div class="ranch-meters">
+                      <span class="ranch-meter">
+                        <em>亲密</em>
+                        <span class="ranch-meter-track"><i :style="{ width: `${pen.animal.affection}%` }"></i></span>
+                      </span>
+                      <span class="ranch-meter">
+                        <em>清洁</em>
+                        <span class="ranch-meter-track clean"><i :style="{ width: `${pen.animal.cleanliness}%` }"></i></span>
+                      </span>
+                    </div>
                     <div v-if="pen.animal.sick" class="warn">生病了，需要兽医</div>
                     <div v-else class="muted">
                       {{ pen.animal.canCollect ? `${pen.animal.product}可以收了` : `${pen.animal.product}还要 ${formatRemain(pen.animal.remainingMs)}` }}
+                    </div>
+                    <div v-if="ranchDetail === pen.index" class="ranch-detail">
+                      <div>性格：{{ pen.animal.traitLabel }}（{{ pen.animal.traitHint }}）</div>
+                      <div>亲密 {{ pen.animal.affection }}/100；到 {{ pen.animal.specialAffection }} 有机会收「{{ pen.animal.specialName }}」</div>
+                      <div>今天：{{ pen.animal.canGroom ? "可梳毛" : "已梳毛" }} · {{ pen.animal.canGraze ? "可放牧" : "已放牧" }} · {{ pen.animal.canPet ? "可互动" : "已互动" }}</div>
                     </div>
                   </div>
                 </div>
@@ -3349,6 +3388,15 @@ onUnmounted(() => {
                     @click="feedRanchPremium(pen.index)"
                   >
                     [喂专用饲料]
+                  </button>
+                  <button class="link" type="button" :disabled="acting || !pen.animal.canGroom" @click="groomRanchAnimal(pen.index)">
+                    [梳毛]
+                  </button>
+                  <button class="link" type="button" :disabled="acting || !pen.animal.canGraze" @click="grazeRanchAnimal(pen.index)">
+                    [放牧]
+                  </button>
+                  <button class="link" type="button" :disabled="acting || !pen.animal.canPet" @click="petRanchAnimal(pen.index)">
+                    [互动]
                   </button>
                   <button class="link" type="button" :disabled="acting || !pen.animal.canCollect" @click="collectRanchProduct(pen.index)">
                     [收{{ pen.animal.product }}]

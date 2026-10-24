@@ -641,6 +641,38 @@ try {
     "买母鸡进畜栏",
     saveState().ranch.pens.some((pen) => pen.animal && pen.animal.kind === "chicken"),
   );
+  const ranchAnimalText = await bodyText();
+  check(
+    "牧场动物显示性格",
+    ["高产", "温顺", "挑食", "娇气", "恋家"].some((trait) => ranchAnimalText.includes(trait)),
+  );
+  check(
+    "牧场动物显示亲密与清洁",
+    ranchAnimalText.includes("亲密") && ranchAnimalText.includes("清洁"),
+  );
+  const careBefore = saveState().ranch.pens[0].animal;
+  await clickText("[梳毛]");
+  await waitFor(async () => (saveState().ranch.pens[0].animal.lastGroomDay || "") !== "");
+  check("梳毛记进当日照料", (saveState().ranch.pens[0].animal.lastGroomDay || "") !== "");
+  check(
+    "梳毛涨亲密度",
+    saveState().ranch.pens[0].animal.affection > careBefore.affection,
+    `${careBefore.affection} → ${saveState().ranch.pens[0].animal.affection}`,
+  );
+  await clickText("[互动]");
+  await waitFor(async () => (saveState().ranch.pens[0].animal.lastPetDay || "") !== "");
+  check("互动涨亲密度", saveState().ranch.pens[0].animal.affection > careBefore.affection);
+  const grazeBefore = saveState().ranch.pens[0].animal.satiety;
+  await clickText("[放牧]");
+  await waitFor(async () => (saveState().ranch.pens[0].animal.lastGrazeDay || "") !== "");
+  check(
+    "放牧涨饱食",
+    saveState().ranch.pens[0].animal.satiety > grazeBefore,
+    `${grazeBefore} → ${saveState().ranch.pens[0].animal.satiety}`,
+  );
+  await clickText("[详情]", false);
+  check("牧场详情显示性格说明", (await bodyText()).includes("性格："));
+  await clickText("[收起]", false);
   const feedBefore = saveState().inventory["ranch:feed"] || 0;
   await clickText("[买专用饲料 300]");
   await waitFor(async () => (saveState().inventory["ranch:feed"] || 0) > feedBefore);

@@ -113,6 +113,15 @@ pub enum Action {
     FeedRanchAnimal {
         pen: u8,
     },
+    GroomRanchAnimal {
+        pen: u8,
+    },
+    GrazeRanchAnimal {
+        pen: u8,
+    },
+    PetRanchAnimal {
+        pen: u8,
+    },
     CollectRanchProduct {
         pen: u8,
     },
