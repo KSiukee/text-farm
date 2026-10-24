@@ -611,6 +611,15 @@ export interface SpecimenView {
   haveQty: number;
   canCraft: boolean;
   rewardHint: string;
+  crafted: number;
+  featured: boolean;
+}
+
+export interface SpecimenMilestoneView {
+  unique: number;
+  rewardCoins: number;
+  claimed: boolean;
+  claimable: boolean;
 }
 
 export type FishingSpot = "creek" | "river" | "jiang" | "sea";
@@ -1070,6 +1079,9 @@ export interface Snapshot {
   achievements: AchievementView[];
   achievementsEarned: number;
   specimens: SpecimenView[];
+  specimenUnique: number;
+  specimenFeatured: string | null;
+  specimenMilestones: SpecimenMilestoneView[];
   pet: PetView | null;
   pets: PetView[];
   petCare: PetCareView;
@@ -1093,10 +1105,22 @@ export interface Snapshot {
   contentCrops: number;
 }
 
+export interface SpecimenResultEffect {
+  kind: "specimen";
+  cropId: string;
+  cropName: string;
+  seedId: string;
+  seedName: string;
+  seedQty: number;
+  coins: number;
+  featured: boolean;
+}
+
 export type Effect =
   | { kind: "log"; text: string }
   | { kind: "levelUp"; level: number }
-  | { kind: "achievement"; id: string; name: string };
+  | { kind: "achievement"; id: string; name: string }
+  | SpecimenResultEffect;
 
 export interface DispatchReply {
   snapshot: Snapshot;
@@ -1117,6 +1141,7 @@ export type Action =
   | { type: "mitigateDisaster"; plot: number }
   | { type: "setRegion"; region: Region }
   | { type: "craftSpecimen"; cropId: string }
+  | { type: "claimSpecimenMilestone"; unique: number }
   | { type: "repairWindmills" }
   | { type: "adoptPet"; name: string; breed: PetBreed; board: boolean }
   | { type: "feedPet"; petId: string; cropId: string }

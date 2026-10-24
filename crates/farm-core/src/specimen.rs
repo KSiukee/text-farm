@@ -13,6 +13,18 @@ pub fn recipe(def: &CropDef) -> SpecimenRecipe {
     }
 }
 
+/// 每天挑一种“今日推荐”标本：只做展示和金币加成，不影响概率。
+pub fn featured_crop<'a>(content: &'a ContentPack, day: &str) -> Option<&'a CropDef> {
+    if content.crops.is_empty() {
+        return None;
+    }
+    let roll = seed(day.len() as i64, day);
+    Some(&content.crops[(roll as usize) % content.crops.len()])
+}
+
+/// 收藏里程碑：不同作物的标本数量 → 金币奖励。
+pub const MILESTONES: [(u32, u64); 4] = [(3, 3_000), (6, 8_000), (9, 18_000), (13, 50_000)];
+
 fn seed(now: i64, crop_id: &str) -> u64 {
     let mut hash = 0x9E37_79B9_7F4A_7C15u64 ^ (now as u64);
     for byte in crop_id.as_bytes() {

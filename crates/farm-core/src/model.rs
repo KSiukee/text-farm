@@ -378,6 +378,11 @@ pub struct GameState {
     pub codex: BTreeMap<String, CodexEntry>,
     #[serde(default)]
     pub achievements: BTreeMap<String, bool>,
+    /// 每种作物做过多少份标本；键是 crop id。
+    #[serde(default)]
+    pub specimen_collection: BTreeMap<String, u32>,
+    #[serde(default)]
+    pub specimen_milestones_claimed: BTreeSet<u32>,
     #[serde(default)]
     pub npcs: Vec<NpcState>,
     #[serde(default)]
@@ -472,6 +477,8 @@ impl Game {
             daily: DailyState::default(),
             codex: BTreeMap::new(),
             achievements: BTreeMap::new(),
+            specimen_collection: BTreeMap::new(),
+            specimen_milestones_claimed: BTreeSet::new(),
             npcs,
             npc_messages: Vec::new(),
             last_npc_tick_at: now,

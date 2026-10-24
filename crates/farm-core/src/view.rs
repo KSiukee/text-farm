@@ -459,6 +459,17 @@ pub struct SpecimenView {
     pub have_qty: u32,
     pub can_craft: bool,
     pub reward_hint: String,
+    pub crafted: u32,
+    pub featured: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpecimenMilestoneView {
+    pub unique: u32,
+    pub reward_coins: u64,
+    pub claimed: bool,
+    pub claimable: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -965,6 +976,9 @@ pub struct Snapshot {
     pub achievements: Vec<AchievementView>,
     pub achievements_earned: usize,
     pub specimens: Vec<SpecimenView>,
+    pub specimen_unique: usize,
+    pub specimen_featured: Option<String>,
+    pub specimen_milestones: Vec<SpecimenMilestoneView>,
     pub pet: Option<PetView>,
     pub pets: Vec<PetView>,
     pub pet_care: PetCareView,
@@ -1453,6 +1467,8 @@ impl Game {
         let achievement_views = achievements::views(&self.state);
         let achievements_earned = achievement_views.iter().filter(|a| a.earned).count();
 
+        let featured_specimen = specimen::featured_crop(&self.content, &self.state.daily.day)
+            .map(|crop| crop.id.clone());
         let specimens: Vec<SpecimenView> = self
             .content
             .crops
@@ -1479,9 +1495,22 @@ impl Game {
                     } else {
                         "随机同类种子 ×1–2".into()
                     },
+                    crafted: self
+                        .state
+                        .specimen_collection
+                        .get(&def.id)
+                        .copied()
+                        .unwrap_or(0),
+                    featured: featured_specimen.as_deref() == Some(def.id.as_str()),
                 }
             })
             .collect();
+        let specimen_unique = self
+            .state
+            .specimen_collection
+            .values()
+            .filter(|count| **count > 0)
+            .count();
 
         let npcs: Vec<NpcView> = self
             .state
@@ -2392,6 +2421,18 @@ impl Game {
             achievements: achievement_views,
             achievements_earned,
             specimens,
+            specimen_unique,
+            specimen_featured: featured_specimen,
+            specimen_milestones: specimen::MILESTONES
+                .iter()
+                .map(|(unique, reward_coins)| SpecimenMilestoneView {
+                    unique: *unique,
+                    reward_coins: *reward_coins,
+                    claimed: self.state.specimen_milestones_claimed.contains(unique),
+                    claimable: !self.state.specimen_milestones_claimed.contains(unique)
+                        && specimen_unique >= *unique as usize,
+                })
+                .collect(),
             pet,
             pets,
             pet_care,

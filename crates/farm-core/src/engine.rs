@@ -47,6 +47,16 @@ pub enum Effect {
     Log { text: String },
     LevelUp { level: u32 },
     Achievement { id: String, name: String },
+    #[serde(rename_all = "camelCase")]
+    Specimen {
+        crop_id: String,
+        crop_name: String,
+        seed_id: String,
+        seed_name: String,
+        seed_qty: u32,
+        coins: u64,
+        featured: bool,
+    },
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -88,6 +98,9 @@ impl Game {
             Action::MitigateDisaster { plot } => self.mitigate_disaster(plot, now)?,
             Action::SetRegion { region } => self.set_region(region, now)?,
             Action::CraftSpecimen { crop_id } => self.craft_specimen(&crop_id, now)?,
+            Action::ClaimSpecimenMilestone { unique } => {
+                self.claim_specimen_milestone(unique, now)?
+            }
             Action::RepairWindmills => self.repair_windmills(now)?,
             Action::AdoptPet { name, breed, board } => self.adopt_pet(name, breed, board, now)?,
             Action::FeedPet { pet_id, crop_id } => self.feed_pet(&pet_id, &crop_id, now)?,
@@ -777,21 +790,83 @@ impl Game {
             self.state.inventory.insert(key, new_have);
         }
         self.state.coins -= recipe.coins;
+        let featured = crate::specimen::featured_crop(&self.content, &self.state.daily.day)
+            .is_some_and(|crop| crop.id == def.id);
         let (reward, seeds) = crate::specimen::roll_reward(&self.content, &def, now);
+        let _ = reward;
+        let reward_id = reward.id.clone();
+        let reward_name = reward.name.clone();
         *self
             .state
             .inventory
-            .entry(format!("seed:{}", reward.id))
+            .entry(format!("seed:{reward_id}"))
             .or_insert(0) += seeds;
-        let coin_reward = recipe.coins / 2;
+        *self
+            .state
+            .specimen_collection
+            .entry(def.id.clone())
+            .or_insert(0) += 1;
+        let mut coin_reward = recipe.coins / 2;
+        if featured {
+            coin_reward += recipe.coins / 4;
+        }
         self.state.coins = self.state.coins.saturating_add(coin_reward);
         self.state.stats.specimens_crafted += 1;
         self.state.stats.rare_seeds_gained += u64::from(seeds);
 
+        let recommendation = if featured { "（今日推荐 +50%）" } else { "" };
         let text = format!(
-            "制作{}标本：消耗 {}×{} + {}金币，获得 {}种子×{} + {}金币",
-            def.name, def.name, recipe.need_qty, recipe.coins, reward.name, seeds, coin_reward
+            "制作{}标本：消耗 {}×{} + {}金币，获得 {}种子×{} + {}金币{}",
+            def.name,
+            def.name,
+            recipe.need_qty,
+            recipe.coins,
+            reward_name,
+            seeds,
+            coin_reward,
+            recommendation
         );
+        self.push_log(now, text.clone());
+        Ok(vec![
+            Effect::Log { text },
+            Effect::Specimen {
+                crop_id: def.id.clone(),
+                crop_name: def.name.clone(),
+                seed_id: reward_id,
+                seed_name: reward_name,
+                seed_qty: seeds,
+                coins: coin_reward,
+                featured,
+            },
+        ])
+    }
+
+    fn claim_specimen_milestone(
+        &mut self,
+        unique: u32,
+        now: i64,
+    ) -> Result<Vec<Effect>, GameError> {
+        let current = self
+            .state
+            .specimen_collection
+            .values()
+            .filter(|count| **count > 0)
+            .count() as u32;
+        let Some((need, reward)) = crate::specimen::MILESTONES
+            .iter()
+            .find(|(need, _)| *need == unique)
+        else {
+            return Err(GameError::SpecimenMilestoneLocked);
+        };
+        if current < *need {
+            return Err(GameError::SpecimenMilestoneLocked);
+        }
+        if self.state.specimen_milestones_claimed.contains(need) {
+            return Err(GameError::AlreadyClaimed);
+        }
+        self.state.specimen_milestones_claimed.insert(*need);
+        self.state.coins = self.state.coins.saturating_add(*reward);
+        let text = format!("标本图鉴达到 {need} 种，领取金币+{reward}");
         self.push_log(now, text.clone());
         Ok(vec![Effect::Log { text }])
     }

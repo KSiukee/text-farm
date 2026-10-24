@@ -30,6 +30,7 @@ import type {
   CropView,
   CropDef,
   DisciplineKind,
+  Effect,
   EquipmentKind,
   EquipmentRecipe,
   FacilityView,
@@ -544,6 +545,11 @@ const levelRewards = computed(() => snapshot.value?.levelRewards ?? []);
 const levelRewardClaimable = computed(() => snapshot.value?.levelRewardsClaimable ?? 0);
 const npcs = computed(() => snapshot.value?.npcs ?? []);
 const specimens = computed(() => snapshot.value?.specimens ?? []);
+const specimenFeatured = computed(
+  () => specimens.value.find((item) => item.featured) ?? null,
+);
+const specimenMilestones = computed(() => snapshot.value?.specimenMilestones ?? []);
+const specimenResult = ref<Extract<Effect, { kind: "specimen" }> | null>(null);
 const seasonClass = computed(() => `season-${snapshot.value?.season ?? "spring"}`);
 const SEASON_NAMES: Record<Season, string> = {
   spring: "春",
@@ -787,6 +793,10 @@ function craftSpecimen(specimen: SpecimenView) {
   void act({ type: "craftSpecimen", cropId: specimen.cropId });
 }
 
+function claimSpecimenMilestone(unique: number) {
+  void act({ type: "claimSpecimenMilestone", unique });
+}
+
 function formatCooldown(ms: number): string {
   const minutes = Math.ceil(ms / 60000);
   if (minutes <= 0) return "好了";
@@ -993,6 +1003,10 @@ async function act(action: Action) {
     const levelUp = reply.effects.find((effect) => effect.kind === "levelUp");
     if (!achievement && levelUp && levelUp.kind === "levelUp") {
       notice.value = `升级！农场等级 ${levelUp.level}`;
+    }
+    const specimen = reply.effects.find((effect) => effect.kind === "specimen");
+    if (specimen && specimen.kind === "specimen") {
+      specimenResult.value = specimen;
     }
     if (reply.saveError) {
       saveMessage.value = `已生效，但保存失败：${reply.saveError}`;
@@ -4753,13 +4767,45 @@ onUnmounted(() => {
         <section class="panel">
           <div class="panel-title">
             标本室
-            <span class="muted">消耗作物和金币，随机换稀有种子</span>
+            <span class="muted">
+              已收藏 {{ snapshot?.specimenUnique ?? 0 }}/{{ specimens.length }} 种 · 消耗作物和金币换稀有种子
+            </span>
+          </div>
+          <p v-if="specimenFeatured" class="specimen-featured">
+            今日推荐：{{ specimenFeatured.icon }} {{ specimenFeatured.name }}标本 · 金币奖励 +50%
+          </p>
+          <div class="specimen-milestones">
+            <span class="muted">收藏奖励</span>
+            <span
+              v-for="milestone in specimenMilestones"
+              :key="milestone.unique"
+              class="specimen-milestone"
+            >
+              {{ milestone.unique }}种 · {{ milestone.rewardCoins }}金币
+              <button
+                v-if="!milestone.claimed"
+                class="link"
+                type="button"
+                :disabled="acting || !milestone.claimable"
+                @click="claimSpecimenMilestone(milestone.unique)"
+              >
+                {{ milestone.claimable ? "[领取]" : "[还差]" }}
+              </button>
+              <span v-else class="muted">✓ 已领</span>
+            </span>
           </div>
           <div class="specimen-grid">
-            <div v-for="specimen in specimens" :key="specimen.cropId" class="specimen-card">
+            <div
+              v-for="specimen in specimens"
+              :key="specimen.cropId"
+              class="specimen-card"
+              :class="{ featured: specimen.featured, crafted: specimen.crafted > 0 }"
+            >
               <div class="specimen-head">
                 <strong>{{ specimen.icon }} {{ specimen.name }}标本</strong>
-                <span class="muted">{{ specimen.level }}级作物</span>
+                <span v-if="specimen.featured" class="specimen-tag">今日推荐</span>
+                <span v-else-if="specimen.crafted > 0" class="specimen-tag">已收藏 ×{{ specimen.crafted }}</span>
+                <span v-else class="muted">{{ specimen.level }}级作物</span>
               </div>
               <div>
                 材料：{{ specimen.name }}×{{ specimen.needQty }}（有 {{ specimen.haveQty }}）
@@ -4767,6 +4813,7 @@ onUnmounted(() => {
               </div>
               <div class="muted">
                 奖励：{{ specimen.rewardHint }} + {{ Math.floor(specimen.coins / 2) }}金币
+                <span v-if="specimen.featured">（推荐 +50%）</span>
               </div>
               <button
                 v-if="specimen.canCraft"
@@ -4781,6 +4828,20 @@ onUnmounted(() => {
             </div>
           </div>
         </section>
+
+        <div v-if="specimenResult" class="specimen-result-overlay" @click.self="specimenResult = null">
+          <div class="specimen-result-card">
+            <div class="panel-title">标本完成</div>
+            <div class="specimen-result-icon">🧪</div>
+            <strong>{{ specimenResult.cropName }}标本</strong>
+            <p v-if="specimenResult.featured" class="specimen-featured">今日推荐，金币奖励 +50%</p>
+            <p>
+              获得 <b>{{ specimenResult.seedName }}种子 ×{{ specimenResult.seedQty }}</b>
+              <span v-if="specimenResult.coins > 0"> + {{ specimenResult.coins }}金币</span>
+            </p>
+            <button class="link" type="button" @click="specimenResult = null">[收下]</button>
+          </div>
+        </div>
       </div>
 
       <div class="rule"></div>

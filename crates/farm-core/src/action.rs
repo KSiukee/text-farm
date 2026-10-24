@@ -54,6 +54,9 @@ pub enum Action {
         #[serde(rename = "cropId")]
         crop_id: String,
     },
+    ClaimSpecimenMilestone {
+        unique: u32,
+    },
     RepairWindmills,
     AdoptPet {
         name: String,

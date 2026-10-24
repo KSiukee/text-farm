@@ -142,6 +142,8 @@ pub enum GameError {
     DecorOfferInvalid,
     #[error("这件装饰已经卖掉了")]
     DecorOfferSold,
+    #[error("标本收藏数量还不够")]
+    SpecimenMilestoneLocked,
     #[error("没有这个专精")]
     BadSkill,
     #[error("这个专精已经满级")]
@@ -331,6 +333,7 @@ impl GameError {
             GameError::FarmCardMissing => "farm_card_missing",
             GameError::DecorOfferInvalid => "decor_offer_invalid",
             GameError::DecorOfferSold => "decor_offer_sold",
+            GameError::SpecimenMilestoneLocked => "specimen_milestone_locked",
             GameError::BadSkill => "bad_skill",
             GameError::SkillMax => "skill_max",
             GameError::BadBuffItem => "bad_buff_item",

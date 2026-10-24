@@ -47,6 +47,92 @@ fn crafting_consumes_crop_and_coins_and_drops_a_rare_seed() {
 }
 
 #[test]
+fn crafting_returns_a_result_and_marks_collection() {
+    let mut game = game_with("xiaobaicai", 20, 10_000);
+    let outcome = game
+        .dispatch(
+            Action::CraftSpecimen {
+                crop_id: "xiaobaicai".into(),
+            },
+            0,
+        )
+        .unwrap();
+    let result = outcome.effects.iter().find_map(|effect| match effect {
+        farm_core::Effect::Specimen {
+            crop_name,
+            seed_qty,
+            ..
+        } => Some((crop_name.clone(), *seed_qty)),
+        _ => None,
+    });
+    let (crop_name, seed_qty) = result.expect("specimen result effect");
+    assert_eq!(crop_name, "小青菜");
+    assert!(seed_qty >= 1);
+    assert_eq!(
+        game.state().specimen_collection.get("xiaobaicai"),
+        Some(&1)
+    );
+}
+
+#[test]
+fn featured_specimen_pays_fifty_percent_more() {
+    let mut game = game_with("xiaobaicai", 0, 100_000);
+    game.sync(0, "2026-10-24");
+    let featured_id = game.snapshot(0).specimen_featured.expect("featured crop");
+    let recipe = specimen_recipe(game.content().crop(&featured_id).unwrap());
+    game.state_mut()
+        .inventory
+        .insert(format!("crop:{featured_id}"), recipe.need_qty);
+    let before = game.state().coins;
+    let outcome = game
+        .dispatch(
+            Action::CraftSpecimen {
+                crop_id: featured_id,
+            },
+            1_000,
+        )
+        .unwrap();
+    let result = outcome.effects.iter().find_map(|effect| match effect {
+        farm_core::Effect::Specimen {
+            coins, featured, ..
+        } => Some((*coins, *featured)),
+        _ => None,
+    });
+    let (coins, featured) = result.expect("featured result");
+    assert!(featured);
+    assert_eq!(coins, recipe.coins / 2 + recipe.coins / 4);
+    assert!(game.state().coins > before);
+}
+
+#[test]
+fn specimen_milestone_requires_unique_crops_and_only_pays_once() {
+    let mut game = Game::new(0);
+    game.state_mut().coins = 100_000;
+    assert!(matches!(
+        game.dispatch(Action::ClaimSpecimenMilestone { unique: 3 }, 0),
+        Err(GameError::SpecimenMilestoneLocked)
+    ));
+    let ids: Vec<String> = game
+        .content()
+        .crops
+        .iter()
+        .take(3)
+        .map(|crop| crop.id.clone())
+        .collect();
+    for id in ids {
+        game.state_mut().specimen_collection.insert(id, 1);
+    }
+    let before = game.state().coins;
+    game.dispatch(Action::ClaimSpecimenMilestone { unique: 3 }, 0)
+        .unwrap();
+    assert_eq!(game.state().coins, before + 3_000);
+    assert!(matches!(
+        game.dispatch(Action::ClaimSpecimenMilestone { unique: 3 }, 0),
+        Err(GameError::AlreadyClaimed)
+    ));
+}
+
+#[test]
 fn crafting_requires_materials_and_coins() {
     let mut game = game_with("xiaobaicai", 1, 10_000);
     assert!(matches!(

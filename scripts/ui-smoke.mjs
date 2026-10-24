@@ -24,6 +24,7 @@ const mysteryScreenshotPath = join(root, "docs", "mystery-shop-v083.png");
 const mysteryWalletScreenshotPath = join(root, "docs", "mystery-wallet-v083.png");
 const decorScreenshotPath = join(root, "docs", "decor-shop-v085.png");
 const furnitureCodexScreenshotPath = join(root, "docs", "furniture-codex-v087.png");
+const specimenScreenshotPath = join(root, "docs", "specimen-v088.png");
 const port = 9333;
 const checks = [];
 let child = null;
@@ -1042,6 +1043,20 @@ try {
   await clickText("[放生]");
   await waitFor(async () => saveState().pets.length === 3);
   check("点击放生（确认框自动接受）", saveState().pets.length === 3);
+
+  await clickText("标本室", true);
+  await waitFor(async () => (await bodyText()).includes("已收藏"));
+  check("标本收藏进度已显示", (await bodyText()).includes("已收藏"));
+  const specimenBefore = saveState().stats.specimensCrafted;
+  await clickText("[制作标本]", true);
+  await waitFor(async () => (await evaluate(`!!document.querySelector('.specimen-result-overlay')`)) === true);
+  check("标本结果弹层", (await bodyText()).includes("标本完成"));
+  check("标本结果有种子数量", (await bodyText()).includes("种子 ×") && !(await bodyText()).includes("种子 × +"));
+  await screenshot(specimenScreenshotPath);
+  check("标本截图已保存", existsSync(specimenScreenshotPath), specimenScreenshotPath);
+  await clickText("[收下]", true);
+  await waitFor(async () => saveState().stats.specimensCrafted > specimenBefore);
+  check("标本制作计数增加", saveState().stats.specimensCrafted > specimenBefore);
 
   await clickText("牧村", true);
   await waitFor(async () => (await bodyText()).includes("家具与装饰店"));
