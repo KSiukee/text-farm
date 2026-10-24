@@ -9,6 +9,7 @@ use crate::fishing::FishingState;
 use crate::npc::{self, NpcMessage, NpcState};
 use crate::pet::{PetCare, PetState};
 use crate::ranch::RanchState;
+use crate::orders::FarmOrderState;
 use crate::room::RoomState;
 use crate::skills::PlayerSkills;
 use crate::workshop::WorkshopState;
@@ -410,6 +411,9 @@ pub struct GameState {
     /// 自己的小屋：房间布局按房间 id 存；当前只有 living。
     #[serde(default)]
     pub room: RoomState,
+    /// 每日村庄订单；旧档默认空，第一次 sync 生成。
+    #[serde(default)]
+    pub orders: FarmOrderState,
 }
 
 pub struct Game {
@@ -478,6 +482,7 @@ impl Game {
             buffs: Vec::new(),
             level_rewards_claimed: BTreeSet::new(),
             room: RoomState::default(),
+            orders: FarmOrderState::default(),
         };
 
         Self { state, content }

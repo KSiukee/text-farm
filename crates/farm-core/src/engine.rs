@@ -171,6 +171,8 @@ impl Game {
             Action::NpcGreeting { npc_id } => self.npc_greeting(&npc_id, now)?,
             Action::ClaimSignIn => self.claim_sign_in(now)?,
             Action::ClaimDaily { id } => self.claim_daily(id, now)?,
+            Action::AcceptFarmOrder { id } => self.accept_farm_order(&id, now)?,
+            Action::DeliverFarmOrder { id } => self.deliver_farm_order(&id, now)?,
             Action::ClaimLevelReward { level } => self.claim_level_reward(level, now)?,
             Action::UpdateSettings { exp_rate } => self.update_settings(exp_rate, now)?,
             Action::ShowGuide => self.show_guide(now)?,
@@ -4251,6 +4253,64 @@ impl Game {
         Ok(effects)
     }
 
+    fn accept_farm_order(&mut self, id: &str, now: i64) -> Result<Vec<Effect>, GameError> {
+        let Some(order) = self.state.orders.find_offer(id).cloned() else {
+            return Err(GameError::FarmOrderInvalid);
+        };
+        if order.expires_day.as_str() < self.state.daily.day.as_str() {
+            return Err(GameError::FarmOrderExpired);
+        }
+        if self.state.orders.active.len() >= crate::orders::FARM_ORDER_MAX_ACTIVE {
+            return Err(GameError::FarmOrderLimit);
+        }
+        if !self.state.orders.accept(id) {
+            return Err(GameError::FarmOrderInvalid);
+        }
+        let text = format!(
+            "接下 {} 的订单：{}×{}，{} 前交付",
+            order.npc_name, order.crop_name, order.qty, order.expires_day
+        );
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn deliver_farm_order(&mut self, id: &str, now: i64) -> Result<Vec<Effect>, GameError> {
+        let Some(order) = self.state.orders.find_active(id).cloned() else {
+            return Err(GameError::FarmOrderInvalid);
+        };
+        if order.expires_day.as_str() < self.state.daily.day.as_str() {
+            return Err(GameError::FarmOrderExpired);
+        }
+        let key = format!("crop:{}", order.crop_id);
+        let have = self.state.inventory.get(&key).copied().unwrap_or(0);
+        if have < order.qty {
+            return Err(GameError::FarmOrderNotEnough);
+        }
+        if have == order.qty {
+            self.state.inventory.remove(&key);
+        } else {
+            self.state.inventory.insert(key, have - order.qty);
+        }
+        self.state.coins = self.state.coins.saturating_add(order.reward_coins);
+        if let Some(npc) = self
+            .state
+            .npcs
+            .iter_mut()
+            .find(|npc| npc.id == order.npc_id)
+        {
+            npc.friendship = (npc.friendship + 2).min(100);
+        }
+        self.state.orders.remove_active(id);
+        let text = format!(
+            "交付 {} 的订单：{}×{}，金币+{}，{} 友好度+2",
+            order.npc_name, order.crop_name, order.qty, order.reward_coins, order.npc_name
+        );
+        self.push_log(now, text.clone());
+        let mut effects = vec![Effect::Log { text }];
+        effects.extend(self.add_exp(order.reward_exp as u32, now));
+        Ok(effects)
+    }
+
     fn claim_level_reward(&mut self, level: u32, now: i64) -> Result<Vec<Effect>, GameError> {
         if !(LEVEL_REWARD_MIN..=MAX_LEVEL).contains(&level) {
             return Err(GameError::BadLevelReward);
@@ -4341,6 +4401,36 @@ impl Game {
             .ensure_day(today, self.state.skills.fishing.level)
         {
             let text = "钓鱼委托和今日比赛更新了".to_string();
+            self.push_log(now, text.clone());
+            effects.push(Effect::Log { text });
+            changed = true;
+        }
+        let day_before_orders = self.state.orders.day.clone();
+        let expired_orders = self.state.orders.ensure_day(
+            today,
+            self.state.level,
+            &self.content,
+        );
+        for order in &expired_orders {
+            if let Some(npc) = self
+                .state
+                .npcs
+                .iter_mut()
+                .find(|npc| npc.id == order.npc_id)
+            {
+                npc.friendship = (npc.friendship - 1).max(0);
+            }
+        }
+        if day_before_orders != self.state.orders.day {
+            let text = format!(
+                "村庄订单更新了：{} 条新订单{}",
+                self.state.orders.offers.len(),
+                if expired_orders.is_empty() {
+                    String::new()
+                } else {
+                    format!("，{} 条过期（NPC 友好度-1）", expired_orders.len())
+                }
+            );
             self.push_log(now, text.clone());
             effects.push(Effect::Log { text });
             changed = true;

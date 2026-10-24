@@ -122,6 +122,14 @@ pub enum GameError {
     FishingCommissionRefreshUsed,
     #[error("没有这场可领的钓鱼比赛")]
     FishingTournamentInvalid,
+    #[error("这条村庄订单不在了")]
+    FarmOrderInvalid,
+    #[error("最多同时接 2 条村庄订单")]
+    FarmOrderLimit,
+    #[error("仓库里的作物不够交这单")]
+    FarmOrderNotEnough,
+    #[error("这条村庄订单已经过期")]
+    FarmOrderExpired,
     #[error("没有这个专精")]
     BadSkill,
     #[error("这个专精已经满级")]
@@ -301,6 +309,10 @@ impl GameError {
             GameError::FishingCommissionNotReady => "fishing_commission_not_ready",
             GameError::FishingCommissionRefreshUsed => "fishing_commission_refresh_used",
             GameError::FishingTournamentInvalid => "fishing_tournament_invalid",
+            GameError::FarmOrderInvalid => "farm_order_invalid",
+            GameError::FarmOrderLimit => "farm_order_limit",
+            GameError::FarmOrderNotEnough => "farm_order_not_enough",
+            GameError::FarmOrderExpired => "farm_order_expired",
             GameError::BadSkill => "bad_skill",
             GameError::SkillMax => "skill_max",
             GameError::BadBuffItem => "bad_buff_item",

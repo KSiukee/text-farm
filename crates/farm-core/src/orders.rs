@@ -1,0 +1,230 @@
+//! 农场订单：每天 2–3 条村庄订单，交付作物换金币/经验/NPC 友好度。
+//!
+//! 只做内核；面板 UI、日常任务和模拟在后续任务接。
+
+use serde::{Deserialize, Serialize};
+
+use crate::content::ContentPack;
+
+pub const FARM_ORDER_OFFERS: usize = 3;
+pub const FARM_ORDER_MAX_ACTIVE: usize = 2;
+
+const NPC_PROFILES: [(&str, &str); 5] = [
+    ("ahe", "阿禾"),
+    ("xiaoman", "小满"),
+    ("qingxing", "青杏"),
+    ("laotao", "老陶"),
+    ("liuyue", "六月"),
+];
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", default)]
+pub struct FarmOrder {
+    pub id: String,
+    pub npc_id: String,
+    pub npc_name: String,
+    pub crop_id: String,
+    pub crop_name: String,
+    pub qty: u32,
+    /// 最后可交付日期（含当天），YYYY-MM-DD。
+    pub expires_day: String,
+    pub reward_coins: u64,
+    pub reward_exp: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+pub struct FarmOrderState {
+    pub day: String,
+    pub offers: Vec<FarmOrder>,
+    pub active: Vec<FarmOrder>,
+}
+
+impl FarmOrderState {
+    /// 跨天刷新报价；返回当天过期的已接订单，交给引擎扣 NPC 友好度。
+    pub fn ensure_day(&mut self, today: &str, level: u32, content: &ContentPack) -> Vec<FarmOrder> {
+        if self.day == today {
+            return Vec::new();
+        }
+        let expired: Vec<FarmOrder> = self
+            .active
+            .iter()
+            .filter(|order| order.expires_day.as_str() < today)
+            .cloned()
+            .collect();
+        self.active
+            .retain(|order| order.expires_day.as_str() >= today);
+        self.offers = generate_offers(today, level, content);
+        self.day = today.to_string();
+        expired
+    }
+
+    pub fn accept(&mut self, id: &str) -> bool {
+        if self.active.len() >= FARM_ORDER_MAX_ACTIVE {
+            return false;
+        }
+        let Some(index) = self.offers.iter().position(|order| order.id == id) else {
+            return false;
+        };
+        self.active.push(self.offers.remove(index));
+        true
+    }
+
+    pub fn find_offer(&self, id: &str) -> Option<&FarmOrder> {
+        self.offers.iter().find(|order| order.id == id)
+    }
+
+    pub fn find_active(&self, id: &str) -> Option<&FarmOrder> {
+        self.active.iter().find(|order| order.id == id)
+    }
+
+    pub fn remove_active(&mut self, id: &str) -> Option<FarmOrder> {
+        let index = self.active.iter().position(|order| order.id == id)?;
+        Some(self.active.remove(index))
+    }
+}
+
+fn generate_offers(today: &str, level: u32, content: &ContentPack) -> Vec<FarmOrder> {
+    let crops: Vec<_> = content
+        .crops
+        .iter()
+        .filter(|crop| crop.unlock_level <= level && crop.sell_price > 0)
+        .collect();
+    if crops.is_empty() {
+        return Vec::new();
+    }
+    (0..FARM_ORDER_OFFERS)
+        .map(|index| {
+            let roll = roll(today, 0x200 + index as u64 * 31);
+            let crop = crops[(roll as usize) % crops.len()];
+            let (npc_id, npc_name) = NPC_PROFILES[((roll >> 8) as usize) % NPC_PROFILES.len()];
+            // 便宜作物量大、贵作物量小；让单笔总额大致落在几百到几千。
+            let budget = 900 + u64::from(level) * 55;
+            let base = (budget / crop.sell_price.max(1)).clamp(2, 30);
+            let qty = (base + ((roll >> 16) % 4) as u64).min(40) as u32;
+            let premium = 135 + ((roll >> 24) % 21) as u64;
+            let days = 1 + ((roll >> 32) % 2) as u32;
+            FarmOrder {
+                id: format!("{today}-{index}"),
+                npc_id: npc_id.into(),
+                npc_name: npc_name.into(),
+                crop_id: crop.id.clone(),
+                crop_name: crop.name.clone(),
+                qty,
+                expires_day: add_days(today, days),
+                reward_coins: crop
+                    .sell_price
+                    .saturating_mul(u64::from(qty))
+                    .saturating_mul(premium)
+                    / 100,
+                reward_exp: 10 + u64::from(qty) * 2,
+            }
+        })
+        .collect()
+}
+
+fn roll(day: &str, salt: u64) -> u64 {
+    let mut hash = 0x9E37_79B9_7F4A_7C15u64 ^ salt;
+    for byte in day.bytes() {
+        hash ^= u64::from(byte);
+        hash = hash.wrapping_mul(1_099_511_628_211);
+    }
+    hash ^= hash >> 33;
+    hash = hash.wrapping_mul(0xff51_afd7_ed55_8ccd);
+    hash ^ (hash >> 33)
+}
+
+/// 给 YYYY-MM-DD 加天数；解析失败时原样返回，避免坏日期把订单打崩。
+pub fn add_days(day: &str, days: u32) -> String {
+    let Some((year, month, date)) = parse_day(day) else {
+        return day.to_string();
+    };
+    let z = days_from_civil(year, month, date) + i64::from(days);
+    let (year, month, date) = civil_from_days(z);
+    format!("{year:04}-{month:02}-{date:02}")
+}
+
+fn parse_day(day: &str) -> Option<(i64, u32, u32)> {
+    let mut parts = day.split('-');
+    let year = parts.next()?.parse().ok()?;
+    let month = parts.next()?.parse().ok()?;
+    let date = parts.next()?.parse().ok()?;
+    if !(1..=12).contains(&month) || !(1..=31).contains(&date) {
+        return None;
+    }
+    Some((year, month, date))
+}
+
+// Howard Hinnant 的 civil date 算法；只用于订单截止日。
+fn days_from_civil(year: i64, month: u32, date: u32) -> i64 {
+    let year = year - i64::from(month <= 2);
+    let era = if year >= 0 { year } else { year - 399 } / 400;
+    let yoe = year - era * 400;
+    let month = i64::from(month);
+    let doy = (153 * (month + if month > 2 { -3 } else { 9 }) + 2) / 5 + i64::from(date) - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146_097 + doe - 719_468
+}
+
+fn civil_from_days(days: i64) -> (i64, u32, u32) {
+    let z = days + 719_468;
+    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let year = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let date = (doy - (153 * mp + 2) / 5 + 1) as u32;
+    let month = (mp + if mp < 10 { 3 } else { -9 }) as u32;
+    (year + i64::from(month <= 2), month, date)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn add_days_handles_month_and_year() {
+        assert_eq!(add_days("2026-10-24", 1), "2026-10-25");
+        assert_eq!(add_days("2026-10-31", 1), "2026-11-01");
+        assert_eq!(add_days("2026-12-31", 1), "2027-01-01");
+        assert_eq!(add_days("2028-02-28", 1), "2028-02-29");
+        assert_eq!(add_days("bad", 1), "bad");
+    }
+
+    #[test]
+    fn offers_are_deterministic_and_use_unlocked_crops() {
+        let content = ContentPack::starter();
+        let mut first = FarmOrderState::default();
+        let mut second = FarmOrderState::default();
+        first.ensure_day("2026-10-24", 10, &content);
+        second.ensure_day("2026-10-24", 10, &content);
+        assert_eq!(first.offers.len(), FARM_ORDER_OFFERS);
+        assert_eq!(first.offers, second.offers);
+        assert!(first
+            .offers
+            .iter()
+            .all(|order| content.crop(&order.crop_id).is_some_and(|crop| crop.unlock_level <= 10)));
+        assert!(first.offers.iter().all(|order| order.qty > 0));
+        assert!(first.offers.iter().all(|order| order.reward_coins > 0));
+        assert!(first
+            .offers
+            .iter()
+            .all(|order| order.expires_day.as_str() > "2026-10-24"));
+    }
+
+    #[test]
+    fn accept_limit_and_expiry() {
+        let content = ContentPack::starter();
+        let mut state = FarmOrderState::default();
+        state.ensure_day("2026-10-24", 10, &content);
+        let ids: Vec<String> = state.offers.iter().map(|order| order.id.clone()).collect();
+        assert!(state.accept(&ids[0]));
+        assert!(state.accept(&ids[1]));
+        assert!(!state.accept(&ids[2]));
+        let expired = state.ensure_day("2026-10-28", 10, &content);
+        assert_eq!(expired.len(), 2);
+        assert!(state.active.is_empty());
+        assert_eq!(state.offers.len(), FARM_ORDER_OFFERS);
+    }
+}

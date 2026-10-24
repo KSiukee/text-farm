@@ -13,6 +13,7 @@ mod fishing;
 mod level_reward;
 mod model;
 mod npc;
+mod orders;
 mod pet;
 mod planting;
 mod processing;
@@ -104,6 +105,9 @@ pub use ranching::{
     quality_chance as ranching_quality_chance, yield_chance as ranching_yield_chance,
 };
 pub use save::{migrate_save, SaveFile};
+pub use orders::{
+    add_days, FarmOrder, FarmOrderState, FARM_ORDER_MAX_ACTIVE, FARM_ORDER_OFFERS,
+};
 pub use seedgen::{
     generate as generate_seeds, review_batch, review_candidates, ReviewStatus, SeedMetrics,
     SeedReview,

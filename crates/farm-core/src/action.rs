@@ -272,6 +272,12 @@ pub enum Action {
     ClaimDaily {
         id: u8,
     },
+    AcceptFarmOrder {
+        id: String,
+    },
+    DeliverFarmOrder {
+        id: String,
+    },
     ClaimLevelReward {
         level: u32,
     },
