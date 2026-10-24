@@ -894,6 +894,7 @@ pub struct MysteryOfferView {
     pub kind: String,
     pub name: String,
     pub desc: String,
+    pub tag: String,
     pub price: u64,
     pub rarity: String,
     pub rarity_label: String,
@@ -2323,6 +2324,7 @@ impl Game {
                     kind: offer.kind.label().to_string(),
                     name: offer.name.clone(),
                     desc: offer.desc.clone(),
+                    tag: offer.tag.clone(),
                     price: offer.price,
                     rarity: match offer.rarity {
                         crate::mystery::MysteryRarity::Rare => "rare".into(),

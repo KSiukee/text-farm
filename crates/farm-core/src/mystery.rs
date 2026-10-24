@@ -9,11 +9,9 @@ use crate::buffs::buff_item;
 use crate::content::{ContentPack, CropDef};
 use crate::workshop::craft_item;
 
-pub const MYSTERY_OFFERS: usize = 6;
-pub const MYSTERY_NORMAL_OFFERS: usize = 5;
+pub const MYSTERY_OFFERS: usize = 8;
+pub const MYSTERY_NORMAL_OFFERS: usize = 7;
 pub const MYSTERY_LEGENDARY_PCT: u64 = 3;
-
-pub const MYSTERY_BUFFS: [&str; 2] = ["craft:mystery_elixir", "craft:mystery_tonic"];
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -56,6 +54,9 @@ pub struct MysteryOffer {
     pub crop_id: String,
     pub name: String,
     pub desc: String,
+    /// 分属：农场 / 牧场 / 钓鱼 / 制造。
+    #[serde(default)]
+    pub tag: String,
     pub price: u64,
     pub rarity: MysteryRarity,
     pub featured: bool,
@@ -146,7 +147,7 @@ fn generate(today: &str, level: u32, content: &ContentPack) -> Vec<MysteryOffer>
                 &mut used_crops,
             )
         } else {
-            buff_offer(today, index, &mut used_buffs)
+            buff_offer(today, index, index - 3, &mut used_buffs)
         };
         if let Some(offer) = offer {
             offers.push(offer);
@@ -186,6 +187,7 @@ fn seed_offer(
             "可越级种一次 · 成熟 {} 分 · 单季 {} 个",
             crop.grow_minutes, crop.yield_per_season
         ),
+        tag: "农场".into(),
         price,
         rarity,
         featured,
@@ -193,12 +195,28 @@ fn seed_offer(
     })
 }
 
-fn buff_offer(today: &str, index: usize, used: &mut BTreeSet<String>) -> Option<MysteryOffer> {
-    let item_key = MYSTERY_BUFFS
-        .iter()
-        .find(|key| !used.contains(**key))
-        .copied()?;
-    used.insert(item_key.to_string());
+fn buff_offer(
+    today: &str,
+    index: usize,
+    slot: usize,
+    used: &mut BTreeSet<String>,
+) -> Option<MysteryOffer> {
+    let item_key = match slot {
+        0 => {
+            if roll(today, 0xF00) % 2 == 0 {
+                "craft:mystery_elixir"
+            } else {
+                "craft:mystery_tonic"
+            }
+        }
+        1 => "craft:ranch_elixir",
+        2 => "craft:fishing_elixir",
+        3 => "craft:craft_elixir",
+        _ => return None,
+    };
+    if !used.insert(item_key.to_string()) {
+        return None;
+    }
     let item = craft_item(item_key)?;
     let buff = buff_item(item_key)?;
     Some(MysteryOffer {
@@ -208,11 +226,21 @@ fn buff_offer(today: &str, index: usize, used: &mut BTreeSet<String>) -> Option<
         crop_id: String::new(),
         name: format!("稀有·{}", item.name),
         desc: buff.desc.to_string(),
+        tag: buff_tag(item_key).into(),
         price: item.price.saturating_mul(3).max(600),
         rarity: MysteryRarity::Rare,
         featured: false,
         sold: false,
     })
+}
+
+fn buff_tag(key: &str) -> &'static str {
+    match key {
+        "craft:ranch_elixir" => "牧场",
+        "craft:fishing_elixir" => "钓鱼",
+        "craft:craft_elixir" => "制造",
+        _ => "农场",
+    }
 }
 
 fn roll(day: &str, salt: u64) -> u64 {
@@ -240,6 +268,14 @@ mod tests {
         assert_eq!(first.offers, second.offers);
         assert_eq!(first.offers.len(), MYSTERY_OFFERS);
         assert_eq!(first.offers.iter().filter(|o| o.featured).count(), 1);
+        assert_eq!(
+            first
+                .offers
+                .iter()
+                .filter(|o| o.kind == MysteryKind::Buff)
+                .count(),
+            4
+        );
         assert!(first.offers.iter().all(|o| o.price > 0));
         assert!(first
             .offers

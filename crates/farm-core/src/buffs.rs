@@ -57,7 +57,7 @@ pub struct BuffDef {
 const MIN: i64 = 60_000;
 
 /// 可吃喝的加成食物；只列已经存在的成品。
-pub const BUFF_ITEMS: [BuffDef; 9] = [
+pub const BUFF_ITEMS: [BuffDef; 12] = [
     BuffDef {
         item_key: "craft:strawberry_juice",
         id: "buff_plant_exp",
@@ -138,6 +138,33 @@ pub const BUFF_ITEMS: [BuffDef; 9] = [
         stat: BuffStat::PlantYield,
         value: 20,
         duration_ms: 60 * MIN,
+    },
+    BuffDef {
+        item_key: "craft:ranch_elixir",
+        id: "buff_ranch_elixir",
+        name: "牧场秘药",
+        desc: "畜产品升品质概率 +20%，2 小时",
+        stat: BuffStat::RanchQuality,
+        value: 20,
+        duration_ms: 120 * MIN,
+    },
+    BuffDef {
+        item_key: "craft:fishing_elixir",
+        id: "buff_fishing_elixir",
+        name: "江海秘药",
+        desc: "钓鱼经验 +30%，2 小时",
+        stat: BuffStat::ExpFishing,
+        value: 30,
+        duration_ms: 120 * MIN,
+    },
+    BuffDef {
+        item_key: "craft:craft_elixir",
+        id: "buff_craft_elixir",
+        name: "工匠秘药",
+        desc: "加工工时 -20%，2 小时",
+        stat: BuffStat::CraftSpeed,
+        value: 20,
+        duration_ms: 120 * MIN,
     },
 ];
 
@@ -221,7 +248,7 @@ mod tests {
 
     #[test]
     fn food_table_is_wired_to_existing_items() {
-        assert_eq!(BUFF_ITEMS.len(), 9);
+        assert_eq!(BUFF_ITEMS.len(), 12);
         assert_eq!(buff_item("craft:strawberry_juice").unwrap().value, 20);
         assert!(buff_item("craft:not_a_food").is_none());
         for def in BUFF_ITEMS {

@@ -543,6 +543,21 @@ pub const CRAFT_ITEMS: &[CraftItemDef] = &[
         name: "丰饶补剂",
         price: 1600,
     },
+    CraftItemDef {
+        key: "craft:ranch_elixir",
+        name: "牧场秘药",
+        price: 2000,
+    },
+    CraftItemDef {
+        key: "craft:fishing_elixir",
+        name: "江海秘药",
+        price: 2200,
+    },
+    CraftItemDef {
+        key: "craft:craft_elixir",
+        name: "工匠秘药",
+        price: 2000,
+    },
 ];
 
 /// 制造屋成品/中间品的固定价格表；礼盒走 `crop_box_price`。

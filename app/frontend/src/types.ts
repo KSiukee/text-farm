@@ -504,6 +504,7 @@ export interface MysteryOfferView {
   kind: string;
   name: string;
   desc: string;
+  tag: string;
   price: number;
   rarity: string;
   rarityLabel: string;

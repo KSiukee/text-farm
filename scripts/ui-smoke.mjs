@@ -495,7 +495,7 @@ try {
   );
   check(
     "tab 导航已收敛",
-    tabNames.join(",") === "我的农场,牧村,邻居农场,宠物,标本室,神秘商店,图鉴",
+    tabNames.join(",") === "我的农场,牧村,神秘商店,邻居农场,宠物,标本室,图鉴",
     tabNames.join(","),
   );  check("矿场图标已隐藏", !(await bodyText()).includes("矿场"));
   await clickText("图鉴");
@@ -511,11 +511,21 @@ try {
   check("顶部农场入口可跳转", true);
   check("不再出现 M4 占位", !(await bodyText()).includes("排在 M4"));
   await clickText("神秘商店");
-  await waitFor(async () => (await evaluate(`document.querySelectorAll('.mystery-card').length`)) === 6);
-  check("神秘商店 6 格", (await evaluate(`document.querySelectorAll('.mystery-card').length`)) === 6);
+  await waitFor(async () => (await evaluate(`document.querySelectorAll('.mystery-card').length`)) === 8);
+  check("神秘商店 8 格", (await evaluate(`document.querySelectorAll('.mystery-card').length`)) === 8);
   check(
     "神秘商店有专栏",
     (await evaluate(`document.querySelectorAll('.mystery-card.featured').length`)) === 1,
+  );
+  check(
+    "神秘商店物品/加成两栏",
+    (await evaluate(`document.querySelectorAll('.mystery-column').length`)) === 2,
+  );
+  check(
+    "加成标注分属",
+    (await evaluate(
+      `[...document.querySelectorAll('.mystery-column:nth-child(2) .mystery-tag')].every((el) => ['农场','牧场','钓鱼','制造'].includes(el.innerText.trim()))`,
+    )) === true,
   );
   const mysteryCoins = saveState().coins;
   await clickText("[购买]");

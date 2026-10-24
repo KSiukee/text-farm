@@ -197,7 +197,7 @@ const topIcons = [
   { icon: "🎣", name: "钓鱼" },
 ];
 
-const tabs = ["我的农场", "牧村", "邻居农场", "宠物", "标本室", "神秘商店", "图鉴"];
+const tabs = ["我的农场", "牧村", "神秘商店", "邻居农场", "宠物", "标本室", "图鉴"];
 
 const levelLine = computed(() => {
   const s = snapshot.value;
@@ -518,6 +518,18 @@ const achievements = computed(() => snapshot.value?.achievements ?? []);
 const codex = computed(() => snapshot.value?.codex ?? []);
 const daily = computed(() => snapshot.value?.daily ?? null);
 const mystery = computed(() => snapshot.value?.mystery ?? null);
+const mysteryColumns = computed(() => [
+  {
+    title: "物品",
+    hint: "种子 · 可越级种一次",
+    offers: (mystery.value?.offers ?? []).filter((offer) => offer.kind === "种子"),
+  },
+  {
+    title: "加成",
+    hint: "农场 / 牧场 / 钓鱼 / 制造",
+    offers: (mystery.value?.offers ?? []).filter((offer) => offer.kind !== "种子"),
+  },
+]);
 const levelRewards = computed(() => snapshot.value?.levelRewards ?? []);
 const levelRewardClaimable = computed(() => snapshot.value?.levelRewardsClaimable ?? 0);
 const npcs = computed(() => snapshot.value?.npcs ?? []);
@@ -2928,39 +2940,52 @@ onUnmounted(() => {
             <span class="muted">{{ mystery?.day }} · 每天刷新一次</span>
           </div>
           <p class="muted mystery-intro">
-            只卖稀有货：可越级种一次的稀有种子、神秘药剂；专栏每天 3% 概率出传说，价格很贵。
+            物品/加成两栏；加成覆盖农场、牧场、钓鱼、制造。只卖稀有货，专栏每天 3% 概率出传说，价格很贵。
           </p>
           <div v-if="mystery?.legendary" class="mystery-legendary">
             今天专栏出了一件传说商品。
           </div>
-          <div class="mystery-grid">
-            <div
-              v-for="offer in mystery?.offers ?? []"
-              :key="offer.id"
-              class="mystery-card"
-              :class="[offer.rarity, { featured: offer.featured, sold: offer.sold }]"
+          <div class="mystery-columns">
+            <section
+              v-for="column in mysteryColumns"
+              :key="column.title"
+              class="mystery-column"
             >
-              <div class="mystery-card-head">
-                <span class="mystery-rarity">{{ offer.rarityLabel }}</span>
-                <span v-if="offer.featured" class="mystery-featured">专栏</span>
-                <span class="muted">{{ offer.kind }}</span>
+              <div class="mystery-column-head">
+                <h3>{{ column.title }}</h3>
+                <span class="muted">{{ column.hint }}</span>
               </div>
-              <strong>{{ offer.name }}</strong>
-              <span class="muted mystery-desc">{{ offer.desc }}</span>
-              <div class="mystery-buy">
-                <b>{{ offer.price }} 金币</b>
-                <button
-                  v-if="!offer.sold"
-                  class="link"
-                  type="button"
-                  :disabled="acting || !offer.affordable"
-                  @click="buyMystery(offer.id)"
+              <div class="mystery-grid">
+                <div
+                  v-for="offer in column.offers"
+                  :key="offer.id"
+                  class="mystery-card"
+                  :class="[offer.rarity, { featured: offer.featured, sold: offer.sold }]"
                 >
-                  {{ offer.affordable ? "[购买]" : "[金币不足]" }}
-                </button>
-                <span v-else class="muted">已售罄</span>
+                  <div class="mystery-card-head">
+                    <span class="mystery-rarity">{{ offer.rarityLabel }}</span>
+                    <span v-if="offer.featured" class="mystery-featured">专栏</span>
+                    <span class="mystery-tag">{{ offer.tag }}</span>
+                  </div>
+                  <strong>{{ offer.name }}</strong>
+                  <span class="muted mystery-desc">{{ offer.desc }}</span>
+                  <div class="mystery-buy">
+                    <b>{{ offer.price }} 金币</b>
+                    <button
+                      v-if="!offer.sold"
+                      class="link"
+                      type="button"
+                      :disabled="acting || !offer.affordable"
+                      @click="buyMystery(offer.id)"
+                    >
+                      {{ offer.affordable ? "[购买]" : "[金币不足]" }}
+                    </button>
+                    <span v-else class="muted">已售罄</span>
+                  </div>
+                </div>
               </div>
-            </div>
+              <div v-if="!column.offers.length" class="muted">今天这栏没有货。</div>
+            </section>
           </div>
           <div v-if="!mystery?.offers.length" class="muted">今天还没进货，明天再来。</div>
         </section>
