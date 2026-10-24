@@ -875,6 +875,43 @@ textarea {
   display: none !important;
 }
 
+.farm-tab.player-mode {
+  display: flex;
+  flex-direction: column;
+}
+
+.farm-tab.player-mode > .player-profile {
+  order: 0;
+}
+
+.farm-tab.player-mode > .player-skills {
+  order: 1;
+}
+
+.farm-tab.player-mode > .player-buffs-panel {
+  order: 2;
+}
+
+.farm-tab.player-mode > .player-settings {
+  order: 3;
+}
+
+.farm-tab.player-mode > .player-appearance {
+  order: 4;
+}
+
+.farm-tab.player-mode > .player-save {
+  order: 5;
+}
+
+.farm-tab.player-mode > .player-editor {
+  order: 6;
+}
+
+.farm-tab.player-mode > .player-boot {
+  order: 7;
+}
+
 .farm-tab:not(.player-mode) > .player-section {
   display: none !important;
 }

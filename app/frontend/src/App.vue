@@ -2110,7 +2110,7 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <section class="panel player-section">
+      <section class="panel player-section player-settings">
         <div class="panel-title">设置</div>
         <div class="row">
           <span>经验倍率</span>
@@ -2172,7 +2172,7 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <section class="panel player-section">
+      <section class="panel player-section player-appearance">
         <div class="panel-title">外观</div>
         <div class="row">
           <span>明暗</span>
@@ -2568,7 +2568,7 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <section class="panel player-section">
+      <section class="panel player-section player-save">
         <div class="panel-title">存档与内容包</div>
         <div class="file-actions">
           <button type="button" @click="exportSaveFile">导出存档</button>
@@ -2579,7 +2579,7 @@ onUnmounted(() => {
         <div class="muted">内容包不能删除正在种或仓库里还有的作物。</div>
       </section>
 
-      <details v-if="editor" class="panel player-section">
+      <details v-if="editor" class="panel player-section player-editor">
         <summary class="panel-title">内容编辑器（名字 / 数值 / 名词）</summary>
         <div class="editor-nouns">
           <label>农场名 <input v-model="editor.nouns.farm" /></label>
@@ -2644,7 +2644,7 @@ onUnmounted(() => {
         <p v-if="editorMessage" class="muted">{{ editorMessage }}</p>
       </details>
 
-      <section class="boot player-section">
+      <section class="boot player-section player-boot">
         <div class="boot-head">
           <strong>A2 存档/内容包已接上</strong>
           <span class="muted">Rust → Tauri → Vue</span>
@@ -2664,7 +2664,7 @@ onUnmounted(() => {
         <div v-if="info" class="path">{{ info.savePath }}</div>
         <p v-if="info?.bootWarning" class="warn">{{ info.bootWarning }}</p>
       </section>
-      <section class="panel player-section">
+      <section class="panel player-section player-skills">
         <div class="panel-title">
           专精技能
           <span class="muted">四专业共用一套等级与专精；宠物技能在宠物页，不混在这里</span>
@@ -2701,7 +2701,7 @@ onUnmounted(() => {
           </div>
         </div>
       </section>
-      <section class="panel player-section">
+      <section class="panel player-section player-buffs-panel">
         <div class="panel-title">临时加成</div>
         <div v-if="buffList.length" class="player-buffs">
           <div v-for="b in buffList" :key="b.id" class="row">
@@ -4393,7 +4393,7 @@ onUnmounted(() => {
         <button class="link" type="button" @click="placeholder('我要广播')">我要广播&gt;&gt;</button>
       </h2>
       <div class="log">
-        <div v-for="entry in logLines" :key="`${entry.at}-${entry.text}`" class="log-line">
+        <div v-for="(entry, index) in logLines" :key="`${entry.at}-${index}`" class="log-line">
           ({{ entry.stamp }}) {{ entry.text }}
         </div>
         <div v-if="!logLines.length" class="muted">还没有广播。</div>

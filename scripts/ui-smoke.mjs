@@ -892,6 +892,8 @@ try {
   check("鱼类图鉴已记录", Object.keys(saveState().fishing.codex).length >= 1);
   await screenshot(fishingScreenshotPath);
   check("钓鱼截图已保存", existsSync(fishingScreenshotPath), fishingScreenshotPath);
+  const logCount = await evaluate(`document.querySelectorAll('.log > .log-line').length`);
+  check("广播只显示最新 10 条", logCount <= 10, String(logCount));
 
   await send("Emulation.setDeviceMetricsOverride", {
     width: 900,
