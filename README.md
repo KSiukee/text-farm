@@ -162,6 +162,23 @@ node scripts/version-guard.mjs --kind fix
 
 它会校验 `Cargo.toml` / `Cargo.lock` / `tauri.conf.json` / 前端 `package.json` / `README.md` / `.codex/state.json` / `CHANGELOG.md` 七处一致，并只允许 `fix` 升第三位、`feat` 升中位；一次性纠正旧号可加 `--allow-downgrade`。本次不改版本（纯文档/纯记录）就不要带 `--kind`，直接 `node scripts/version-guard.mjs` 只查一致。
 
+构建缓存体积门卫（磁盘；上限 8 GB，超了直接失败）：
+
+```powershell
+python scripts/cache_guard.py --check      # 只量，不删
+python scripts/cache_guard.py --clean      # 显式清理：删 deps/build/incremental 等，留 exe/dll
+python scripts/cache_guard.py --selftest   # 临时目录自检清理口径
+```
+
+清理口径：删 `deps/ build/ incremental/ examples/ .fingerprint/`、`doc/ tmp/`、`*.pdb/*.rlib/*.rmeta/*.d/*.lib/*.exp/*.obj/*.ilk`；保留 `*.exe/*.dll/*.so/*.dylib` 与 bundle 产物。2026-10-24 首次接入时 `target/` 为 **248.93 GB**（debug/incremental 145 GB + debug/deps 78.9 GB），清理后 **0.04 GB**（保留 `target/release/text-farm.exe`）。
+
+一键跑门卫 + 两边单测：
+
+```powershell
+pwsh -File scripts/check.ps1
+```
+
+
 宠物页 UI 点击冒烟（影子档 + WebView2 CDP 真鼠标事件）：
 
 ```powershell
