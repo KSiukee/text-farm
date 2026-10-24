@@ -195,9 +195,10 @@ const topIcons = [
   { icon: "🏡", name: "牧村" },
   { icon: "🏭", name: "制造屋" },
   { icon: "🎣", name: "钓鱼" },
+  { icon: "🛒", name: "神秘商店" },
 ];
 
-const tabs = ["我的农场", "牧村", "神秘商店", "邻居农场", "宠物", "标本室", "图鉴"];
+const tabs = ["我的农场", "牧村", "邻居农场", "宠物", "标本室", "图鉴"];
 
 const levelLine = computed(() => {
   const s = snapshot.value;
@@ -518,6 +519,9 @@ const achievements = computed(() => snapshot.value?.achievements ?? []);
 const codex = computed(() => snapshot.value?.codex ?? []);
 const daily = computed(() => snapshot.value?.daily ?? null);
 const mystery = computed(() => snapshot.value?.mystery ?? null);
+const rareSeedStacks = computed(() =>
+  seedStacks.value.filter((stack) => stack.key.startsWith("rare_seed:")),
+);
 const mysteryColumns = computed(() => [
   {
     title: "物品",
@@ -526,7 +530,7 @@ const mysteryColumns = computed(() => [
   },
   {
     title: "加成",
-    hint: "农场 / 牧场 / 钓鱼 / 制造",
+    hint: "农场 / 牧场 / 钓鱼 / 制造 / 金币",
     offers: (mystery.value?.offers ?? []).filter((offer) => offer.kind !== "种子"),
   },
 ]);
@@ -734,7 +738,7 @@ function openTop(name: string) {
     selectTab("我的农场");
     return;
   }
-  if (name === "畜牧场" || name === "制造屋" || name === "钓鱼" || name === "牧村") {
+  if (name === "畜牧场" || name === "制造屋" || name === "钓鱼" || name === "牧村" || name === "神秘商店") {
     selectTab(name);
   } else {
     placeholder(name);
@@ -2988,6 +2992,27 @@ onUnmounted(() => {
             </section>
           </div>
           <div v-if="!mystery?.offers.length" class="muted">今天还没进货，明天再来。</div>
+
+          <div class="mystery-backpack">
+            <div class="panel-title">
+              我的背包
+              <span class="muted">买了先放着，想用再用；今天不想钓鱼也可以囤着</span>
+            </div>
+            <div v-if="ownedBuffItems.length || rareSeedStacks.length">
+              <div v-for="item in ownedBuffItems" :key="item.key" class="row mystery-bag-row">
+                <span><b>{{ item.name }}</b>×{{ item.qty }}</span>
+                <span class="muted">{{ item.desc }}</span>
+                <button class="link" type="button" :disabled="acting" @click="useBuffItem(item.key)">
+                  [使用]
+                </button>
+              </div>
+              <div v-for="stack in rareSeedStacks" :key="stack.key" class="row mystery-bag-row">
+                <span><b>{{ stack.name }}</b>×{{ stack.qty }}</span>
+                <span class="muted">去农场空地 [播种] 选用</span>
+              </div>
+            </div>
+            <div v-else class="muted">背包里还没有神秘商店的东西。</div>
+          </div>
         </section>
       </div>
 

@@ -558,6 +558,11 @@ pub const CRAFT_ITEMS: &[CraftItemDef] = &[
         name: "工匠秘药",
         price: 2000,
     },
+    CraftItemDef {
+        key: "craft:coin_elixir",
+        name: "点金秘药",
+        price: 2600,
+    },
 ];
 
 /// 制造屋成品/中间品的固定价格表；礼盒走 `crop_box_price`。

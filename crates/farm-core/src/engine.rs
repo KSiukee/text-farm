@@ -1014,6 +1014,8 @@ impl Game {
                 .checked_mul(u64::from(qty))
                 .ok_or(GameError::Overflow)?
         };
+        let coin_pct = u64::from(crate::buffs::coin_gain_pct(&self.state.buffs, now));
+        let total = total.saturating_add(total.saturating_mul(coin_pct) / 100);
 
         if have == qty {
             self.state.inventory.remove(key);
@@ -1134,6 +1136,8 @@ impl Game {
         if sold == 0 {
             return Err(GameError::NothingToSell);
         }
+        let coin_pct = u64::from(crate::buffs::coin_gain_pct(&self.state.buffs, now));
+        let total = total.saturating_add(total.saturating_mul(coin_pct) / 100);
         self.state.coins = self.state.coins.saturating_add(total);
         let text = format!("一键卖出 {sold} 条鱼，金币+{total}");
         self.push_log(now, text.clone());

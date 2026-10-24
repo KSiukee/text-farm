@@ -12,6 +12,7 @@ use crate::workshop::craft_item;
 pub const MYSTERY_OFFERS: usize = 8;
 pub const MYSTERY_NORMAL_OFFERS: usize = 7;
 pub const MYSTERY_LEGENDARY_PCT: u64 = 3;
+pub const MYSTERY_VERSION: u32 = 1;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -67,16 +68,19 @@ pub struct MysteryOffer {
 #[serde(rename_all = "camelCase", default)]
 pub struct MysteryShopState {
     pub day: String,
+    #[serde(default)]
+    pub version: u32,
     pub offers: Vec<MysteryOffer>,
 }
 
 impl MysteryShopState {
-    /// 跨天刷新；返回是否换了新的一批。
+    /// 跨天刷新；布局版本变化时也强制重刷（旧档 4+4 → 新档 3+5）。
     pub fn ensure_day(&mut self, today: &str, level: u32, content: &ContentPack) -> bool {
-        if self.day == today {
+        if self.day == today && self.version == MYSTERY_VERSION {
             return false;
         }
         self.day = today.to_string();
+        self.version = MYSTERY_VERSION;
         self.offers = generate(today, level, content);
         true
     }
@@ -131,7 +135,7 @@ fn generate(today: &str, level: u32, content: &ContentPack) -> Vec<MysteryOffer>
     }
 
     for index in 0..MYSTERY_NORMAL_OFFERS {
-        let offer = if index < 3 {
+        let offer = if index < 2 {
             let roll = roll(today, 0x100 + index as u64);
             let candidate = crops
                 .iter()
@@ -147,7 +151,7 @@ fn generate(today: &str, level: u32, content: &ContentPack) -> Vec<MysteryOffer>
                 &mut used_crops,
             )
         } else {
-            buff_offer(today, index, index - 3, &mut used_buffs)
+            buff_offer(today, index, index - 2, &mut used_buffs)
         };
         if let Some(offer) = offer {
             offers.push(offer);
@@ -212,6 +216,7 @@ fn buff_offer(
         1 => "craft:ranch_elixir",
         2 => "craft:fishing_elixir",
         3 => "craft:craft_elixir",
+        4 => "craft:coin_elixir",
         _ => return None,
     };
     if !used.insert(item_key.to_string()) {
@@ -239,6 +244,7 @@ fn buff_tag(key: &str) -> &'static str {
         "craft:ranch_elixir" => "牧场",
         "craft:fishing_elixir" => "钓鱼",
         "craft:craft_elixir" => "制造",
+        "craft:coin_elixir" => "金币",
         _ => "农场",
     }
 }
@@ -274,7 +280,7 @@ mod tests {
                 .iter()
                 .filter(|o| o.kind == MysteryKind::Buff)
                 .count(),
-            4
+            5
         );
         assert!(first.offers.iter().all(|o| o.price > 0));
         assert!(first

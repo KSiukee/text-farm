@@ -12,6 +12,7 @@ pub const EXP_CAP: u32 = 50;
 pub const PLANT_YIELD_CAP: u32 = 30;
 pub const CRAFT_SPEED_CAP: u32 = 30;
 pub const RANCH_QUALITY_CAP: u32 = 30;
+pub const COIN_GAIN_CAP: u32 = 30;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "camelCase")]
@@ -29,6 +30,8 @@ pub enum BuffStat {
     CraftSpeed,
     /// 畜产品升品质的概率。
     RanchQuality,
+    /// 卖出作物/牧场品/鱼时的金币收益。
+    CoinGain,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
@@ -57,7 +60,7 @@ pub struct BuffDef {
 const MIN: i64 = 60_000;
 
 /// 可吃喝的加成食物；只列已经存在的成品。
-pub const BUFF_ITEMS: [BuffDef; 12] = [
+pub const BUFF_ITEMS: [BuffDef; 13] = [
     BuffDef {
         item_key: "craft:strawberry_juice",
         id: "buff_plant_exp",
@@ -166,6 +169,15 @@ pub const BUFF_ITEMS: [BuffDef; 12] = [
         value: 20,
         duration_ms: 120 * MIN,
     },
+    BuffDef {
+        item_key: "craft:coin_elixir",
+        id: "buff_coin_elixir",
+        name: "点金秘药",
+        desc: "卖出作物/牧场品/鱼的金币 +25%，2 小时",
+        stat: BuffStat::CoinGain,
+        value: 25,
+        duration_ms: 120 * MIN,
+    },
 ];
 
 pub fn buff_item(key: &str) -> Option<&'static BuffDef> {
@@ -235,6 +247,10 @@ pub fn ranch_quality_pct(buffs: &[Buff], now: i64) -> u32 {
     total(buffs, now, BuffStat::RanchQuality).min(RANCH_QUALITY_CAP)
 }
 
+pub fn coin_gain_pct(buffs: &[Buff], now: i64) -> u32 {
+    total(buffs, now, BuffStat::CoinGain).min(COIN_GAIN_CAP)
+}
+
 fn total(buffs: &[Buff], now: i64, stat: BuffStat) -> u32 {
     active(buffs, now)
         .filter(|b| b.stat == stat)
@@ -248,7 +264,7 @@ mod tests {
 
     #[test]
     fn food_table_is_wired_to_existing_items() {
-        assert_eq!(BUFF_ITEMS.len(), 12);
+        assert_eq!(BUFF_ITEMS.len(), 13);
         assert_eq!(buff_item("craft:strawberry_juice").unwrap().value, 20);
         assert!(buff_item("craft:not_a_food").is_none());
         for def in BUFF_ITEMS {

@@ -495,7 +495,7 @@ try {
   );
   check(
     "tab 导航已收敛",
-    tabNames.join(",") === "我的农场,牧村,神秘商店,邻居农场,宠物,标本室,图鉴",
+    tabNames.join(",") === "我的农场,牧村,邻居农场,宠物,标本室,图鉴",
     tabNames.join(","),
   );  check("矿场图标已隐藏", !(await bodyText()).includes("矿场"));
   await clickText("图鉴");
@@ -510,7 +510,9 @@ try {
   );
   check("顶部农场入口可跳转", true);
   check("不再出现 M4 占位", !(await bodyText()).includes("排在 M4"));
-  await clickText("神秘商店");
+  await evaluate(
+    `[...document.querySelectorAll('header.icons .icon-item')].find((el) => el.innerText.includes('神秘商店'))?.click()`,
+  );
   await waitFor(async () => (await evaluate(`document.querySelectorAll('.mystery-card').length`)) === 8);
   check("神秘商店 8 格", (await evaluate(`document.querySelectorAll('.mystery-card').length`)) === 8);
   check(
@@ -524,16 +526,26 @@ try {
   check(
     "加成标注分属",
     (await evaluate(
-      `[...document.querySelectorAll('.mystery-column:nth-child(2) .mystery-tag')].every((el) => ['农场','牧场','钓鱼','制造'].includes(el.innerText.trim()))`,
+      `[...document.querySelectorAll('.mystery-column:nth-child(2) .mystery-tag')].every((el) => ['农场','牧场','钓鱼','制造','金币'].includes(el.innerText.trim()))`,
     )) === true,
   );
   const mysteryCoins = saveState().coins;
-  await clickText("[购买]");
+  await evaluate(`(() => {
+    const card = [...document.querySelectorAll('.mystery-column:nth-child(2) .mystery-card')]
+      .find((el) => el.querySelector('.mystery-buy button:not(:disabled)'));
+    card?.querySelector('.mystery-buy button')?.click();
+  })()`);
   await waitFor(async () => saveState().mystery.offers.some((offer) => offer.sold));
   check("神秘商店购买成功", saveState().mystery.offers.some((offer) => offer.sold));
   check("神秘商店扣款", saveState().coins < mysteryCoins);
+  await waitFor(async () => (await evaluate(`document.querySelectorAll('.mystery-bag-row').length`)) > 0);
+  check("加成买入进背包", (await evaluate(`document.querySelectorAll('.mystery-bag-row').length`)) > 0);
+  await evaluate(`document.querySelector('.mystery-backpack')?.scrollIntoView({ block: 'center' })`);
   await screenshot(mysteryScreenshotPath);
   check("神秘商店截图已保存", existsSync(mysteryScreenshotPath), mysteryScreenshotPath);
+  await clickText("[使用]");
+  await waitFor(async () => (saveState().buffs?.length ?? 0) > 0);
+  check("背包加成可使用", (saveState().buffs?.length ?? 0) > 0);
   await clickText("我的农场");
   const hasEmptyPlot = await evaluate(
     `[...document.querySelectorAll('.plot-line')].some((el) => el.innerText.includes('[播种]'))`,

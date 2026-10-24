@@ -50,6 +50,50 @@ fn mystery_shop_buy_and_plant_rare_seed() {
 }
 
 #[test]
+fn coin_elixir_boosts_sell_price() {
+    let mut game = Game::new(0);
+    game.state_mut().level = 12;
+    game.state_mut().coins = 1_000_000;
+    game.sync(0, "2026-10-24");
+    let offer = game
+        .state()
+        .mystery
+        .offers
+        .iter()
+        .find(|offer| offer.item_key == "craft:coin_elixir")
+        .unwrap()
+        .clone();
+    game.dispatch(
+        Action::BuyMysteryOffer {
+            id: offer.id.clone(),
+        },
+        0,
+    )
+    .unwrap();
+    game.dispatch(
+        Action::UseBuffItem {
+            key: "craft:coin_elixir".into(),
+        },
+        0,
+    )
+    .unwrap();
+    game.state_mut()
+        .inventory
+        .insert("crop:xiaobaicai".into(), 1);
+    let coins = game.state().coins;
+    game.dispatch(
+        Action::Sell {
+            key: "crop:xiaobaicai".into(),
+            qty: 1,
+        },
+        0,
+    )
+    .unwrap();
+    // 小青菜 6 金币 × 1.25 = 7（向下取整）。
+    assert_eq!(game.state().coins - coins, 7);
+}
+
+#[test]
 fn mystery_buff_can_be_used() {
     let mut game = Game::new(0);
     game.state_mut().level = 12;

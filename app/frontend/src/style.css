@@ -1229,6 +1229,18 @@ textarea {
   padding-top: 5px;
 }
 
+.mystery-backpack {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+
+.mystery-bag-row {
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 4px 0;
+}
+
 .farm-orders-hint {
   margin-top: 8px;
   font-size: 12px;
