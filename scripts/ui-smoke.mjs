@@ -133,8 +133,25 @@ function seedSave() {
   ]) {
     state.inventory[`crop:${crop}`] = 99;
   }
-  state.inventory["ranch:milk"] = 4;
-  state.inventory["ranch:wool"] = 2;
+  for (const base of [
+    "ranch:egg",
+    "ranch:duck_egg",
+    "ranch:milk",
+    "ranch:wool",
+    "ranch:cheese",
+    "ranch:butter",
+    "ranch:cake",
+    "ranch:yarn",
+    "ranch:salted_egg",
+    "ranch:golden_egg",
+    "ranch:big_duck_egg",
+    "ranch:cream",
+    "ranch:fine_wool",
+  ]) {
+    for (const suffix of ["", ".fine", ".prime"]) {
+      state.inventory[base + suffix] = 10;
+    }
+  }
   state.lastBoardingMonth = "2026-09";
   state.boardingDebt = 0;
   state.facilities = state.facilities || {};
@@ -632,6 +649,20 @@ try {
   check("畜牧场显示金币", ranchText.includes("金币") && ranchText.includes(String(saveState().coins)));
   check("畜牧场可扩建", ranchText.includes("扩建畜栏"));
   check("邻居牧场串门入口", ranchText.includes("邻居牧场"));
+  check("牧场订单面板已显示", ranchText.includes("牧场订单"));
+  const orderOffer = saveState().ranchOrders.offers[0];
+  if (orderOffer) {
+    const orderCoins = saveState().coins;
+    await clickText("[接单]");
+    await waitFor(async () => saveState().ranchOrders.active.length === 1);
+    check("接牧场订单", saveState().ranchOrders.active.length === 1);
+    await clickText("[交付]");
+    await waitFor(async () => saveState().ranchOrders.active.length === 0);
+    check("交付牧场订单并领奖", saveState().coins > orderCoins);
+  } else {
+    check("接牧场订单", false, "没有报价");
+    check("交付牧场订单并领奖", false, "没有报价");
+  }
   await clickText("[帮忙]");
   await waitFor(async () => saveState().daily.ranchHelps === 1);
   check("牧场帮忙次数独立", saveState().daily.ranchHelps === 1 && saveState().daily.helps === 0, JSON.stringify(saveState().daily));
@@ -641,6 +672,8 @@ try {
     "买母鸡进畜栏",
     saveState().ranch.pens.some((pen) => pen.animal && pen.animal.kind === "chicken"),
   );
+  check("牧场图鉴已显示", (await bodyText()).includes("牧场图鉴"));
+  check("牧场图鉴记录动物组合", (saveState().ranch.codexAnimals || []).length >= 1);
   const ranchAnimalText = await bodyText();
   check(
     "牧场动物显示生产特性",
@@ -751,6 +784,12 @@ try {
   await openFold("手工台 · 作物礼盒");
   const craftText = await bodyText();
   check("加工配方已显示", craftText.includes("奶酪：") && craftText.includes("→ 奶酪"));
+  check(
+    "特殊产物配方已显示",
+    craftText.includes("金蛋挞") &&
+      craftText.includes("奶油蛋糕") &&
+      craftText.includes("细羊毛围巾"),
+  );
   check("作物礼盒配方已显示", craftText.includes("作物礼盒") && craftText.includes("玉米礼盒"));
   await clickText("[开工]");
   await waitFor(async () => saveState().workshop.jobs[0]?.recipe === "cheese");

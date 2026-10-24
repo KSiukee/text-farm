@@ -138,6 +138,14 @@ pub enum Action {
         pen: u8,
         name: String,
     },
+    /// 接一笔牧场订单。
+    AcceptRanchOrder {
+        id: String,
+    },
+    /// 交付一笔牧场订单。
+    DeliverRanchOrder {
+        id: String,
+    },
     BuildWorkshop,
     ExpandWorkshop,
     InstallEquipment {

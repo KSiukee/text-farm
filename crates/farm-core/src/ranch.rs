@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use serde::{Deserialize, Serialize};
 
 use crate::error::GameError;
@@ -114,6 +116,17 @@ impl RanchTrait {
         match self {
             RanchTrait::HighYield => base * 9 / 10,
             _ => base,
+        }
+    }
+
+    /// 稳定 key：图鉴/存档用。
+    pub fn key(self) -> &'static str {
+        match self {
+            RanchTrait::HighYield => "high_yield",
+            RanchTrait::Efficient => "efficient",
+            RanchTrait::Hardy => "hardy",
+            RanchTrait::Delicate => "delicate",
+            RanchTrait::TwinYield => "twin_yield",
         }
     }
 }
@@ -284,6 +297,13 @@ pub enum RanchAnimalKind {
 }
 
 impl RanchAnimalKind {
+    pub const ALL: [RanchAnimalKind; 4] = [
+        RanchAnimalKind::Chicken,
+        RanchAnimalKind::Duck,
+        RanchAnimalKind::Cow,
+        RanchAnimalKind::Sheep,
+    ];
+
     pub fn label(self) -> &'static str {
         match self {
             RanchAnimalKind::Chicken => "母鸡",
@@ -335,6 +355,16 @@ impl RanchAnimalKind {
             RanchAnimalKind::Duck => 10 * 60 * 60 * 1000,
             RanchAnimalKind::Cow => 16 * 60 * 60 * 1000,
             RanchAnimalKind::Sheep => 20 * 60 * 60 * 1000,
+        }
+    }
+
+    /// 稳定 key：图鉴/存档用。
+    pub fn key(self) -> &'static str {
+        match self {
+            RanchAnimalKind::Chicken => "chicken",
+            RanchAnimalKind::Duck => "duck",
+            RanchAnimalKind::Cow => "cow",
+            RanchAnimalKind::Sheep => "sheep",
         }
     }
 
@@ -449,12 +479,38 @@ pub const RANCH_ITEMS: &[RanchItemDef] = &[
         sellable: true,
     },
     RanchItemDef {
+        key: "ranch:golden_tart",
+        name: "金蛋挞",
+        base_price: 1_125,
+        sellable: true,
+    },
+    RanchItemDef {
+        key: "ranch:cream_cake",
+        name: "奶油蛋糕",
+        base_price: 1_670,
+        sellable: true,
+    },
+    RanchItemDef {
+        key: "ranch:fine_scarf",
+        name: "细羊毛围巾",
+        base_price: 2_110,
+        sellable: true,
+    },
+    RanchItemDef {
         key: "ranch:feed",
         name: "专用饲料",
         base_price: 0,
         sellable: false,
     },
 ];
+
+/// 只有蛋/奶/毛这类原料带品质后缀；特殊产物与加工品按单件算。
+pub fn has_quality(key: &str) -> bool {
+    matches!(
+        split_quality(key).0,
+        "ranch:egg" | "ranch:duck_egg" | "ranch:milk" | "ranch:wool"
+    )
+}
 
 /// 拆品质后缀：`ranch:egg.prime` → (`ranch:egg`, 3)。
 pub fn split_quality(key: &str) -> (&str, u8) {
@@ -514,15 +570,22 @@ pub enum RanchRecipe {
     Cake,
     Yarn,
     SaltedDuckEgg,
+    /// 特殊产物配方：金蛋挞 / 奶油蛋糕 / 细羊毛围巾。
+    GoldenTart,
+    CreamCake,
+    FineWoolScarf,
 }
 
 impl RanchRecipe {
-    pub const ALL: [RanchRecipe; 5] = [
+    pub const ALL: [RanchRecipe; 8] = [
         RanchRecipe::Cheese,
         RanchRecipe::Butter,
         RanchRecipe::Cake,
         RanchRecipe::Yarn,
         RanchRecipe::SaltedDuckEgg,
+        RanchRecipe::GoldenTart,
+        RanchRecipe::CreamCake,
+        RanchRecipe::FineWoolScarf,
     ];
 
     pub fn label(self) -> &'static str {
@@ -532,6 +595,9 @@ impl RanchRecipe {
             RanchRecipe::Cake => "蛋糕",
             RanchRecipe::Yarn => "毛线",
             RanchRecipe::SaltedDuckEgg => "咸鸭蛋",
+            RanchRecipe::GoldenTart => "金蛋挞",
+            RanchRecipe::CreamCake => "奶油蛋糕",
+            RanchRecipe::FineWoolScarf => "细羊毛围巾",
         }
     }
 
@@ -542,6 +608,17 @@ impl RanchRecipe {
             RanchRecipe::Cake => &[("ranch:egg", 2), ("ranch:milk", 1)],
             RanchRecipe::Yarn => &[("ranch:wool", 2)],
             RanchRecipe::SaltedDuckEgg => &[("ranch:duck_egg", 2)],
+            RanchRecipe::GoldenTart => &[
+                ("ranch:golden_egg", 1),
+                ("ranch:milk", 1),
+                ("ranch:egg", 1),
+            ],
+            RanchRecipe::CreamCake => &[
+                ("ranch:cream", 1),
+                ("ranch:egg", 2),
+                ("ranch:milk", 1),
+            ],
+            RanchRecipe::FineWoolScarf => &[("ranch:fine_wool", 2), ("ranch:wool", 1)],
         }
     }
 
@@ -552,6 +629,9 @@ impl RanchRecipe {
             RanchRecipe::Cake => 6 * 60 * 60 * 1000,
             RanchRecipe::Yarn => 6 * 60 * 60 * 1000,
             RanchRecipe::SaltedDuckEgg => 3 * 60 * 60 * 1000,
+            RanchRecipe::GoldenTart => 6 * 60 * 60 * 1000,
+            RanchRecipe::CreamCake => 8 * 60 * 60 * 1000,
+            RanchRecipe::FineWoolScarf => 10 * 60 * 60 * 1000,
         }
     }
 
@@ -562,6 +642,9 @@ impl RanchRecipe {
             RanchRecipe::Cake => "ranch:cake",
             RanchRecipe::Yarn => "ranch:yarn",
             RanchRecipe::SaltedDuckEgg => "ranch:salted_egg",
+            RanchRecipe::GoldenTart => "ranch:golden_tart",
+            RanchRecipe::CreamCake => "ranch:cream_cake",
+            RanchRecipe::FineWoolScarf => "ranch:fine_scarf",
         }
     }
 
@@ -849,6 +932,12 @@ pub struct RanchState {
     /// 血统线序号：每只买来的动物开一条新线。
     #[serde(default)]
     pub line_seq: u32,
+    /// 图鉴：见过的「种类:特性」组合（稳定 key）。
+    #[serde(default)]
+    pub codex_animals: BTreeSet<String>,
+    /// 图鉴：收过的特殊产物。
+    #[serde(default)]
+    pub codex_specials: BTreeSet<String>,
 }
 
 impl RanchState {
@@ -857,6 +946,8 @@ impl RanchState {
             pens: (1..=RANCH_PEN_COUNT).map(RanchPen::new).collect(),
             breed_seq: 0,
             line_seq: 0,
+            codex_animals: BTreeSet::new(),
+            codex_specials: BTreeSet::new(),
         }
     }
 

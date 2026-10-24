@@ -1247,6 +1247,14 @@ function feedRanchPremium(pen: number) {
   void act({ type: "feedRanchPremium", pen });
 }
 
+function acceptRanchOrder(id: string) {
+  void act({ type: "acceptRanchOrder", id });
+}
+
+function deliverRanchOrder(id: string) {
+  void act({ type: "deliverRanchOrder", id });
+}
+
 const ranchBreedNames = computed(() =>
   ranchBreedSel.value
     .map((pen) => ranch.value?.pens.find((item) => item.index === pen)?.animal?.name ?? `${pen} 号`)
@@ -3400,6 +3408,25 @@ onUnmounted(() => {
             <button class="link" type="button" :disabled="acting" @click="buyRanchFeed">[买专用饲料 300]</button>
             <span class="muted">专用饲料提升品质；繁殖消耗 1 份饲料、需要空栏</span>
           </div>
+          <div class="ranch-orders">
+            <div class="ranch-orders-head">
+              <strong>牧场订单</strong>
+              <span class="muted">每天 2 单；接单上限 {{ ranch?.orders.maxActive ?? 2 }}，过期不扣东西</span>
+            </div>
+            <div v-if="!(ranch?.orders.offers.length || ranch?.orders.active.length)" class="muted">
+              今天没有牧场订单
+            </div>
+            <div v-for="order in ranch?.orders.offers ?? []" :key="order.id" class="ranch-order">
+              <span>{{ order.npcName }} 收 {{ order.qualityLabel }}{{ order.itemName }} ×{{ order.qty }}</span>
+              <span class="muted">截止 {{ order.expiresDay }} · {{ order.rewardCoins }} 金币 + {{ order.rewardExp }} 经验 + {{ order.rewardFeed }} 饲料</span>
+              <button class="link" type="button" :disabled="acting" @click="acceptRanchOrder(order.id)">[接单]</button>
+            </div>
+            <div v-for="order in ranch?.orders.active ?? []" :key="order.id" class="ranch-order active">
+              <span>进行中：{{ order.qualityLabel }}{{ order.itemName }} ×{{ order.qty }}</span>
+              <span class="muted">仓库 {{ order.have }}/{{ order.qty }}</span>
+              <button class="link" type="button" :disabled="acting || !order.canDeliver" @click="deliverRanchOrder(order.id)">[交付]</button>
+            </div>
+          </div>
           <div class="ranch-pens">
             <div v-for="pen in ranch?.pens ?? []" :key="pen.index" class="ranch-pen">
               <div class="ranch-pen-head">
@@ -3521,10 +3548,41 @@ onUnmounted(() => {
               <div v-for="missing in ranchPreview.missing" :key="missing" class="warn">{{ missing }}</div>
             </div>
           </div>
+          <div class="ranch-codex">
+            <div class="ranch-codex-head">
+              <strong>牧场图鉴</strong>
+              <span class="muted">
+                动物 {{ ranch?.codex.animalDone ?? 0 }}/{{ ranch?.codex.animalTotal ?? 20 }} ·
+                特殊产物 {{ ranch?.codex.specialDone ?? 0 }}/{{ ranch?.codex.specialTotal ?? 4 }}
+              </span>
+            </div>
+            <div v-for="group in ranch?.codex.kinds ?? []" :key="group.kind" class="ranch-codex-row">
+              <span class="ranch-codex-name">{{ group.emoji }} {{ group.label }} {{ group.done }}/{{ group.total }}</span>
+              <span
+                v-for="trait in group.traits"
+                :key="trait.key"
+                class="ranch-codex-chip"
+                :class="{ have: trait.have }"
+              >
+                {{ trait.label }}{{ trait.have ? "✓" : "·" }}
+              </span>
+            </div>
+            <div class="ranch-codex-row">
+              <span class="ranch-codex-name">特殊产物 {{ ranch?.codex.specialDone ?? 0 }}/{{ ranch?.codex.specialTotal ?? 4 }}</span>
+              <span
+                v-for="item in ranch?.codex.specials ?? []"
+                :key="item.key"
+                class="ranch-codex-chip"
+                :class="{ have: item.have }"
+              >
+                {{ item.name }}{{ item.have ? "✓" : "·" }}
+              </span>
+            </div>
+          </div>
           <div class="ranch-workshop">
             <div class="ranch-workshop-head">
               <strong>🏭 制造屋</strong>
-              <span class="muted">牧场原料可以拿到制造屋，做成奶酪/黄油/蛋糕/毛线/咸鸭蛋</span>
+              <span class="muted">牧场原料可以拿到制造屋，做成奶酪/黄油/蛋糕/毛线/咸鸭蛋/甜点</span>
             </div>
             <div class="row">
               <button class="link" type="button" @click="selectTab('制造屋')">

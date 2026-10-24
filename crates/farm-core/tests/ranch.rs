@@ -1250,3 +1250,150 @@ fn v38_save_migrates_breeding_fields() {
     assert_eq!(ranch["pens"][1]["animal"]["lineId"], 2);
     assert_eq!(ranch["pens"][1]["animal"]["lastBreedAt"], 0);
 }
+
+#[test]
+fn ranch_orders_accept_deliver_and_reward() {
+    let mut game = Game::new(0);
+    game.state_mut().daily.day = "2026-10-24".into();
+    game.state_mut()
+        .ranch_orders
+        .ensure_day("2026-10-24", 10);
+    let offer = game.state().ranch_orders.offers[0].clone();
+    let key = offer.item_key();
+    game.state_mut().inventory.insert(key.clone(), offer.qty);
+    game.dispatch(
+        Action::AcceptRanchOrder {
+            id: offer.id.clone(),
+        },
+        0,
+    )
+    .unwrap();
+    assert_eq!(game.state().ranch_orders.active.len(), 1);
+    let coins = game.state().coins;
+    let feed = game.state().inventory.get("ranch:feed").copied().unwrap_or(0);
+    game.dispatch(
+        Action::DeliverRanchOrder {
+            id: offer.id.clone(),
+        },
+        0,
+    )
+    .unwrap();
+    assert_eq!(game.state().coins, coins + offer.reward_coins);
+    assert_eq!(
+        game.state().inventory.get("ranch:feed").copied().unwrap_or(0),
+        feed + offer.reward_feed
+    );
+    assert!(game.state().inventory.get(&key).is_none());
+    assert!(game.state().ranch_orders.active.is_empty());
+}
+
+#[test]
+fn ranch_orders_reject_short_and_limit() {
+    let mut game = Game::new(0);
+    game.state_mut()
+        .ranch_orders
+        .ensure_day("2026-10-24", 10);
+    let offer = game.state().ranch_orders.offers[0].clone();
+    game.dispatch(
+        Action::AcceptRanchOrder {
+            id: offer.id.clone(),
+        },
+        0,
+    )
+    .unwrap();
+    assert!(matches!(
+        game.dispatch(
+            Action::DeliverRanchOrder {
+                id: offer.id.clone()
+            },
+            0
+        ),
+        Err(GameError::RanchOrderShort)
+    ));
+
+    // 接单上限：手上已有两条，再点报价就拒绝。
+    let offers = game.state().ranch_orders.offers.clone();
+    let mut active = game.state().ranch_orders.active.clone();
+    active.push(offers[0].clone());
+    game.state_mut().ranch_orders.active = active;
+    assert!(matches!(
+        game.dispatch(
+            Action::AcceptRanchOrder {
+                id: offers[0].id.clone()
+            },
+            0
+        ),
+        Err(GameError::RanchOrderLimit)
+    ));
+}
+
+#[test]
+fn special_recipes_craft_into_new_dishes() {
+    let mut game = Game::new(0);
+    game.state_mut().level = 12;
+    game.state_mut().coins = 20_000;
+    game.dispatch(Action::BuildWorkshop, 0).unwrap();
+    game.state_mut()
+        .inventory
+        .insert("ranch:golden_egg".into(), 1);
+    game.state_mut().inventory.insert("ranch:milk".into(), 1);
+    game.state_mut().inventory.insert("ranch:egg".into(), 1);
+    game.dispatch(
+        Action::StartRanchCraft {
+            recipe: RanchRecipe::GoldenTart,
+        },
+        0,
+    )
+    .unwrap();
+    finish_job(&mut game, 0);
+    game.dispatch(Action::CollectCraft { slot: 0 }, 0)
+        .unwrap();
+    assert!(
+        game.state()
+            .inventory
+            .keys()
+            .any(|key| key.starts_with("ranch:golden_tart"))
+    );
+    assert_eq!(RanchRecipe::GoldenTart.output_price(), 1_125);
+    assert_eq!(RanchRecipe::CreamCake.output_price(), 1_670);
+    assert_eq!(RanchRecipe::FineWoolScarf.output_price(), 2_110);
+}
+
+#[test]
+fn ranch_codex_tracks_owned_combos_and_special_products() {
+    let mut game = Game::new(0);
+    game.state_mut().coins = 5_000;
+    add_chicken(&mut game, 1);
+    let codex = game.snapshot(0).ranch.codex;
+    assert_eq!(codex.animal_total, 20);
+    assert_eq!(codex.special_total, 4);
+    assert!(codex.animal_done >= 1);
+
+    animal_mut(&mut game, 1).quality = 3;
+    for step in 0..80i64 {
+        animal_mut(&mut game, 1).product_ready_at = 0;
+        game.dispatch(
+            Action::CollectRanchProduct { pen: 1 },
+            step * 86_400_000,
+        )
+        .unwrap();
+    }
+    let codex = game.snapshot(0).ranch.codex;
+    assert!(codex.special_done >= 1);
+}
+
+#[test]
+fn v39_save_adds_ranch_orders_and_codex() {
+    let value = serde_json::json!({
+        "schema": 38,
+        "savedAt": 0,
+        "state": {"ranch": {"pens": []}},
+        "content": {}
+    });
+    let migrated = migrate_save(value).unwrap();
+    assert_eq!(migrated["schema"], farm_core::SAVE_SCHEMA);
+    assert_eq!(migrated["state"]["ranchOrders"]["day"], "");
+    assert_eq!(migrated["state"]["ranchOrders"]["offers"], serde_json::json!([]));
+    assert_eq!(migrated["state"]["ranch"]["codexAnimals"], serde_json::json!([]));
+    assert_eq!(migrated["state"]["ranch"]["codexSpecials"], serde_json::json!([]));
+}

@@ -2025,6 +2025,73 @@ footer {
   line-height: 1.7;
 }
 
+.ranch-orders {
+  margin: 8px 0 10px;
+  font-size: 13px;
+}
+
+.ranch-orders-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.ranch-order {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  padding: 3px 0;
+  border-top: 1px dotted var(--line-soft);
+}
+
+.ranch-order.active {
+  color: var(--accent-text);
+}
+
+.ranch-codex {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+  font-size: 12px;
+}
+
+.ranch-codex-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.ranch-codex-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 6px;
+  align-items: baseline;
+  padding: 2px 0;
+}
+
+.ranch-codex-name {
+  min-width: 108px;
+  color: var(--muted);
+}
+
+.ranch-codex-chip {
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--faint);
+}
+
+.ranch-codex-chip.have {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
 .ranch-meters {
   display: flex;
   flex-wrap: wrap;

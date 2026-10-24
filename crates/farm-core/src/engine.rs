@@ -132,6 +132,8 @@ impl Game {
             Action::RenameRanchAnimal { pen, name } => {
                 self.rename_ranch_animal(pen, &name, now)?
             }
+            Action::AcceptRanchOrder { id } => self.accept_ranch_order(&id, now)?,
+            Action::DeliverRanchOrder { id } => self.deliver_ranch_order(&id, now)?,
             Action::BuildWorkshop => self.build_workshop(now)?,
             Action::ExpandWorkshop => self.expand_workshop(now)?,
             Action::InstallEquipment { slot, kind } => self.install_equipment(slot, kind, now)?,
@@ -2380,6 +2382,10 @@ impl Game {
             animal.line_id = line_id;
             target.animal = Some(animal);
         }
+        self.state
+            .ranch
+            .codex_animals
+            .insert(format!("{}:{}", kind.key(), temper.key()));
         let text = format!(
             "你买了一只{}（{}，血统 #{line_id}），住进了 {pen} 号畜栏，花费 {cost}",
             kind.label(),
@@ -2529,6 +2535,12 @@ impl Game {
             crate::ranch::with_quality(kind.product_key(), quality)
         };
         *self.state.inventory.entry(key).or_insert(0) += qty;
+        if special {
+            self.state
+                .ranch
+                .codex_specials
+                .insert(kind.special_key().to_string());
+        }
         if let Some(pen) = self.state.ranch.pen_mut(pen) {
             pen.get_dirty();
         }
@@ -2787,6 +2799,10 @@ impl Game {
         child.product_ready_at = child.adult_at + child.product_interval();
         child.name = format!("{}幼崽", plan.kind.label());
         self.state.ranch.pens[target].animal = Some(child);
+        self.state
+            .ranch
+            .codex_animals
+            .insert(format!("{}:{}", plan.kind.key(), plan.temper.key()));
         if new_line {
             self.state.ranch.line_seq = line_id;
         }
@@ -2832,6 +2848,77 @@ impl Game {
         let text = format!("你给 {pen} 号畜栏的动物改名叫「{name}」");
         self.push_log(now, text.clone());
         Ok(vec![Effect::Log { text }])
+    }
+
+    fn accept_ranch_order(&mut self, id: &str, now: i64) -> Result<Vec<Effect>, GameError> {
+        if self.state.ranch_orders.find_offer(id).is_none() {
+            return Err(GameError::RanchOrderNotFound);
+        }
+        if self.state.ranch_orders.active.len() >= crate::ranch_orders::RANCH_ORDER_MAX_ACTIVE {
+            return Err(GameError::RanchOrderLimit);
+        }
+        let order = self
+            .state
+            .ranch_orders
+            .accept(id)
+            .ok_or(GameError::RanchOrderLimit)?;
+        let text = format!(
+            "你接了{}的牧场订单：{}{}×{}",
+            order.npc_name,
+            order.quality_label(),
+            order.item_name,
+            order.qty
+        );
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn deliver_ranch_order(&mut self, id: &str, now: i64) -> Result<Vec<Effect>, GameError> {
+        let order = self
+            .state
+            .ranch_orders
+            .find_active(id)
+            .cloned()
+            .ok_or(GameError::RanchOrderNotFound)?;
+        let key = order.item_key();
+        let have = self.state.inventory.get(&key).copied().unwrap_or(0);
+        if have < order.qty {
+            return Err(GameError::RanchOrderShort);
+        }
+        if have == order.qty {
+            self.state.inventory.remove(&key);
+        } else {
+            self.state.inventory.insert(key, have - order.qty);
+        }
+        self.state.ranch_orders.remove_active(id);
+        self.state.coins = self.state.coins.saturating_add(order.reward_coins);
+        if order.reward_feed > 0 {
+            *self.state.inventory.entry("ranch:feed".into()).or_insert(0) += order.reward_feed;
+        }
+        let pct = buffs::exp_pct(&self.state.buffs, now, DisciplineKind::Ranching);
+        let levels = self
+            .state
+            .skills
+            .ranching
+            .add_exp(order.reward_exp * u64::from(100 + pct) / 100);
+        let text = format!(
+            "你交给{} {}{}×{}，收到 {} 金币、{} 牧场经验、{} 份专用饲料",
+            order.npc_name,
+            order.quality_label(),
+            order.item_name,
+            order.qty,
+            order.reward_coins,
+            order.reward_exp,
+            order.reward_feed
+        );
+        self.push_log(now, text.clone());
+        let mut effects = vec![Effect::Log { text }];
+        for _ in 0..levels {
+            let text = format!("畜牧等级升到 {} 级", self.state.skills.ranching.level);
+            self.push_log(now, text.clone());
+            effects.push(Effect::Log { text });
+        }
+        Ok(effects)
     }
 
     fn ranch_item_count(&self, base: &str) -> u32 {
@@ -2999,7 +3086,9 @@ impl Game {
                     continue;
                 }
                 let take = have.min(left);
-                quality = quality.min(tier);
+                if crate::ranch::has_quality(base) {
+                    quality = quality.min(tier);
+                }
                 if have == take {
                     self.state.inventory.remove(&key);
                 } else {
@@ -4967,6 +5056,25 @@ impl Game {
                     String::new()
                 } else {
                     format!("，{} 条过期（NPC 友好度-1）", expired_orders.len())
+                }
+            );
+            self.push_log(now, text.clone());
+            effects.push(Effect::Log { text });
+            changed = true;
+        }
+        let day_before_ranch_orders = self.state.ranch_orders.day.clone();
+        let expired_ranch_orders = self
+            .state
+            .ranch_orders
+            .ensure_day(today, self.state.level);
+        if day_before_ranch_orders != self.state.ranch_orders.day {
+            let text = format!(
+                "牧场订单更新了：{} 条新订单{}",
+                self.state.ranch_orders.offers.len(),
+                if expired_ranch_orders.is_empty() {
+                    String::new()
+                } else {
+                    format!("，{} 条过期", expired_ranch_orders.len())
                 }
             );
             self.push_log(now, text.clone());

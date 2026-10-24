@@ -20,6 +20,7 @@ mod pet;
 mod planting;
 mod processing;
 mod ranch;
+mod ranch_orders;
 mod ranching;
 mod room;
 mod save;
@@ -104,10 +105,13 @@ pub use processing::{
     yield_chance as processing_yield_chance,
 };
 pub use ranch::{
-    roll_trait, special_chance, RanchAnimal, RanchAnimalKind, RanchPen, RanchRecipe, RanchState,
-    RanchTrait, RANCH_BREED_COOLDOWN_MS, RANCH_BREED_MIN_HEALTH, RANCH_CLEAN_GAIN, RANCH_CLEAN_MAX,
-    RANCH_COLLECT_DIRT, RANCH_EXPAND_COSTS, RANCH_PEN_COUNT, RANCH_QUALITY_PCT, RANCH_SPECIAL_PCT,
-    RANCH_YOUNG_MS,
+    has_quality, roll_trait, special_chance, RanchAnimal, RanchAnimalKind, RanchPen, RanchRecipe,
+    RanchState, RanchTrait, RANCH_BREED_COOLDOWN_MS, RANCH_BREED_MIN_HEALTH, RANCH_CLEAN_GAIN,
+    RANCH_CLEAN_MAX, RANCH_COLLECT_DIRT, RANCH_EXPAND_COSTS, RANCH_PEN_COUNT, RANCH_QUALITY_PCT,
+    RANCH_SPECIAL_PCT, RANCH_YOUNG_MS,
+};
+pub use ranch_orders::{
+    RanchOrder, RanchOrderState, RANCH_ORDER_MAX_ACTIVE, RANCH_ORDER_OFFERS,
 };
 pub use ranching::{
     care_pct, collect_exp as ranching_collect_exp, feed_save_chance,

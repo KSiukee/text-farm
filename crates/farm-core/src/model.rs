@@ -15,7 +15,7 @@ use crate::room::RoomState;
 use crate::skills::PlayerSkills;
 use crate::workshop::WorkshopState;
 
-pub const SAVE_SCHEMA: u32 = 38;
+pub const SAVE_SCHEMA: u32 = 39;
 pub const MAX_LEVEL: u32 = 30;
 pub const PLOT_COUNT: usize = 8;
 pub const PLOT_MAX_TIER: u8 = 3;
@@ -406,6 +406,8 @@ pub struct GameState {
     #[serde(default)]
     pub ranch: RanchState,
     #[serde(default)]
+    pub ranch_orders: crate::ranch_orders::RanchOrderState,
+    #[serde(default)]
     pub workshop: WorkshopState,
     #[serde(default)]
     pub fishing: FishingState,
@@ -490,6 +492,7 @@ impl Game {
             last_boarding_month: String::new(),
             last_raid_day: String::new(),
             ranch: RanchState::new(),
+            ranch_orders: Default::default(),
             workshop: WorkshopState::new(),
             fishing: FishingState::new(),
             skills: PlayerSkills::new(),

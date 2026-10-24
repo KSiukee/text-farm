@@ -220,6 +220,12 @@ pub enum GameError {
     RanchPenDirty,
     #[error("名字需要 1–12 个字")]
     InvalidRanchName,
+    #[error("没有这条牧场订单")]
+    RanchOrderNotFound,
+    #[error("最多同时接 2 笔牧场订单")]
+    RanchOrderLimit,
+    #[error("牧场货物不够交这笔订单")]
+    RanchOrderShort,
     #[error("畜栏已经扩到上限")]
     RanchMaxPens,
     #[error("没有专用饲料")]
@@ -386,6 +392,9 @@ impl GameError {
             GameError::RanchBreedUnhealthy => "ranch_breed_unhealthy",
             GameError::RanchPenDirty => "ranch_pen_dirty",
             GameError::InvalidRanchName => "invalid_ranch_name",
+            GameError::RanchOrderNotFound => "ranch_order_not_found",
+            GameError::RanchOrderLimit => "ranch_order_limit",
+            GameError::RanchOrderShort => "ranch_order_short",
             GameError::RanchMaxPens => "ranch_max_pens",
             GameError::RanchNoFeed => "ranch_no_feed",
             GameError::RanchNoBreedPair => "ranch_no_breed_pair",

@@ -17,7 +17,7 @@ use crate::pet::{
     PET_BOARD_FEE_PER_MONTH, PET_PLAY_COOLDOWN_MS, PET_TOUCH_COOLDOWN_MS,
 };
 use crate::error::GameError;
-use crate::ranch::{RanchAnimalKind, RanchRecipe, RANCH_MAX_PENS};
+use crate::ranch::{RanchAnimalKind, RanchRecipe, RanchTrait, RANCH_MAX_PENS};
 use crate::specimen;
 use crate::workshop::{
     craft_item, crop_box_price, EquipmentKind, EquipmentRecipe, WorkshopJob, CROP_BOX_INPUT,
@@ -452,12 +452,79 @@ pub struct WorkshopView {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RanchOrderView {
+    pub id: String,
+    pub npc_name: String,
+    pub base_key: String,
+    pub item_name: String,
+    pub quality: u8,
+    pub quality_label: String,
+    pub qty: u32,
+    pub expires_day: String,
+    pub reward_coins: u64,
+    pub reward_exp: u64,
+    pub reward_feed: u32,
+    pub have: u32,
+    pub can_deliver: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RanchOrdersView {
+    pub day: String,
+    pub offers: Vec<RanchOrderView>,
+    pub active: Vec<RanchOrderView>,
+    pub max_active: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RanchCodexTraitView {
+    pub key: String,
+    pub label: String,
+    pub have: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RanchCodexKindView {
+    pub kind: RanchAnimalKind,
+    pub label: String,
+    pub emoji: String,
+    pub traits: Vec<RanchCodexTraitView>,
+    pub done: u32,
+    pub total: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RanchCodexSpecialView {
+    pub key: String,
+    pub name: String,
+    pub have: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RanchCodexView {
+    pub kinds: Vec<RanchCodexKindView>,
+    pub specials: Vec<RanchCodexSpecialView>,
+    pub animal_done: u32,
+    pub animal_total: u32,
+    pub special_done: u32,
+    pub special_total: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RanchView {
     pub pens: Vec<RanchPenView>,
     pub can_expand: bool,
     pub expand_cost: u64,
     pub max_pens: u8,
     pub feed_count: u32,
+    pub orders: RanchOrdersView,
+    pub codex: RanchCodexView,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -2289,11 +2356,111 @@ impl Game {
             quests,
             condition: condition_view,
         };
+        let order_view = |order: &crate::ranch_orders::RanchOrder| {
+            let key = order.item_key();
+            let have = self.state.inventory.get(&key).copied().unwrap_or(0);
+            RanchOrderView {
+                id: order.id.clone(),
+                npc_name: order.npc_name.clone(),
+                base_key: order.base_key.clone(),
+                item_name: order.item_name.clone(),
+                quality: order.quality,
+                quality_label: order.quality_label().into(),
+                qty: order.qty,
+                expires_day: order.expires_day.clone(),
+                reward_coins: order.reward_coins,
+                reward_exp: order.reward_exp,
+                reward_feed: order.reward_feed,
+                have,
+                can_deliver: have >= order.qty,
+            }
+        };
+        let ranch_orders = RanchOrdersView {
+            day: self.state.ranch_orders.day.clone(),
+            offers: self
+                .state
+                .ranch_orders
+                .offers
+                .iter()
+                .map(&order_view)
+                .collect(),
+            active: self
+                .state
+                .ranch_orders
+                .active
+                .iter()
+                .map(&order_view)
+                .collect(),
+            max_active: crate::ranch_orders::RANCH_ORDER_MAX_ACTIVE,
+        };
+
+        let mut current_combos = std::collections::BTreeSet::new();
+        for pen in &self.state.ranch.pens {
+            if let Some(animal) = pen.animal.as_ref() {
+                current_combos.insert(format!("{}:{}", animal.kind.key(), animal.temper.key()));
+            }
+        }
+        let codex_kinds: Vec<RanchCodexKindView> = RanchAnimalKind::ALL
+            .iter()
+            .map(|kind| {
+                let mut done = 0;
+                let traits: Vec<RanchCodexTraitView> = RanchTrait::ALL
+                    .iter()
+                    .map(|ranch_trait| {
+                        let key = format!("{}:{}", kind.key(), ranch_trait.key());
+                        let have = self.state.ranch.codex_animals.contains(&key)
+                            || current_combos.contains(&key);
+                        if have {
+                            done += 1;
+                        }
+                        RanchCodexTraitView {
+                            key,
+                            label: ranch_trait.label().into(),
+                            have,
+                        }
+                    })
+                    .collect();
+                RanchCodexKindView {
+                    kind: *kind,
+                    label: kind.label().into(),
+                    emoji: kind.emoji().into(),
+                    traits,
+                    done,
+                    total: RanchTrait::ALL.len() as u32,
+                }
+            })
+            .collect();
+        let codex_specials: Vec<RanchCodexSpecialView> = RanchAnimalKind::ALL
+            .iter()
+            .map(|kind| {
+                let key = kind.special_key();
+                let have = self.state.ranch.codex_specials.contains(key)
+                    || self.state.inventory.get(key).copied().unwrap_or(0) > 0;
+                RanchCodexSpecialView {
+                    key: key.into(),
+                    name: kind.special_name().into(),
+                    have,
+                }
+            })
+            .collect();
+        let animal_done = codex_kinds.iter().map(|kind| kind.done).sum();
+        let special_done = codex_specials.iter().filter(|item| item.have).count() as u32;
+        let ranch_codex = RanchCodexView {
+            kinds: codex_kinds,
+            specials: codex_specials,
+            animal_done,
+            animal_total: (RanchAnimalKind::ALL.len() * RanchTrait::ALL.len()) as u32,
+            special_done,
+            special_total: RanchAnimalKind::ALL.len() as u32,
+        };
+
         let ranch = RanchView {
             can_expand: self.state.ranch.can_expand(),
             expand_cost: self.state.ranch.next_expand_cost(),
             max_pens: RANCH_MAX_PENS,
             feed_count: premium_feed,
+            orders: ranch_orders,
+            codex: ranch_codex,
             pens: self
                 .state
                 .ranch

@@ -266,12 +266,67 @@ export interface WorkshopView {
   equipmentRecipes: WorkshopRecipeView[];
 }
 
+export interface RanchOrdersView {
+  day: string;
+  offers: RanchOrderView[];
+  active: RanchOrderView[];
+  maxActive: number;
+}
+
+export interface RanchOrderView {
+  id: string;
+  npcName: string;
+  baseKey: string;
+  itemName: string;
+  quality: number;
+  qualityLabel: string;
+  qty: number;
+  expiresDay: string;
+  rewardCoins: number;
+  rewardExp: number;
+  rewardFeed: number;
+  have: number;
+  canDeliver: boolean;
+}
+
+export interface RanchCodexTraitView {
+  key: string;
+  label: string;
+  have: boolean;
+}
+
+export interface RanchCodexKindView {
+  kind: RanchAnimalKind;
+  label: string;
+  emoji: string;
+  traits: RanchCodexTraitView[];
+  done: number;
+  total: number;
+}
+
+export interface RanchCodexSpecialView {
+  key: string;
+  name: string;
+  have: boolean;
+}
+
+export interface RanchCodexView {
+  kinds: RanchCodexKindView[];
+  specials: RanchCodexSpecialView[];
+  animalDone: number;
+  animalTotal: number;
+  specialDone: number;
+  specialTotal: number;
+}
+
 export interface RanchView {
   pens: RanchPenView[];
   canExpand: boolean;
   expandCost: number;
   maxPens: number;
   feedCount: number;
+  orders: RanchOrdersView;
+  codex: RanchCodexView;
 }
 
 export interface PetCareView {
@@ -1195,6 +1250,8 @@ export type Action =
   | { type: "buyRanchFeed" }
   | { type: "breedRanchPair"; a: number; b: number }
   | { type: "renameRanchAnimal"; pen: number; name: string }
+  | { type: "acceptRanchOrder"; id: string }
+  | { type: "deliverRanchOrder"; id: string }
   | { type: "buildWorkshop" }
   | { type: "expandWorkshop" }
   | { type: "installEquipment"; slot: number; kind: EquipmentKind }
