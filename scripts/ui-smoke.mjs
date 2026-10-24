@@ -514,26 +514,30 @@ try {
   await evaluate(
     `[...document.querySelectorAll('header.icons .icon-item')].find((el) => el.innerText.includes('神秘商店'))?.click()`,
   );
-  await waitFor(async () => (await evaluate(`document.querySelectorAll('.mystery-card').length`)) === 8);
-  check("神秘商店 8 格", (await evaluate(`document.querySelectorAll('.mystery-card').length`)) === 8);
+  await waitFor(async () => (await evaluate(`document.querySelectorAll('.mystery-card').length`)) === 9);
+  check("神秘商店 9 格", (await evaluate(`document.querySelectorAll('.mystery-card').length`)) === 9);
   check("商店显示当前金币", (await bodyText()).includes("当前金币"));
   check(
     "神秘商店有专栏",
     (await evaluate(`document.querySelectorAll('.mystery-card.featured').length`)) === 1,
   );
   check(
-    "神秘商店物品/加成两栏",
-    (await evaluate(`document.querySelectorAll('.mystery-column').length`)) === 2,
+    "神秘商店物品/加成独立分栏",
+    (await evaluate(`document.querySelectorAll('.mystery-section').length`)) === 2,
   );
   check(
     "加成标注分属",
     (await evaluate(
-      `[...document.querySelectorAll('.mystery-column:nth-child(2) .mystery-tag')].every((el) => ['农场','牧场','钓鱼','制造','金币'].includes(el.innerText.trim()))`,
+      `[...document.querySelectorAll('.mystery-section:nth-child(2) .mystery-tag')].every((el) => ['农场','牧场','钓鱼','制造','金币'].includes(el.innerText.trim()))`,
     )) === true,
+  );
+  check(
+    "一键卡在物品栏",
+    (await bodyText()).includes("农场一键卡"),
   );
   const mysteryCoins = saveState().coins;
   await evaluate(`(() => {
-    const card = [...document.querySelectorAll('.mystery-column:nth-child(2) .mystery-card')]
+    const card = [...document.querySelectorAll('.mystery-section:nth-child(2) .mystery-card')]
       .find((el) => el.querySelector('.mystery-buy button:not(:disabled)'));
     card?.querySelector('.mystery-buy button')?.click();
   })()`);

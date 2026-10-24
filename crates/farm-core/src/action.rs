@@ -290,6 +290,7 @@ pub enum Action {
     BuyMysteryOffer {
         id: String,
     },
+    UseFarmCard,
     ClaimLevelReward {
         level: u32,
     },

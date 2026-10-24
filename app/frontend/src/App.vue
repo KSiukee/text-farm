@@ -522,16 +522,21 @@ const mystery = computed(() => snapshot.value?.mystery ?? null);
 const rareSeedStacks = computed(() =>
   seedStacks.value.filter((stack) => stack.key.startsWith("rare_seed:")),
 );
+const farmCards = computed(() =>
+  (snapshot.value?.inventory ?? []).filter((item) => item.key === "craft:farm_card"),
+);
 const mysteryColumns = computed(() => [
   {
     title: "物品",
-    hint: "种子 · 可越级种一次",
-    offers: (mystery.value?.offers ?? []).filter((offer) => offer.kind === "种子"),
+    hint: "种子 · 可越级种一次 / 一键卡",
+    offers: (mystery.value?.offers ?? []).filter(
+      (offer) => offer.kind === "种子" || offer.kind === "一键卡",
+    ),
   },
   {
     title: "加成",
     hint: "农场 / 牧场 / 钓鱼 / 制造 / 金币",
-    offers: (mystery.value?.offers ?? []).filter((offer) => offer.kind !== "种子"),
+    offers: (mystery.value?.offers ?? []).filter((offer) => offer.kind === "加成"),
   },
 ]);
 const levelRewards = computed(() => snapshot.value?.levelRewards ?? []);
@@ -1096,6 +1101,10 @@ function plantWithSeed(plot: PlotView, seed: { id: string; rare: boolean }) {
 
 function buyMystery(id: string) {
   void act({ type: "buyMysteryOffer", id });
+}
+
+function useFarmCard() {
+  void act({ type: "useFarmCard" });
 }
 
 function water(plot: PlotView) {
@@ -2950,14 +2959,14 @@ onUnmounted(() => {
           <div v-if="mystery?.legendary" class="mystery-legendary">
             今天专栏出了一件传说商品。
           </div>
-          <div class="mystery-columns">
+          <div class="mystery-sections">
             <section
               v-for="column in mysteryColumns"
               :key="column.title"
-              class="mystery-column"
+              class="panel mystery-section"
             >
-              <div class="mystery-column-head">
-                <h3>{{ column.title }}</h3>
+              <div class="panel-title">
+                {{ column.title }}
                 <span class="muted">{{ column.hint }}</span>
               </div>
               <div class="mystery-grid">
@@ -2999,7 +3008,7 @@ onUnmounted(() => {
               我的背包
               <span class="muted">买了先放着，想用再用；今天不想钓鱼也可以囤着</span>
             </div>
-            <div v-if="ownedBuffItems.length || rareSeedStacks.length">
+            <div v-if="ownedBuffItems.length || rareSeedStacks.length || farmCards.length">
               <div v-for="item in ownedBuffItems" :key="item.key" class="row mystery-bag-row">
                 <span><b>{{ item.name }}</b>×{{ item.qty }}</span>
                 <span class="muted">{{ item.desc }}</span>
@@ -3010,6 +3019,13 @@ onUnmounted(() => {
               <div v-for="stack in rareSeedStacks" :key="stack.key" class="row mystery-bag-row">
                 <span><b>{{ stack.name }}</b>×{{ stack.qty }}</span>
                 <span class="muted">去农场空地 [播种] 选用</span>
+              </div>
+              <div v-for="card in farmCards" :key="card.key" class="row mystery-bag-row">
+                <span><b>{{ card.name }}</b>×{{ card.qty }}</span>
+                <span class="muted">一键除虫/浇水/收获/补种（只用仓库普通种子）</span>
+                <button class="link" type="button" :disabled="acting" @click="useFarmCard">
+                  [一键执行]
+                </button>
               </div>
             </div>
             <div v-else class="muted">背包里还没有神秘商店的东西。</div>

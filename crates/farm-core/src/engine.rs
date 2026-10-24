@@ -178,6 +178,7 @@ impl Game {
             Action::AcceptFarmOrder { id } => self.accept_farm_order(&id, now)?,
             Action::DeliverFarmOrder { id } => self.deliver_farm_order(&id, now)?,
             Action::BuyMysteryOffer { id } => self.buy_mystery_offer(&id, now)?,
+            Action::UseFarmCard => self.use_farm_card(now)?,
             Action::ClaimLevelReward { level } => self.claim_level_reward(level, now)?,
             Action::UpdateSettings { exp_rate } => self.update_settings(exp_rate, now)?,
             Action::ShowGuide => self.show_guide(now)?,
@@ -4356,6 +4357,122 @@ impl Game {
         let mut effects = vec![Effect::Log { text }];
         effects.extend(self.add_exp(order.reward_exp as u32, now));
         Ok(effects)
+    }
+
+    fn use_farm_card(&mut self, now: i64) -> Result<Vec<Effect>, GameError> {
+        let key = "craft:farm_card";
+        let have = self.state.inventory.get(key).copied().unwrap_or(0);
+        if have == 0 {
+            return Err(GameError::FarmCardMissing);
+        }
+        if have == 1 {
+            self.state.inventory.remove(key);
+        } else {
+            self.state.inventory.insert(key.to_string(), have - 1);
+        }
+
+        let indices: Vec<u8> = self
+            .state
+            .plots
+            .iter()
+            .filter(|plot| plot.unlocked)
+            .map(|plot| plot.index)
+            .collect();
+        let mut pests = 0u32;
+        let mut watered = 0u32;
+        let mut harvested = 0u32;
+        let mut planted = 0u32;
+        let mut harvested_crops: Vec<(u8, String)> = Vec::new();
+
+        for index in &indices {
+            let pos = self.plot_pos(*index)?;
+            let has_pest = self.state.plots[pos]
+                .crop
+                .as_ref()
+                .is_some_and(|crop| crop.pest.is_some());
+            if has_pest && self.clear_pest(*index, now).is_ok() {
+                pests += 1;
+            }
+            if self.state.plots[pos]
+                .crop
+                .as_ref()
+                .is_some_and(|crop| crop.withered)
+            {
+                let _ = self.clear(*index, now);
+                continue;
+            }
+            if self.water(*index, now).is_ok() {
+                watered += 1;
+            }
+            let crop_id = self.state.plots[pos]
+                .crop
+                .as_ref()
+                .map(|crop| crop.crop_id.clone());
+            if let Some(crop_id) = crop_id {
+                if self.harvest(*index, now).is_ok() {
+                    harvested += 1;
+                    harvested_crops.push((*index, crop_id));
+                }
+            }
+        }
+
+        for index in indices {
+            if self.state.plots[self.plot_pos(index)?].crop.is_some() {
+                continue;
+            }
+            let preferred = harvested_crops
+                .iter()
+                .find(|(plot, _)| *plot == index)
+                .map(|(_, crop_id)| crop_id.clone());
+            let seed = preferred
+                .filter(|crop_id| {
+                    self.state
+                        .inventory
+                        .get(&format!("seed:{crop_id}"))
+                        .copied()
+                        .unwrap_or(0)
+                        > 0
+                })
+                .or_else(|| self.best_normal_seed());
+            if let Some(crop_id) = seed {
+                if self.plant(index, &crop_id, now).is_ok() {
+                    planted += 1;
+                }
+            }
+        }
+
+        let text = format!(
+            "农场一键卡：除虫 {pests} 次，浇水 {watered} 次，收获 {harvested} 次，补种 {planted} 块"
+        );
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn best_normal_seed(&self) -> Option<String> {
+        let mut best: Option<&crate::content::CropDef> = None;
+        for crop in &self.content.crops {
+            if crop.unlock_level > self.state.level {
+                continue;
+            }
+            let have = self
+                .state
+                .inventory
+                .get(&format!("seed:{}", crop.id))
+                .copied()
+                .unwrap_or(0);
+            if have == 0 {
+                continue;
+            }
+            let better = best.is_none_or(|current| {
+                crop.unlock_level > current.unlock_level
+                    || (crop.unlock_level == current.unlock_level
+                        && crop.grow_minutes < current.grow_minutes)
+            });
+            if better {
+                best = Some(crop);
+            }
+        }
+        best.map(|crop| crop.id.clone())
     }
 
     fn buy_mystery_offer(&mut self, id: &str, now: i64) -> Result<Vec<Effect>, GameError> {

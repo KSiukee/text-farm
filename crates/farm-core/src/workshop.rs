@@ -563,6 +563,11 @@ pub const CRAFT_ITEMS: &[CraftItemDef] = &[
         name: "点金秘药",
         price: 2600,
     },
+    CraftItemDef {
+        key: "craft:farm_card",
+        name: "农场一键卡",
+        price: 8000,
+    },
 ];
 
 /// 制造屋成品/中间品的固定价格表；礼盒走 `crop_box_price`。

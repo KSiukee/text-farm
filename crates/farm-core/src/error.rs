@@ -136,6 +136,8 @@ pub enum GameError {
     MysteryOfferInvalid,
     #[error("这件神秘商品已经卖掉了")]
     MysteryOfferSold,
+    #[error("背包里没有农场一键卡")]
+    FarmCardMissing,
     #[error("没有这个专精")]
     BadSkill,
     #[error("这个专精已经满级")]
@@ -322,6 +324,7 @@ impl GameError {
             GameError::BadPlayerName => "bad_player_name",
             GameError::MysteryOfferInvalid => "mystery_offer_invalid",
             GameError::MysteryOfferSold => "mystery_offer_sold",
+            GameError::FarmCardMissing => "farm_card_missing",
             GameError::BadSkill => "bad_skill",
             GameError::SkillMax => "skill_max",
             GameError::BadBuffItem => "bad_buff_item",

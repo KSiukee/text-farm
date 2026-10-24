@@ -7,7 +7,7 @@ fn mystery_shop_buy_and_plant_rare_seed() {
     game.state_mut().coins = 1_000_000;
     game.sync(0, "2026-10-24");
     let offers = game.state().mystery.offers.clone();
-    assert_eq!(offers.len(), 8);
+    assert_eq!(offers.len(), 9);
 
     let seed = offers
         .iter()
@@ -47,6 +47,36 @@ fn mystery_shop_buy_and_plant_rare_seed() {
     let plot = &game.state().plots[0];
     assert_eq!(plot.crop.as_ref().unwrap().crop_id, seed.crop_id);
     assert_eq!(game.state().inventory.get(&key), None);
+}
+
+#[test]
+fn farm_card_runs_a_pass() {
+    let mut game = Game::new(0);
+    game.state_mut().level = 12;
+    game.state_mut().coins = 1_000_000;
+    game.sync(0, "2026-10-24");
+    let card = game
+        .state()
+        .mystery
+        .offers
+        .iter()
+        .find(|offer| offer.kind == farm_core::MysteryKind::Card)
+        .unwrap()
+        .clone();
+    game.dispatch(
+        Action::BuyMysteryOffer {
+            id: card.id.clone(),
+        },
+        0,
+    )
+    .unwrap();
+    game.state_mut()
+        .inventory
+        .insert("seed:xiaobaicai".into(), 2);
+    let before = game.state().stats.planted;
+    game.dispatch(Action::UseFarmCard, 0).unwrap();
+    assert_eq!(game.state().inventory.get("craft:farm_card"), None);
+    assert!(game.state().stats.planted > before);
 }
 
 #[test]

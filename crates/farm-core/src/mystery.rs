@@ -9,10 +9,10 @@ use crate::buffs::buff_item;
 use crate::content::{ContentPack, CropDef};
 use crate::workshop::craft_item;
 
-pub const MYSTERY_OFFERS: usize = 8;
-pub const MYSTERY_NORMAL_OFFERS: usize = 7;
+pub const MYSTERY_OFFERS: usize = 9;
+pub const MYSTERY_NORMAL_OFFERS: usize = 8;
 pub const MYSTERY_LEGENDARY_PCT: u64 = 3;
-pub const MYSTERY_VERSION: u32 = 2;
+pub const MYSTERY_VERSION: u32 = 3;
 const RARE_SEED_MULT: u64 = 3;
 const LEGENDARY_SEED_MULT: u64 = 6;
 const BUFF_MULT: u64 = 2;
@@ -37,6 +37,7 @@ impl MysteryRarity {
 #[serde(rename_all = "snake_case")]
 pub enum MysteryKind {
     Seed,
+    Card,
     Buff,
 }
 
@@ -44,6 +45,7 @@ impl MysteryKind {
     pub fn label(self) -> &'static str {
         match self {
             MysteryKind::Seed => "种子",
+            MysteryKind::Card => "一键卡",
             MysteryKind::Buff => "加成",
         }
     }
@@ -153,8 +155,10 @@ fn generate(today: &str, level: u32, content: &ContentPack) -> Vec<MysteryOffer>
                 index + 1,
                 &mut used_crops,
             )
+        } else if index == 2 {
+            card_offer(today, index + 1)
         } else {
-            buff_offer(today, index, index - 2, &mut used_buffs)
+            buff_offer(today, index, index - 3, &mut used_buffs)
         };
         if let Some(offer) = offer {
             offers.push(offer);
@@ -198,6 +202,22 @@ fn seed_offer(
         price,
         rarity,
         featured,
+        sold: false,
+    })
+}
+
+fn card_offer(today: &str, index: usize) -> Option<MysteryOffer> {
+    Some(MysteryOffer {
+        id: format!("{today}-m{index}"),
+        kind: MysteryKind::Card,
+        item_key: "craft:farm_card".into(),
+        crop_id: String::new(),
+        name: "农场一键卡".into(),
+        desc: "一键除虫/浇水/收获/补种（只用仓库普通种子）".into(),
+        tag: "农场".into(),
+        price: 8000,
+        rarity: MysteryRarity::Rare,
+        featured: false,
         sold: false,
     })
 }
@@ -284,6 +304,14 @@ mod tests {
                 .filter(|o| o.kind == MysteryKind::Buff)
                 .count(),
             5
+        );
+        assert_eq!(
+            first
+                .offers
+                .iter()
+                .filter(|o| o.kind == MysteryKind::Card)
+                .count(),
+            1
         );
         assert!(first.offers.iter().all(|o| o.price > 0));
         assert!(first

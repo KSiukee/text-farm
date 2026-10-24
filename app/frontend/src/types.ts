@@ -1164,6 +1164,7 @@ export type Action =
   | { type: "acceptFarmOrder"; id: string }
   | { type: "deliverFarmOrder"; id: string }
   | { type: "buyMysteryOffer"; id: string }
+  | { type: "useFarmCard" }
   | { type: "claimLevelReward"; level: number }
   | { type: "updateSettings"; expRate: number }
   | { type: "showGuide" }
