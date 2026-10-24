@@ -518,8 +518,8 @@ try {
   await evaluate(
     `[...document.querySelectorAll('header.icons .icon-item')].find((el) => el.innerText.includes('神秘商店'))?.click()`,
   );
-  await waitFor(async () => (await evaluate(`document.querySelectorAll('.mystery-card').length`)) === 9);
-  check("神秘商店 9 格", (await evaluate(`document.querySelectorAll('.mystery-card').length`)) === 9);
+  await waitFor(async () => (await evaluate(`document.querySelectorAll('.mystery-card').length`)) === 10);
+  check("神秘商店 10 格", (await evaluate(`document.querySelectorAll('.mystery-card').length`)) === 10);
   check("商店显示当前金币", (await bodyText()).includes("当前金币"));
   check(
     "神秘商店有专栏",
@@ -539,6 +539,7 @@ try {
     "一键卡在物品栏",
     (await bodyText()).includes("农场一键卡"),
   );
+  check("神秘商店有家具", (await bodyText()).includes("星辉鱼缸") || (await bodyText()).includes("雪花电视"));
   const mysteryCoins = saveState().coins;
   await evaluate(`(() => {
     const card = [...document.querySelectorAll('.mystery-section:nth-child(2) .mystery-card')]

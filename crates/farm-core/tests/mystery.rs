@@ -7,7 +7,7 @@ fn mystery_shop_buy_and_plant_rare_seed() {
     game.state_mut().coins = 1_000_000;
     game.sync(0, "2026-10-24");
     let offers = game.state().mystery.offers.clone();
-    assert_eq!(offers.len(), 9);
+    assert_eq!(offers.len(), 10);
 
     let seed = offers
         .iter()

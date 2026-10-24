@@ -93,7 +93,7 @@ pub fn furniture_price(id: &str) -> u64 {
         "nightstand" => 1_200,
         "tv" => 4_800,
         "beanbag" => 1_500,
-        _ => 1_000,
+        _ => 0,
     }
 }
 

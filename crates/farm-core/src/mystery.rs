@@ -9,10 +9,10 @@ use crate::buffs::buff_item;
 use crate::content::{ContentPack, CropDef};
 use crate::workshop::craft_item;
 
-pub const MYSTERY_OFFERS: usize = 9;
-pub const MYSTERY_NORMAL_OFFERS: usize = 8;
+pub const MYSTERY_OFFERS: usize = 10;
+pub const MYSTERY_NORMAL_OFFERS: usize = 9;
 pub const MYSTERY_LEGENDARY_PCT: u64 = 3;
-pub const MYSTERY_VERSION: u32 = 3;
+pub const MYSTERY_VERSION: u32 = 4;
 const RARE_SEED_MULT: u64 = 3;
 const LEGENDARY_SEED_MULT: u64 = 6;
 const BUFF_MULT: u64 = 2;
@@ -38,6 +38,7 @@ impl MysteryRarity {
 pub enum MysteryKind {
     Seed,
     Card,
+    Furniture,
     Buff,
 }
 
@@ -46,6 +47,7 @@ impl MysteryKind {
         match self {
             MysteryKind::Seed => "种子",
             MysteryKind::Card => "一键卡",
+            MysteryKind::Furniture => "家具",
             MysteryKind::Buff => "加成",
         }
     }
@@ -157,8 +159,10 @@ fn generate(today: &str, level: u32, content: &ContentPack) -> Vec<MysteryOffer>
             )
         } else if index == 2 {
             card_offer(today, index + 1)
+        } else if index == 3 {
+            furniture_offer(today, index + 1)
         } else {
-            buff_offer(today, index, index - 3, &mut used_buffs)
+            buff_offer(today, index, index - 4, &mut used_buffs)
         };
         if let Some(offer) = offer {
             offers.push(offer);
@@ -217,6 +221,30 @@ fn card_offer(today: &str, index: usize) -> Option<MysteryOffer> {
         tag: "农场".into(),
         price: 8000,
         rarity: MysteryRarity::Rare,
+        featured: false,
+        sold: false,
+    })
+}
+
+fn furniture_offer(today: &str, index: usize) -> Option<MysteryOffer> {
+    let choices = ["mystery_glass_tank", "mystery_snow_tv"];
+    let id = choices[(roll(today, 0xF10) as usize) % choices.len()];
+    let def = crate::room::furniture_def(id)?;
+    let legendary = id == "mystery_glass_tank";
+    Some(MysteryOffer {
+        id: format!("{today}-m{index}"),
+        kind: MysteryKind::Furniture,
+        item_key: format!("furniture:{id}"),
+        crop_id: String::new(),
+        name: format!("{}·{}", if legendary { "传说" } else { "稀有" }, def.name),
+        desc: "买下后进家具仓库，可在牧村装修里摆".into(),
+        tag: "家具".into(),
+        price: if legendary { 36_000 } else { 22_000 },
+        rarity: if legendary {
+            MysteryRarity::Legendary
+        } else {
+            MysteryRarity::Rare
+        },
         featured: false,
         sold: false,
     })
@@ -310,6 +338,14 @@ mod tests {
                 .offers
                 .iter()
                 .filter(|o| o.kind == MysteryKind::Card)
+                .count(),
+            1
+        );
+        assert_eq!(
+            first
+                .offers
+                .iter()
+                .filter(|o| o.kind == MysteryKind::Furniture)
                 .count(),
             1
         );

@@ -528,9 +528,10 @@ const farmCards = computed(() =>
 const mysteryColumns = computed(() => [
   {
     title: "物品",
-    hint: "种子 · 可越级种一次 / 一键卡",
+    hint: "种子 / 一键卡 / 稀有家具",
     offers: (mystery.value?.offers ?? []).filter(
-      (offer) => offer.kind === "种子" || offer.kind === "一键卡",
+      (offer) =>
+        offer.kind === "种子" || offer.kind === "一键卡" || offer.kind === "家具",
     ),
   },
   {
@@ -1020,6 +1021,13 @@ const currentRoom = computed(() => {
   return snapshot.value?.room ?? null;
 });
 const decorShop = computed(() => snapshot.value?.decorShop ?? null);
+const furnitureCatalog = computed(() => currentRoom.value?.catalog ?? []);
+const furnitureOwnedCount = computed(
+  () =>
+    furnitureCatalog.value.filter(
+      (def) => (currentRoom.value?.ownedFurniture?.[def.id] ?? 0) > 0,
+    ).length,
+);
 
 function buyFurniture(def: string) {
   void act({ type: "buyFurniture", def });
@@ -3155,9 +3163,16 @@ onUnmounted(() => {
                 <span v-else class="muted">{{ offer.owned ? "已拥有" : "已售罄" }}</span>
               </div>
             </div>
-            <div class="panel-title">家具</div>
+            <div class="panel-title">
+              家具
+              <span class="muted">图鉴 {{ furnitureOwnedCount }}/{{ furnitureCatalog.length }}</span>
+            </div>
             <div class="decor-shop-grid">
-              <div v-for="def in currentRoom?.catalog ?? []" :key="def.id" class="decor-card">
+              <div
+                v-for="def in furnitureCatalog.filter((item) => item.price > 0)"
+                :key="def.id"
+                class="decor-card"
+              >
                 <strong>{{ def.name }}</strong>
                 <span class="muted">
                   {{ def.price }} 金币 · 已有 {{ currentRoom?.ownedFurniture?.[def.id] ?? 0 }} ·

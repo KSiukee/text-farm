@@ -71,6 +71,53 @@ fn decor_styles_are_bought_and_unlock_room() {
 }
 
 #[test]
+fn mystery_furniture_goes_to_owned_not_inventory() {
+    let mut game = room_game();
+    let offer = game
+        .state()
+        .mystery
+        .offers
+        .iter()
+        .find(|offer| offer.kind == farm_core::MysteryKind::Furniture)
+        .unwrap()
+        .clone();
+    let before = game
+        .state()
+        .room
+        .owned_furniture
+        .get(offer.item_key.strip_prefix("furniture:").unwrap())
+        .copied()
+        .unwrap_or(0);
+    game.dispatch(Action::BuyMysteryOffer { id: offer.id }, 0)
+        .unwrap();
+    let def = offer.item_key.strip_prefix("furniture:").unwrap();
+    assert_eq!(
+        game.state().room.owned_furniture.get(def),
+        Some(&(before + 1))
+    );
+    assert!(!game.state().inventory.contains_key(&offer.item_key));
+}
+
+#[test]
+fn level_gift_adds_bound_furniture() {
+    let mut game = Game::new(0);
+    game.state_mut().level = 10;
+    game.dispatch(Action::ClaimLevelReward { level: 10 }, 0)
+        .unwrap();
+    assert_eq!(game.state().room.owned_furniture.get("gift_quilt"), Some(&1));
+}
+
+#[test]
+fn old_claimed_level_gift_is_backfilled() {
+    let mut game = Game::new(0);
+    game.state_mut().level = 12;
+    game.state_mut().level_rewards_claimed.insert(10);
+    game.state_mut().room.owned_furniture.remove("gift_quilt");
+    game.sync(0, "2026-10-24");
+    assert_eq!(game.state().room.owned_furniture.get("gift_quilt"), Some(&1));
+}
+
+#[test]
 fn old_room_ownership_backfills_from_layout() {
     let mut state = RoomState::default();
     state.ownership_initialized = false;

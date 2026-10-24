@@ -24,6 +24,16 @@ pub fn milestone_items(level: u32) -> &'static [(&'static str, u32)] {
     }
 }
 
+/// 等级里程碑送的绑定家具（不卖，只送）。
+pub fn milestone_furniture(level: u32) -> &'static [&'static str] {
+    match level {
+        10 => &["gift_quilt"],
+        20 => &["gift_harvest_rug"],
+        30 => &["gift_anniversary_lamp"],
+        _ => &[],
+    }
+}
+
 /// 只有文本是给界面看的；数字仍然只从 Rust 出。
 pub fn reward_text(content: &ContentPack, level: u32) -> String {
     let mut parts = vec![format!("金币+{}", coins_for(level))];
@@ -39,6 +49,11 @@ pub fn reward_text(content: &ContentPack, level: u32) -> String {
             .map(|def| def.name)
             .unwrap_or(key);
         parts.push(format!("{name}×{qty}"));
+    }
+    for id in milestone_furniture(level) {
+        if let Some(def) = crate::room::furniture_def(id) {
+            parts.push(format!("{}×1", def.name));
+        }
     }
     parts.join(" · ")
 }

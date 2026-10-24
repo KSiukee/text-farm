@@ -4497,6 +4497,18 @@ impl Game {
             .inventory
             .entry(offer.item_key.clone())
             .or_insert(0) += 1;
+        if offer.kind == crate::MysteryKind::Furniture {
+            self.state.inventory.remove(&offer.item_key);
+            if let Some(def) = offer.item_key.strip_prefix("furniture:") {
+                self.state.room.ensure_ownership();
+                *self
+                    .state
+                    .room
+                    .owned_furniture
+                    .entry(def.to_string())
+                    .or_insert(0) += 1;
+            }
+        }
         let text = format!(
             "在神秘商店买下 {}：金币-{}",
             offer.name, offer.price
@@ -4543,6 +4555,18 @@ impl Game {
                 .unwrap_or(key);
             parts.push(format!("{name}×{qty}"));
         }
+        for id in level_reward::milestone_furniture(level) {
+            if let Some(def) = room::furniture_def(id) {
+                self.state.room.ensure_ownership();
+                *self
+                    .state
+                    .room
+                    .owned_furniture
+                    .entry((*id).to_string())
+                    .or_insert(0) += 1;
+                parts.push(format!("{}×1", def.name));
+            }
+        }
 
         let text = format!("领取 {level} 级奖励：{}", parts.join("、"));
         self.push_log(now, text.clone());
@@ -4556,6 +4580,26 @@ impl Game {
         self.state.room.ensure_defaults();
         if self.state.room.ensure_decor_shop(today) {
             changed = true;
+        }
+        // 老档已经领过 10/20/30 级奖励的，补发当时还没有的绑定家具。
+        for (level, id) in [(10, "gift_quilt"), (20, "gift_harvest_rug"), (30, "gift_anniversary_lamp")] {
+            if self.state.level >= level
+                && self.state.level_rewards_claimed.contains(&level)
+                && !self.state.room.owned_furniture.contains_key(id)
+            {
+                *self
+                    .state
+                    .room
+                    .owned_furniture
+                    .entry(id.to_string())
+                    .or_insert(0) += 1;
+                changed = true;
+                if let Some(def) = room::furniture_def(id) {
+                    let text = format!("补发等级家具：{}", def.name);
+                    self.push_log(now, text.clone());
+                    effects.push(Effect::Log { text });
+                }
+            }
         }
 
         let buffs_before = self.state.buffs.len();
@@ -4815,6 +4859,9 @@ impl Game {
         let def = room::furniture_def(def_id)
             .ok_or_else(|| GameError::RoomLayoutInvalid("没有这件家具".into()))?;
         let price = decor::furniture_price(def_id);
+        if price == 0 {
+            return Err(GameError::RoomLayoutInvalid("这件家具只在赠送/神秘商店出".into()));
+        }
         if self.state.coins < price {
             return Err(GameError::NotEnoughCoins { need: price });
         }

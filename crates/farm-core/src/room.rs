@@ -38,7 +38,7 @@ pub struct FurnitureDef {
     pub sprite_rotations: u8,
 }
 
-pub const FURNITURE: [FurnitureDef; 16] = [
+pub const FURNITURE: [FurnitureDef; 21] = [
     FurnitureDef {
         id: "bed",
         name: "木床",
@@ -229,6 +229,68 @@ pub const FURNITURE: [FurnitureDef; 16] = [
         kind: "beanbag",
         capacity: 0,
         sprite: Some("furn_beanbag_sage"),
+        sprite_rotations: 4,
+    },
+    // 系统赠送款：只在等级里程碑发放，商店不卖。
+    FurnitureDef {
+        id: "gift_quilt",
+        name: "百衲被",
+        width: 2,
+        depth: 3,
+        layer: 2,
+        collision: true,
+        kind: "bed",
+        capacity: 0,
+        sprite: Some("furn_bed_wood"),
+        sprite_rotations: 4,
+    },
+    FurnitureDef {
+        id: "gift_harvest_rug",
+        name: "丰收纪念毯",
+        width: 3,
+        depth: 2,
+        layer: 0,
+        collision: false,
+        kind: "rug",
+        capacity: 0,
+        sprite: Some("furn_rug_sage_01"),
+        sprite_rotations: 1,
+    },
+    FurnitureDef {
+        id: "gift_anniversary_lamp",
+        name: "开垦纪念灯",
+        width: 1,
+        depth: 1,
+        layer: 2,
+        collision: true,
+        kind: "lamp",
+        capacity: 0,
+        sprite: Some("furn_lamp_floor"),
+        sprite_rotations: 4,
+    },
+    // 神秘商店款：稀有/传说，不进普通家具店。
+    FurnitureDef {
+        id: "mystery_glass_tank",
+        name: "星辉鱼缸",
+        width: 2,
+        depth: 2,
+        layer: 2,
+        collision: true,
+        kind: "aquarium_large",
+        capacity: 5,
+        sprite: Some("prop_aquarium_large_01"),
+        sprite_rotations: 4,
+    },
+    FurnitureDef {
+        id: "mystery_snow_tv",
+        name: "雪花电视",
+        width: 2,
+        depth: 1,
+        layer: 2,
+        collision: true,
+        kind: "tv",
+        capacity: 0,
+        sprite: Some("furn_tv_wood"),
         sprite_rotations: 4,
     },
 ];
