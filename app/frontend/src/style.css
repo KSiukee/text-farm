@@ -2176,6 +2176,44 @@ footer {
   font-size: 13px;
 }
 
+.pond-hint {
+  margin: 2px 0 6px;
+  color: var(--accent-text);
+}
+
+.pond-details {
+  margin: 4px 0;
+  font-size: 13px;
+}
+
+.pond-details summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.pond-order {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.pond-milestones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 13px;
+}
+
+.pond-milestone {
+  color: var(--faint);
+}
+
+.pond-milestone.have {
+  color: var(--accent-text);
+}
+
 .pond-stock {
   display: flex;
   flex-wrap: wrap;

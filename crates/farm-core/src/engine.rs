@@ -142,6 +142,8 @@ impl Game {
             Action::InstallPondAerator => self.install_pond_aerator(now)?,
             Action::PlantPondWeeds => self.plant_pond_weeds(now)?,
             Action::HarvestPond { fish_id } => self.harvest_pond(&fish_id, now)?,
+            Action::TogglePondFry => self.toggle_pond_fry(now)?,
+            Action::DeliverPondOrder => self.deliver_pond_order(now)?,
             Action::BuildWorkshop => self.build_workshop(now)?,
             Action::ExpandWorkshop => self.expand_workshop(now)?,
             Action::InstallEquipment { slot, kind } => self.install_equipment(slot, kind, now)?,
@@ -3059,6 +3061,11 @@ impl Game {
         if let Some(pond) = self.state.pond.pond_mut() {
             pond.stock(fish_id, qty, weight, quality, now);
         }
+        self.state.pond.note_stock();
+        let today = self.state.daily.day.clone();
+        if let Some(pond) = self.state.pond.pond().cloned() {
+            self.state.pond.ensure_order(&today, &pond);
+        }
         let text = format!(
             "你把 {qty} 条{}{}放进鱼塘（平均 {:.1} kg）",
             crate::ranch::quality_name(quality),
@@ -3182,6 +3189,7 @@ impl Game {
         if let Some(pond) = self.state.pond.pond_mut() {
             pond.remove_fish(fish_id);
         }
+        self.state.pond.note_harvest(count);
         *self
             .state
             .inventory
@@ -3199,6 +3207,51 @@ impl Game {
             "你从鱼塘捕了 {count} 条{name}（平均 {:.1} kg，{}）",
             f64::from(weight) / 10.0,
             crate::ranch::quality_name(quality)
+        );
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn toggle_pond_fry(&mut self, now: i64) -> Result<Vec<Effect>, GameError> {
+        let pond = self.state.pond.pond_mut().ok_or(GameError::PondMissing)?;
+        pond.auto_fry = !pond.auto_fry;
+        if pond.auto_fry {
+            pond.last_fry_at = now;
+        }
+        let text = if pond.auto_fry {
+            "你留下了亲鱼：每天会自动孵一窝鱼苗（最多 3 条）".to_string()
+        } else {
+            "你停掉了留种，鱼塘不再自动出鱼苗".to_string()
+        };
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn deliver_pond_order(&mut self, now: i64) -> Result<Vec<Effect>, GameError> {
+        let order = self
+            .state
+            .pond
+            .order
+            .clone()
+            .ok_or(GameError::PondOrderMissing)?;
+        let can = self
+            .state
+            .pond
+            .pond()
+            .map(|pond| order.can_deliver(pond))
+            .unwrap_or(false);
+        if !can {
+            return Err(GameError::PondOrderShort);
+        }
+        if let Some(pond) = self.state.pond.pond_mut() {
+            pond.take_fish(&order.fish_id, order.qty);
+        }
+        self.state.pond.order = None;
+        self.state.pond.order_done = true;
+        self.state.coins = self.state.coins.saturating_add(order.reward_coins);
+        let text = format!(
+            "你把 {} 条{}交给鱼塘订单，收到 {} 金币",
+            order.qty, order.fish_name, order.reward_coins
         );
         self.push_log(now, text.clone());
         Ok(vec![Effect::Log { text }])
@@ -5372,17 +5425,47 @@ impl Game {
             changed = true;
         }
         let season = self.state.season;
+        let today_owned = today.to_string();
         let mut low_oxygen = false;
+        let mut fry_report: Option<(String, u32)> = None;
+        let mut order_changed = false;
         if let Some(pond) = self.state.pond.pond_mut() {
             pond.set_season(season);
             if pond.tick(now) {
                 changed = true;
             }
+            fry_report = pond.try_fry(now);
             if pond.oxygen < 20 && !pond.low_oxygen_logged {
                 pond.low_oxygen_logged = true;
                 low_oxygen = true;
             } else if pond.oxygen >= 30 {
                 pond.low_oxygen_logged = false;
+            }
+        }
+        if let Some(pond) = self.state.pond.pond().cloned() {
+            order_changed = self.state.pond.ensure_order(&today_owned, &pond);
+        }
+        if let Some((fish_id, count)) = fry_report {
+            self.state.pond.note_fry();
+            let name = crate::fishing::fish(&fish_id)
+                .map(|def| def.name)
+                .unwrap_or(&fish_id);
+            let text = format!("鱼塘里孵出一窝鱼苗：{name}×{count}");
+            self.push_log(now, text.clone());
+            effects.push(Effect::Log { text });
+            changed = true;
+        }
+        if order_changed {
+            if let Some(order) = &self.state.pond.order {
+                let text = format!(
+                    "鱼塘来订单了：{} 条{}（单条 ≥{:.1} kg）",
+                    order.qty,
+                    order.fish_name,
+                    f64::from(order.min_weight_tenths) / 10.0
+                );
+                self.push_log(now, text.clone());
+                effects.push(Effect::Log { text });
+                changed = true;
             }
         }
         if low_oxygen {

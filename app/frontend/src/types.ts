@@ -318,6 +318,21 @@ export interface PondStockView {
   have: number;
 }
 
+export interface PondOrderView {
+  fishName: string;
+  qty: number;
+  minWeightLabel: string;
+  rewardCoins: number;
+  have: number;
+  canDeliver: boolean;
+}
+
+export interface PondMilestoneView {
+  key: string;
+  label: string;
+  done: boolean;
+}
+
 export interface PondView {
   built: boolean;
   buildLevel: number;
@@ -325,6 +340,8 @@ export interface PondView {
   canBuild: boolean;
   buildMissing: string;
   water: PondWaterView | null;
+  statusLabel: string;
+  hint: string;
   fish: PondFishView[];
   stock: PondStockView[];
   capacity: number;
@@ -339,6 +356,10 @@ export interface PondView {
   feedMax: number;
   canFeed: boolean;
   canClean: boolean;
+  autoFry: boolean;
+  order: PondOrderView | null;
+  orderDone: boolean;
+  milestones: PondMilestoneView[];
 }
 
 export interface RanchCodexTraitView {
@@ -1333,6 +1354,8 @@ export type Action =
   | { type: "installPondAerator" }
   | { type: "plantPondWeeds" }
   | { type: "harvestPond"; fishId: string }
+  | { type: "togglePondFry" }
+  | { type: "deliverPondOrder" }
   | { type: "buildWorkshop" }
   | { type: "expandWorkshop" }
   | { type: "installEquipment"; slot: number; kind: EquipmentKind }

@@ -1025,6 +1025,29 @@ pub fn migrate_save(mut value: Value) -> Result<Value, SaveError> {
         value["schema"] = json!(41);
     }
 
+    if schema < 42 {
+        let state = value
+            .get_mut("state")
+            .and_then(Value::as_object_mut)
+            .ok_or(SaveError::Unknown(schema))?;
+        if let Some(pond) = state.get_mut("pond").and_then(Value::as_object_mut) {
+            pond.entry("milestones").or_insert_with(|| json!([]));
+            pond.entry("orderDay").or_insert_with(|| json!(""));
+            pond.entry("orderDone").or_insert(json!(false));
+            pond.entry("harvestedTotal").or_insert(json!(0));
+            if let Some(ponds) = pond.get_mut("ponds").and_then(Value::as_array_mut) {
+                for pond in ponds {
+                    if let Some(pond) = pond.as_object_mut() {
+                        pond.entry("autoFry").or_insert(json!(false));
+                        pond.entry("lastFryAt").or_insert(json!(0));
+                    }
+                }
+            }
+        }
+        state.insert("schema".into(), json!(42));
+        value["schema"] = json!(42);
+    }
+
     Ok(value)
 }
 

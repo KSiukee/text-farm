@@ -1289,6 +1289,14 @@ function harvestPond(fishId: string) {
   void act({ type: "harvestPond", fishId });
 }
 
+function togglePondFry() {
+  void act({ type: "togglePondFry" });
+}
+
+function deliverPondOrder() {
+  void act({ type: "deliverPondOrder" });
+}
+
 const ranchBreedNames = computed(() =>
   ranchBreedSel.value
     .map((pen) => ranch.value?.pens.find((item) => item.index === pen)?.animal?.name ?? `${pen} 号`)
@@ -4042,25 +4050,46 @@ onUnmounted(() => {
           </section>
         </template>
         <template v-else>
+          <section class="panel pond-order-panel">
+            <div class="panel-title">今日鱼塘订单<span class="muted">每天一条，交付后明天再来</span></div>
+            <div v-if="pond?.orderDone" class="muted">今天的订单已经交付，明天再来。</div>
+            <div v-else-if="!pond?.order" class="muted">放几条鱼进塘，就会有订单。</div>
+            <div v-else class="pond-order">
+              <div>
+                要 {{ pond.order.qty }} 条{{ pond.order.fishName }}（单条 ≥{{ pond.order.minWeightLabel }}）
+                <span class="muted">· 塘里 {{ pond.order.have }} 条</span>
+              </div>
+              <div class="row">
+                <span>{{ pond.order.rewardCoins }} 金币</span>
+                <button class="link" type="button" :disabled="acting || !pond.order.canDeliver" @click="deliverPondOrder">[交付订单]</button>
+              </div>
+            </div>
+          </section>
           <section class="panel">
-            <div class="panel-title">水质<span class="muted">评分 {{ pond?.water?.score }}/100 · 水温 {{ pond?.water?.temperatureLabel }}</span></div>
-            <div class="pond-water-grid">
-              <span>溶氧 {{ pond?.water?.oxygen }}/100</span>
-              <span>清洁 {{ pond?.water?.cleanliness }}/100</span>
-              <span>氨氮 {{ pond?.water?.ammonia }}/100</span>
-              <span>容量 {{ pond?.stockCount }}/{{ pond?.capacity }} · {{ pond?.speciesCount }}/{{ pond?.speciesCap }} 种</span>
-            </div>
-            <div class="ranch-meters">
-              <span class="ranch-meter"><em>溶氧</em><span class="ranch-meter-track"><i :style="{ width: `${pond?.water?.oxygen ?? 0}%` }"></i></span></span>
-              <span class="ranch-meter"><em>清洁</em><span class="ranch-meter-track clean"><i :style="{ width: `${pond?.water?.cleanliness ?? 0}%` }"></i></span></span>
-              <span class="ranch-meter"><em>氨氮</em><span class="ranch-meter-track dirty"><i :style="{ width: `${pond?.water?.ammonia ?? 0}%` }"></i></span></span>
-            </div>
+            <div class="panel-title">水质<span class="muted">{{ pond?.water?.score }}/100 · {{ pond?.statusLabel }}</span></div>
+            <div class="pond-hint">{{ pond?.hint }}</div>
+            <details class="pond-details">
+              <summary>详细水质</summary>
+              <div class="pond-water-grid">
+                <span>水温 {{ pond?.water?.temperatureLabel }}</span>
+                <span>溶氧 {{ pond?.water?.oxygen }}/100</span>
+                <span>清洁 {{ pond?.water?.cleanliness }}/100</span>
+                <span>氨氮 {{ pond?.water?.ammonia }}/100</span>
+                <span>容量 {{ pond?.stockCount }}/{{ pond?.capacity }} · {{ pond?.speciesCount }}/{{ pond?.speciesCap }} 种</span>
+              </div>
+              <div class="ranch-meters">
+                <span class="ranch-meter"><em>溶氧</em><span class="ranch-meter-track"><i :style="{ width: `${pond?.water?.oxygen ?? 0}%` }"></i></span></span>
+                <span class="ranch-meter"><em>清洁</em><span class="ranch-meter-track clean"><i :style="{ width: `${pond?.water?.cleanliness ?? 0}%` }"></i></span></span>
+                <span class="ranch-meter"><em>氨氮</em><span class="ranch-meter-track dirty"><i :style="{ width: `${pond?.water?.ammonia ?? 0}%` }"></i></span></span>
+              </div>
+            </details>
             <div class="ranch-actions">
               <button class="link" type="button" :disabled="acting || !pond?.canFeed" @click="feedPond">[投喂 {{ pond?.feedToday }}/{{ pond?.feedMax }}]</button>
               <button class="link" type="button" :disabled="acting || !pond?.canClean" @click="cleanPond">[清理鱼塘]</button>
               <button v-if="!pond?.aerator" class="link" type="button" :disabled="acting" @click="installPondAerator">[装增氧机 {{ pond?.aeratorCost }}]</button>
               <button v-if="!pond?.plants" class="link" type="button" :disabled="acting" @click="plantPondWeeds">[种水草 {{ pond?.plantsCost }}]</button>
-              <span class="muted">{{ pond?.aerator ? "增氧机已开" : "" }}{{ pond?.plants ? " · 水草已种" : "" }}</span>
+              <button class="link" type="button" :disabled="acting" @click="togglePondFry">[留种：{{ pond?.autoFry ? "开" : "关" }}]</button>
+              <span class="muted">留种后每天自动来 3 条鱼苗</span>
             </div>
           </section>
           <section class="panel">
@@ -4087,6 +4116,14 @@ onUnmounted(() => {
                 <span class="muted">{{ fish.progressPct }}%</span>
               </div>
               <button class="link" type="button" :disabled="acting || !fish.ready" @click="harvestPond(fish.fishId)">[捕捞]</button>
+            </div>
+          </section>
+          <section class="panel">
+            <div class="panel-title">鱼塘手记<span class="muted">做过的事会记在这里</span></div>
+            <div class="pond-milestones">
+              <span v-for="item in pond?.milestones ?? []" :key="item.key" class="pond-milestone" :class="{ have: item.done }">
+                {{ item.done ? "✓" : "·" }} {{ item.label }}
+              </span>
             </div>
           </section>
         </template>

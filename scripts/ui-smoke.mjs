@@ -1218,10 +1218,17 @@ try {
     await waitFor(async () => saveState().pond.ponds.length === 1);
   }
   check("建鱼塘", saveState().pond.ponds.length === 1);
-  check("鱼塘水质已显示", (await bodyText()).includes("溶氧"));
+  check(
+    "鱼塘水质已显示",
+    (await bodyText()).includes("详细水质") && (await bodyText()).includes("水质"),
+  );
+  check("鱼塘留种开关已显示", (await bodyText()).includes("留种："));
   await clickText("[放养", false);
   await waitFor(async () => (saveState().pond.ponds[0]?.fish.length ?? 0) === 1);
   check("放养进鱼塘", (saveState().pond.ponds[0]?.fish[0]?.count ?? 0) === 5);
+  const pondOrder = saveState().pond.order;
+  check("鱼塘订单已生成", !!pondOrder);
+  check("鱼塘订单面板已显示", (await bodyText()).includes("今日鱼塘订单"));
   await clickText("[投喂", false);
   await waitFor(async () => (saveState().pond.ponds[0]?.feedToday ?? 0) === 1);
   check("鱼塘投喂", (saveState().pond.ponds[0]?.feedToday ?? 0) === 1);
@@ -1234,12 +1241,34 @@ try {
   await advanceTimeControl("+7 天");
   await clickText("鱼塘", false);
   await waitFor(async () => (await bodyText()).includes("水质"));
+  const liveOrder = saveState().pond.order;
+  const orderQty = liveOrder?.qty ?? 0;
+  const orderGroup = saveState().pond.ponds[0]?.fish.find(
+    (fish) => fish.fishId === liveOrder?.fishId,
+  );
+  const pondOrderCoins = saveState().coins;
+  if (
+    liveOrder &&
+    orderGroup &&
+    orderGroup.count >= liveOrder.qty &&
+    orderGroup.weightTenths >= liveOrder.minWeightTenths
+  ) {
+    await clickText("[交付订单]");
+    await waitFor(async () => saveState().pond.orderDone === true);
+    check("交付鱼塘订单", saveState().coins > pondOrderCoins);
+  } else {
+    check("交付鱼塘订单", false, "订单鱼不够");
+  }
   await clickText("[捕捞]");
   await waitFor(async () => saveState().pond.ponds[0]?.fish.length === 0);
-  check("捕捞商品鱼", (saveState().inventory["fish:crucian"] || 0) === 5);
+  check("捕捞商品鱼", (saveState().inventory["fish:crucian"] || 0) === 5 - orderQty);
   check(
     "捕捞回写鱼批次",
-    (saveState().fishing.fishBatches["crucian"]?.count ?? 0) >= 10,
+    (saveState().fishing.fishBatches["crucian"]?.count ?? 0) >= 10 - orderQty,
+  );
+  check(
+    "鱼塘手记记录里程碑",
+    (saveState().pond.milestones || []).includes("first_harvest"),
   );
   await screenshot(pondScreenshotPath);
   check("鱼塘截图已保存", existsSync(pondScreenshotPath), pondScreenshotPath);

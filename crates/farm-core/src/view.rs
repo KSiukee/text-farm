@@ -522,6 +522,25 @@ pub struct PondStockView {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct PondOrderView {
+    pub fish_name: String,
+    pub qty: u32,
+    pub min_weight_label: String,
+    pub reward_coins: u64,
+    pub have: u32,
+    pub can_deliver: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PondMilestoneView {
+    pub key: String,
+    pub label: String,
+    pub done: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PondView {
     pub built: bool,
     pub build_level: u32,
@@ -529,6 +548,8 @@ pub struct PondView {
     pub can_build: bool,
     pub build_missing: String,
     pub water: Option<PondWaterView>,
+    pub status_label: String,
+    pub hint: String,
     pub fish: Vec<PondFishView>,
     pub stock: Vec<PondStockView>,
     pub capacity: u32,
@@ -543,6 +564,10 @@ pub struct PondView {
     pub feed_max: u32,
     pub can_feed: bool,
     pub can_clean: bool,
+    pub auto_fry: bool,
+    pub order: Option<PondOrderView>,
+    pub order_done: bool,
+    pub milestones: Vec<PondMilestoneView>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -2670,6 +2695,72 @@ impl Game {
                     })
                 })
                 .collect();
+            let score = pond.water_score();
+            let status_label = if score >= 80 {
+                "清澈"
+            } else if score >= 60 {
+                "一般"
+            } else if score >= 40 {
+                "发浑"
+            } else {
+                "很差"
+            };
+            let ready = pond
+                .fish
+                .iter()
+                .find(|fish| fish.weight_tenths >= crate::pond::market_weight_tenths(&fish.fish_id));
+            let hint: String = if pond.fish.is_empty() {
+                if self
+                    .state
+                    .inventory
+                    .keys()
+                    .any(|key| key.starts_with("fish:"))
+                {
+                    "背包里有鱼，放几条进来".to_string()
+                } else {
+                    "先去钓鱼，再把鱼放进来".to_string()
+                }
+            } else if let Some(fish) = ready {
+                let name = fishing::fish(&fish.fish_id)
+                    .map(|def| def.name)
+                    .unwrap_or(&fish.fish_id);
+                format!("{name} 已经够大了，可以捕")
+            } else if pond.oxygen < 30 {
+                "鱼浮头了：装增氧机或清理鱼塘".to_string()
+            } else if pond.cleanliness < 40 || pond.ammonia > 70 {
+                "水浑了，清理一下鱼塘".to_string()
+            } else if feed_today == 0 {
+                "今天还没投喂，喂一次长得更快".to_string()
+            } else {
+                "水质稳定，等鱼长大".to_string()
+            };
+            let order = self.state.pond.order.as_ref().map(|order| PondOrderView {
+                fish_name: order.fish_name.clone(),
+                qty: order.qty,
+                min_weight_label: format!("{:.1} kg", f64::from(order.min_weight_tenths) / 10.0),
+                reward_coins: order.reward_coins,
+                have: order.have(pond).0,
+                can_deliver: order.can_deliver(pond),
+            });
+            let milestones: Vec<PondMilestoneView> = [
+                (
+                    crate::pond::POND_MILESTONE_FIRST_STOCK,
+                    "第一次放养",
+                ),
+                (
+                    crate::pond::POND_MILESTONE_FIRST_HARVEST,
+                    "第一次捕捞",
+                ),
+                (crate::pond::POND_MILESTONE_FIRST_FRY, "第一窝鱼苗"),
+                (crate::pond::POND_MILESTONE_HUNDRED, "累计捕 100 条"),
+            ]
+            .iter()
+            .map(|(key, label)| PondMilestoneView {
+                key: (*key).to_string(),
+                label: (*label).to_string(),
+                done: self.state.pond.milestone(key),
+            })
+            .collect();
             PondView {
                 built: true,
                 build_level: crate::pond::POND_BUILD_LEVEL,
@@ -2682,8 +2773,10 @@ impl Game {
                     oxygen: pond.oxygen,
                     cleanliness: pond.cleanliness,
                     ammonia: pond.ammonia,
-                    score: pond.water_score(),
+                    score,
                 }),
+                status_label: status_label.to_string(),
+                hint,
                 fish: fish_views,
                 stock,
                 capacity: crate::pond::POND_CAPACITY,
@@ -2698,6 +2791,10 @@ impl Game {
                 feed_max: crate::pond::POND_FEED_PER_DAY,
                 can_feed: feed_today < crate::pond::POND_FEED_PER_DAY,
                 can_clean: today.is_empty() || pond.last_clean_day != *today,
+                auto_fry: pond.auto_fry,
+                order,
+                order_done: self.state.pond.order_done,
+                milestones,
             }
         } else {
             let level_ok = self.state.level >= crate::pond::POND_BUILD_LEVEL;
@@ -2715,6 +2812,8 @@ impl Game {
                     String::new()
                 },
                 water: None,
+                status_label: String::new(),
+                hint: "建好鱼塘后，把钓到的鱼放进来".to_string(),
                 fish: Vec::new(),
                 stock: Vec::new(),
                 capacity: crate::pond::POND_CAPACITY,
@@ -2729,6 +2828,10 @@ impl Game {
                 feed_max: crate::pond::POND_FEED_PER_DAY,
                 can_feed: false,
                 can_clean: false,
+                auto_fry: false,
+                order: None,
+                order_done: false,
+                milestones: Vec::new(),
             }
         };
         let pet_care = PetCareView {

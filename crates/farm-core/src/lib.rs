@@ -102,9 +102,12 @@ pub use planting::{
     yield_pct as planting_yield_pct,
 };
 pub use pond::{
-    harvest_price as pond_harvest_price, market_weight_tenths as pond_market_weight_tenths,
-    Pond, PondFish, PondState, POND_AERATOR_COST, POND_BUILD_COST, POND_BUILD_LEVEL, POND_CAPACITY,
-    POND_CLEAN_AMMONIA, POND_CLEAN_GAIN, POND_FEED_AMMONIA, POND_FEED_GROWTH_MS, POND_FEED_PER_DAY,
+    harvest_price as pond_harvest_price, market_weight_tenths as pond_market_weight_tenths, Pond,
+    PondFish, PondOrder, PondState, POND_AERATOR_COST, POND_BUILD_COST, POND_BUILD_LEVEL,
+    POND_CAPACITY, POND_CLEAN_AMMONIA, POND_CLEAN_GAIN, POND_FEED_AMMONIA, POND_FEED_GROWTH_MS,
+    POND_FEED_PER_DAY, POND_FRY_COUNT, POND_FRY_INTERVAL_MS, POND_FRY_WEIGHT_TENTHS,
+    POND_MILESTONE_FIRST_FRY, POND_MILESTONE_FIRST_HARVEST, POND_MILESTONE_FIRST_STOCK,
+    POND_MILESTONE_HUNDRED, POND_ORDER_QTY_MAX, POND_ORDER_QTY_MIN, POND_ORDER_WEIGHT_MARGIN,
     POND_PLANTS_COST, POND_SPECIES_CAP,
 };
 pub use processing::{

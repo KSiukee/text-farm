@@ -1,7 +1,9 @@
-//! 鱼塘 v1：把钓到的鱼暂养、投喂催肥、按水质成长，达标后捕捞。
+//! 鱼塘：把钓到的鱼暂养、投喂催肥，长到商品规格再捕。
 //!
-//! 和钓鱼分工：钓鱼负责稀有鱼/鱼王/图鉴；鱼塘负责把普通鱼养大、按重量和品质卖。
-//! 和水族箱分工：鱼塘是生产，观赏留在房间。
+//! v2 走“少操心”路线：水质收成一个分数 + 一句人话建议；留种开关自动来鱼苗；
+//! 每天一条看得懂的鱼塘订单；手记只记 4 个里程碑。内部仍保留四值，但不摆到台面上。
+
+use std::collections::BTreeSet;
 
 use serde::{Deserialize, Serialize};
 
@@ -19,6 +21,16 @@ pub const POND_CLEAN_GAIN: u32 = 50;
 pub const POND_CLEAN_AMMONIA: u32 = 15;
 pub const POND_AERATOR_COST: u64 = 2_500;
 pub const POND_PLANTS_COST: u64 = 1_200;
+pub const POND_FRY_COUNT: u32 = 3;
+pub const POND_FRY_WEIGHT_TENTHS: u32 = 5;
+pub const POND_FRY_INTERVAL_MS: i64 = 24 * 60 * 60 * 1000;
+pub const POND_ORDER_QTY_MIN: u32 = 2;
+pub const POND_ORDER_QTY_MAX: u32 = 4;
+pub const POND_ORDER_WEIGHT_MARGIN: u32 = 2;
+pub const POND_MILESTONE_FIRST_STOCK: &str = "first_stock";
+pub const POND_MILESTONE_FIRST_HARVEST: &str = "first_harvest";
+pub const POND_MILESTONE_FIRST_FRY: &str = "first_fry";
+pub const POND_MILESTONE_HUNDRED: &str = "hundred_harvest";
 const DAY_MS: i64 = 24 * 60 * 60 * 1000;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -34,6 +46,35 @@ pub struct PondFish {
     pub growth_ms: i64,
     #[serde(default)]
     pub stocked_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", default)]
+pub struct PondOrder {
+    pub id: String,
+    pub fish_id: String,
+    pub fish_name: String,
+    pub qty: u32,
+    pub min_weight_tenths: u32,
+    pub reward_coins: u64,
+}
+
+impl PondOrder {
+    pub fn can_deliver(&self, pond: &Pond) -> bool {
+        pond.fish.iter().any(|fish| {
+            fish.fish_id == self.fish_id
+                && fish.count >= self.qty
+                && fish.weight_tenths >= self.min_weight_tenths
+        })
+    }
+
+    pub fn have(&self, pond: &Pond) -> (u32, u32) {
+        pond.fish
+            .iter()
+            .find(|fish| fish.fish_id == self.fish_id)
+            .map(|fish| (fish.count, fish.weight_tenths))
+            .unwrap_or((0, 0))
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -54,6 +95,11 @@ pub struct Pond {
     pub plants: bool,
     #[serde(default)]
     pub low_oxygen_logged: bool,
+    /// 留种：每天自动来一窝鱼苗。
+    #[serde(default)]
+    pub auto_fry: bool,
+    #[serde(default)]
+    pub last_fry_at: i64,
 }
 
 impl Pond {
@@ -72,6 +118,8 @@ impl Pond {
             aerator: false,
             plants: false,
             low_oxygen_logged: false,
+            auto_fry: false,
+            last_fry_at: now,
         }
     }
 
@@ -105,6 +153,35 @@ impl Pond {
         (oxygen * 4 + clean * 2 + ammonia * 2 + temp_score * 2) / 10
     }
 
+    /// 留种：塘里有商品规格的鱼时，每 24 小时自动来 3 条鱼苗（受容量限制）。
+    pub fn try_fry(&mut self, now: i64) -> Option<(String, u32)> {
+        if !self.auto_fry || self.fish.is_empty() {
+            return None;
+        }
+        if self.last_fry_at > 0 && now.saturating_sub(self.last_fry_at) < POND_FRY_INTERVAL_MS {
+            return None;
+        }
+        let free = POND_CAPACITY.saturating_sub(self.total_count());
+        if free < 1 {
+            return None;
+        }
+        let parent = self
+            .fish
+            .iter()
+            .find(|fish| fish.weight_tenths >= market_weight_tenths(&fish.fish_id))
+            .cloned()?;
+        let count = free.min(POND_FRY_COUNT);
+        self.last_fry_at = now;
+        self.stock(
+            &parent.fish_id,
+            count,
+            POND_FRY_WEIGHT_TENTHS,
+            parent.quality,
+            now,
+        );
+        Some((parent.fish_id, count))
+    }
+
     /// 投喂：所有鱼 +12h 生长，氨氮 +8。
     pub fn feed(&mut self) {
         for fish in &mut self.fish {
@@ -123,8 +200,8 @@ impl Pond {
             let total = existing.count.saturating_add(count).max(1);
             let weight_sum = u64::from(existing.weight_tenths) * u64::from(existing.count)
                 + u64::from(weight_tenths) * u64::from(count);
-            let quality_sum = u32::from(existing.quality) * existing.count
-                + u32::from(quality) * count;
+            let quality_sum =
+                u32::from(existing.quality) * existing.count + u32::from(quality) * count;
             existing.count = total;
             existing.weight_tenths = (weight_sum / u64::from(total)) as u32;
             existing.quality = ((quality_sum / total).clamp(1, 3)) as u8;
@@ -143,6 +220,19 @@ impl Pond {
     pub fn remove_fish(&mut self, fish_id: &str) -> Option<PondFish> {
         let index = self.fish.iter().position(|fish| fish.fish_id == fish_id)?;
         Some(self.fish.remove(index))
+    }
+
+    /// 从某组鱼里捞走 `qty` 条；捞空则删组。返回实际捞走的条数。
+    pub fn take_fish(&mut self, fish_id: &str, qty: u32) -> u32 {
+        let Some(index) = self.fish.iter().position(|fish| fish.fish_id == fish_id) else {
+            return 0;
+        };
+        let taken = qty.min(self.fish[index].count);
+        self.fish[index].count -= taken;
+        if self.fish[index].count == 0 {
+            self.fish.remove(index);
+        }
+        taken
     }
 
     /// 按小时推进水质与生长；返回水质是否变化。
@@ -204,6 +294,12 @@ impl Pond {
 #[serde(rename_all = "camelCase", default)]
 pub struct PondState {
     pub ponds: Vec<Pond>,
+    pub order_day: String,
+    pub order: Option<PondOrder>,
+    pub order_done: bool,
+    /// 手记里程碑：first_stock/first_harvest/first_fry/hundred_harvest。
+    pub milestones: BTreeSet<String>,
+    pub harvested_total: u32,
 }
 
 impl PondState {
@@ -218,6 +314,40 @@ impl PondState {
     pub fn built(&self) -> bool {
         !self.ponds.is_empty()
     }
+
+    /// 当天订单：每天一条，交付后当天不再生成。
+    pub fn ensure_order(&mut self, today: &str, pond: &Pond) -> bool {
+        if self.order_day != today {
+            self.order_day = today.to_string();
+            self.order = None;
+            self.order_done = false;
+        }
+        if self.order_done || self.order.is_some() {
+            return false;
+        }
+        self.order = generate_order(today, pond);
+        self.order.is_some()
+    }
+
+    pub fn note_stock(&mut self) {
+        self.milestones.insert(POND_MILESTONE_FIRST_STOCK.into());
+    }
+
+    pub fn note_harvest(&mut self, count: u32) {
+        self.milestones.insert(POND_MILESTONE_FIRST_HARVEST.into());
+        self.harvested_total = self.harvested_total.saturating_add(count);
+        if self.harvested_total >= 100 {
+            self.milestones.insert(POND_MILESTONE_HUNDRED.into());
+        }
+    }
+
+    pub fn note_fry(&mut self) {
+        self.milestones.insert(POND_MILESTONE_FIRST_FRY.into());
+    }
+
+    pub fn milestone(&self, key: &str) -> bool {
+        self.milestones.contains(key)
+    }
 }
 
 /// 商品规格：便宜的鱼小、贵的鱼大（0.1kg）。
@@ -229,6 +359,45 @@ pub fn market_weight_tenths(fish_id: &str) -> u32 {
 /// 鱼塘捕捞价：按当前重量/品质走市场基准价。
 pub fn harvest_price(def: &FishDef, weight_tenths: u32, quality: u8) -> u64 {
     fishing::price_for(def, weight_tenths, u32::from(quality), 100)
+}
+
+fn generate_order(today: &str, pond: &Pond) -> Option<PondOrder> {
+    let candidates: Vec<&PondFish> = pond.fish.iter().filter(|fish| fish.count > 0).collect();
+    if candidates.is_empty() {
+        return None;
+    }
+    let roll = roll(today, 0xA00);
+    let parent = candidates[(roll as usize) % candidates.len()];
+    let def = fishing::fish(&parent.fish_id)?;
+    let qty = (POND_ORDER_QTY_MIN + ((roll >> 8) % 3) as u32)
+        .min(parent.count)
+        .clamp(1, POND_ORDER_QTY_MAX);
+    let market = market_weight_tenths(&parent.fish_id);
+    let min_weight = market.saturating_sub(POND_ORDER_WEIGHT_MARGIN).max(1);
+    let unit = fishing::price_for(def, min_weight, u32::from(parent.quality), 100);
+    let reward_coins = unit
+        .saturating_mul(u64::from(qty))
+        .saturating_mul(130)
+        / 100;
+    Some(PondOrder {
+        id: format!("{today}-p0"),
+        fish_id: parent.fish_id.clone(),
+        fish_name: def.name.to_string(),
+        qty,
+        min_weight_tenths: min_weight,
+        reward_coins: reward_coins.max(100),
+    })
+}
+
+fn roll(day: &str, salt: u64) -> u64 {
+    let mut hash = 0x9E37_79B9_7F4A_7C15u64 ^ salt;
+    for byte in day.bytes() {
+        hash ^= u64::from(byte);
+        hash = hash.wrapping_mul(1_099_511_628_211);
+    }
+    hash ^= hash >> 33;
+    hash = hash.wrapping_mul(0xff51_afd7_ed55_8ccd);
+    hash ^ (hash >> 33)
 }
 
 fn move_toward(value: u32, target: u32, step: u32) -> u32 {
@@ -274,5 +443,30 @@ mod tests {
         assert_eq!(market_weight_tenths("white_bait"), 12);
         assert!(market_weight_tenths("crucian") >= 12);
         assert!(market_weight_tenths("jiang_king") >= 30);
+    }
+
+    #[test]
+    fn auto_fry_needs_ready_fish_and_interval() {
+        let mut pond = Pond::new(1, 0);
+        pond.auto_fry = true;
+        pond.stock("crucian", 5, 20, 2, 0);
+        assert!(pond.try_fry(DAY_MS).is_some());
+        assert_eq!(pond.total_count(), 8);
+        assert!(pond.try_fry(DAY_MS + 1000).is_none());
+        assert!(pond.try_fry(DAY_MS * 2 + 1000).is_some());
+    }
+
+    #[test]
+    fn daily_order_is_deterministic_and_deliverable() {
+        let mut pond = Pond::new(1, 0);
+        pond.stock("crucian", 5, 20, 2, 0);
+        let mut first = PondState::default();
+        let mut second = PondState::default();
+        assert!(first.ensure_order("2026-10-24", &pond));
+        assert!(second.ensure_order("2026-10-24", &pond));
+        assert_eq!(first.order, second.order);
+        let order = first.order.clone().unwrap();
+        assert!(order.qty >= 1 && order.qty <= 4);
+        assert!(order.can_deliver(&pond));
     }
 }

@@ -246,6 +246,10 @@ pub enum GameError {
     PondUpgradeOwned,
     #[error("今天已经清理过鱼塘了，明天再来")]
     PondCleanDone,
+    #[error("今天的鱼塘订单还没来")]
+    PondOrderMissing,
+    #[error("塘里的鱼不够这笔订单（数量或规格）")]
+    PondOrderShort,
     #[error("畜栏已经扩到上限")]
     RanchMaxPens,
     #[error("没有专用饲料")]
@@ -425,6 +429,8 @@ impl GameError {
             GameError::PondFeedLimit => "pond_feed_limit",
             GameError::PondUpgradeOwned => "pond_upgrade_owned",
             GameError::PondCleanDone => "pond_clean_done",
+            GameError::PondOrderMissing => "pond_order_missing",
+            GameError::PondOrderShort => "pond_order_short",
             GameError::RanchMaxPens => "ranch_max_pens",
             GameError::RanchNoFeed => "ranch_no_feed",
             GameError::RanchNoBreedPair => "ranch_no_breed_pair",

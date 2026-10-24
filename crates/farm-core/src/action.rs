@@ -171,6 +171,10 @@ pub enum Action {
         #[serde(rename = "fishId")]
         fish_id: String,
     },
+    /// 开关留种（每天自动来一窝鱼苗）。
+    TogglePondFry,
+    /// 交付今天的鱼塘订单。
+    DeliverPondOrder,
     BuildWorkshop,
     ExpandWorkshop,
     InstallEquipment {

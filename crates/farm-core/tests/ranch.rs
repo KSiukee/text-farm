@@ -1573,6 +1573,80 @@ fn pond_time_shift_lets_fish_grow() {
 }
 
 #[test]
+fn v42_save_adds_pond_v2_fields() {
+    let value = serde_json::json!({
+        "schema": 41,
+        "savedAt": 0,
+        "state": {"pond": {"ponds": [{"index": 1}]}},
+        "content": {}
+    });
+    let migrated = migrate_save(value).unwrap();
+    assert_eq!(migrated["schema"], farm_core::SAVE_SCHEMA);
+    assert_eq!(migrated["state"]["pond"]["ponds"][0]["autoFry"], false);
+    assert_eq!(migrated["state"]["pond"]["ponds"][0]["lastFryAt"], 0);
+    assert_eq!(migrated["state"]["pond"]["milestones"], serde_json::json!([]));
+    assert_eq!(migrated["state"]["pond"]["orderDay"], "");
+    assert_eq!(migrated["state"]["pond"]["orderDone"], false);
+}
+
+#[test]
+fn pond_order_delivers_from_pond() {
+    let mut game = pond_game();
+    game.dispatch(Action::BuildPond, 0).unwrap();
+    game.dispatch(
+        Action::StockPond {
+            fish_id: "crucian".into(),
+            qty: 5,
+        },
+        0,
+    )
+    .unwrap();
+    let order = game
+        .state()
+        .pond
+        .order
+        .clone()
+        .expect("放鱼后应该生成鱼塘订单");
+    let coins = game.state().coins;
+    game.dispatch(Action::DeliverPondOrder, 0).unwrap();
+    assert_eq!(game.state().coins, coins + order.reward_coins);
+    assert!(game.state().pond.order.is_none());
+    assert!(game.state().pond.order_done);
+    let left = game
+        .state()
+        .pond
+        .pond()
+        .unwrap()
+        .fish
+        .iter()
+        .find(|fish| fish.fish_id == "crucian")
+        .map(|fish| fish.count)
+        .unwrap_or(0);
+    assert_eq!(left, 5 - order.qty);
+}
+
+#[test]
+fn pond_auto_fry_spawns_after_a_day() {
+    let mut game = pond_game();
+    game.dispatch(Action::BuildPond, 0).unwrap();
+    game.dispatch(
+        Action::StockPond {
+            fish_id: "crucian".into(),
+            qty: 5,
+        },
+        0,
+    )
+    .unwrap();
+    game.dispatch(Action::TogglePondFry, 0).unwrap();
+    assert!(game.state().pond.pond().unwrap().auto_fry);
+    game.shift_time(24 * 60 * 60 * 1000);
+    game.sync(0, "2026-10-31");
+    let pond = game.state().pond.pond().unwrap();
+    assert!(pond.total_count() > 5, "留种一天后应该多出鱼苗");
+    assert!(game.state().pond.milestone("first_fry"));
+}
+
+#[test]
 fn ranch_contest_enter_once_and_reset_next_week() {
     let mut game = Game::new(0);
     game.state_mut().coins = 5_000;
