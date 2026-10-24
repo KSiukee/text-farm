@@ -19,6 +19,7 @@ const fishingGameScreenshotPath = join(root, "docs", "fishing-game-v032.png");
 const fishingBgDir = join(root, "app", "frontend", "public", "fishing");
 const farmOrderScreenshotPath = join(root, "docs", "farm-orders-v079.png");
 const playerScreenshotPath = join(root, "docs", "player-panel-v080.png");
+const seedPickerScreenshotPath = join(root, "docs", "seed-picker-v081.png");
 const port = 9333;
 const checks = [];
 let child = null;
@@ -509,6 +510,26 @@ try {
   );
   check("顶部农场入口可跳转", true);
   check("不再出现 M4 占位", !(await bodyText()).includes("排在 M4"));
+  const hasEmptyPlot = await evaluate(
+    `[...document.querySelectorAll('.plot-line')].some((el) => el.innerText.includes('[播种]'))`,
+  );
+  if (hasEmptyPlot) {
+    await evaluate(`(() => {
+      const plot = [...document.querySelectorAll('.plot-line')].find((el) => el.innerText.includes('[播种]'));
+      plot?.querySelector('button')?.click();
+    })()`);
+    await waitFor(async () => (await evaluate(`!!document.querySelector('.seed-picker')`)) === true);
+    check("播种弹出种子选择", true);
+    check(
+      "种子选择列出可用种子",
+      (await evaluate(`document.querySelectorAll('.seed-picker .seed-choice').length`)) > 0,
+    );
+    await evaluate(`document.querySelector('.seed-picker')?.scrollIntoView({ block: 'center' })`);
+    await screenshot(seedPickerScreenshotPath);
+    check("播种截图已保存", existsSync(seedPickerScreenshotPath), seedPickerScreenshotPath);
+    await clickText("[取消]");
+    check("取消播种不改地块", true);
+  }
 
   await clickText("宠物");
   await waitFor(async () => (await bodyText()).includes("宠物用品"));

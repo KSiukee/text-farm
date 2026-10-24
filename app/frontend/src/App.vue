@@ -138,6 +138,7 @@ const seedCount = ref(24);
 const seedValue = ref(20261018);
 const seedReviewNotes = ref<string[]>([]);
 const activeTab = ref("我的农场");
+const seedPickerPlot = ref<number | null>(null);
 const playerMode = ref(false);
 const PLAYER_AVATAR_KEY = "farm.ui.playerAvatar";
 const PLAYER_AVATAR_IMAGE_KEY = "farm.ui.playerAvatarImage";
@@ -366,6 +367,27 @@ const workshopEquipmentGroups = computed(() => {
 const seedStacks = computed(() =>
   (snapshot.value?.inventory ?? []).filter((item) => item.kind === "seed"),
 );
+
+const plantableSeeds = computed(() => {
+  const level = snapshot.value?.level ?? 1;
+  return seedStacks.value
+    .flatMap((stack) => {
+      const id = stack.key.replace(/^seed:/, "");
+      const def = cropById(id);
+      if (!def || def.unlockLevel > level || stack.qty <= 0) return [];
+      return [
+        {
+          id,
+          name: def.name,
+          icon: def.icon,
+          qty: stack.qty,
+          grow: formatGrowMinutes(def.growMinutes),
+          off: !isInSeason(def),
+        },
+      ];
+    })
+    .sort((a, b) => Number(a.off) - Number(b.off) || a.name.localeCompare(b.name));
+});
 
 const fishItems = computed(() =>
   (snapshot.value?.inventory ?? []).filter((item) => item.kind === "fish"),
@@ -924,25 +946,6 @@ function claimLevelReward(level: number) {
   void act({ type: "claimLevelReward", level });
 }
 
-function bestSeedId(): string | null {
-  const level = snapshot.value?.level ?? 1;
-  let best: { id: string; unlock: number; grow: number } | null = null;
-  for (const stack of seedStacks.value) {
-    if (stack.qty <= 0) continue;
-    const id = stack.key.replace(/^seed:/, "");
-    const def = cropById(id);
-    if (!def || def.unlockLevel > level) continue;
-    if (
-      !best ||
-      def.unlockLevel > best.unlock ||
-      (def.unlockLevel === best.unlock && def.growMinutes < best.grow)
-    ) {
-      best = { id, unlock: def.unlockLevel, grow: def.growMinutes };
-    }
-  }
-  return best?.id ?? null;
-}
-
 async function act(action: Action) {
   if (acting.value) return;
   acting.value = true;
@@ -1048,11 +1051,15 @@ watch(
 );
 
 function plant(plot: PlotView) {
-  const cropId = bestSeedId();
-  if (!cropId) {
-    notice.value = "没有当前等级能种的种子，先在下面种子铺买。";
+  if (!plantableSeeds.value.length) {
+    notice.value = "仓库里没有当前等级能种的种子，先去种子铺买。";
     return;
   }
+  seedPickerPlot.value = seedPickerPlot.value === plot.index ? null : plot.index;
+}
+
+function plantWithSeed(plot: PlotView, cropId: string) {
+  seedPickerPlot.value = null;
   void act({ type: "plant", plot: plot.index, cropId });
 }
 
@@ -2194,6 +2201,21 @@ onUnmounted(() => {
           <span v-else-if="plot.unlocked && !plot.maxTier" class="muted">
             [{{ plot.upgradeLevel }}级可升级]
           </span>
+          <div v-if="seedPickerPlot === plot.index" class="seed-picker">
+            <span class="muted">选种子：</span>
+            <button
+              v-for="seed in plantableSeeds"
+              :key="seed.id"
+              class="seed-choice"
+              type="button"
+              :disabled="acting"
+              @click="plantWithSeed(plot, seed.id)"
+            >
+              {{ seed.icon }} {{ seed.name }} ×{{ seed.qty }}
+              <span class="muted">{{ seed.grow }} · {{ seed.off ? "反季" : "当季" }}</span>
+            </button>
+            <button class="link" type="button" @click="seedPickerPlot = null">[取消]</button>
+          </div>
         </div>
       </section>
 

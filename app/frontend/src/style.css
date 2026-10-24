@@ -1070,6 +1070,35 @@ textarea {
   min-width: 170px;
 }
 
+.seed-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  margin: 5px 0 8px 1.5em;
+  padding: 6px 8px;
+  border-left: 2px solid var(--accent);
+  background: var(--inset);
+}
+
+.seed-choice {
+  padding: 3px 7px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.seed-choice:hover {
+  border-color: var(--accent);
+}
+
+.seed-choice .muted {
+  margin-left: 3px;
+  font-size: 11px;
+}
+
 .farm-orders-hint {
   margin-top: 8px;
   font-size: 12px;
