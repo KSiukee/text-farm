@@ -97,6 +97,16 @@ pub fn furniture_price(id: &str) -> u64 {
     }
 }
 
+pub fn furniture_source(id: &str) -> &'static str {
+    if id.starts_with("gift_") {
+        "gift"
+    } else if id.starts_with("mystery_") {
+        "mystery"
+    } else {
+        "shop"
+    }
+}
+
 pub fn floor_price(id: &str) -> u64 {
     match id {
         "wood" | "tile" => 0,

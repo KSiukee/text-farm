@@ -993,6 +993,7 @@ export interface RoomFurnitureDefView {
   sprite: string | null;
   spriteRotations: number;
   price: number;
+  source: string;
 }
 
 export interface RoomSurfaceDefView {

@@ -4601,6 +4601,38 @@ impl Game {
                 }
             }
         }
+        // 成就/纪念日也会送绑定家具；用拥有数当“已发过”标记，不重复发。
+        let days = ((now - self.state.created_at).max(0) / 86_400_000) as u32;
+        let mut earned_gifts: Vec<(&str, &str)> = Vec::new();
+        if self
+            .state
+            .achievements
+            .get("sign_in_7")
+            .copied()
+            .unwrap_or(false)
+        {
+            earned_gifts.push(("gift_signin_lantern", "成就「签到七天」"));
+        }
+        if days >= 30 {
+            earned_gifts.push(("gift_anniversary_quilt", "开垦满 30 天"));
+        }
+        for (id, reason) in earned_gifts {
+            if self.state.room.owned_furniture.contains_key(id) {
+                continue;
+            }
+            *self
+                .state
+                .room
+                .owned_furniture
+                .entry(id.to_string())
+                .or_insert(0) += 1;
+            changed = true;
+            if let Some(def) = room::furniture_def(id) {
+                let text = format!("{reason}，收到家具：{}", def.name);
+                self.push_log(now, text.clone());
+                effects.push(Effect::Log { text });
+            }
+        }
 
         let buffs_before = self.state.buffs.len();
         buffs::prune(&mut self.state.buffs, now);

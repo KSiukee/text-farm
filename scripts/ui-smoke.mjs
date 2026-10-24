@@ -23,6 +23,7 @@ const seedPickerScreenshotPath = join(root, "docs", "seed-picker-v081.png");
 const mysteryScreenshotPath = join(root, "docs", "mystery-shop-v083.png");
 const mysteryWalletScreenshotPath = join(root, "docs", "mystery-wallet-v083.png");
 const decorScreenshotPath = join(root, "docs", "decor-shop-v085.png");
+const furnitureCodexScreenshotPath = join(root, "docs", "furniture-codex-v087.png");
 const port = 9333;
 const checks = [];
 let child = null;
@@ -1053,10 +1054,15 @@ try {
   })()`);
   await waitFor(async () => saveState().coins < decorCoins);
   check("家具金币购买可用", saveState().coins < decorCoins);
+  check("家具图鉴已显示", (await evaluate(`document.querySelectorAll('.codex-card').length`)) === 23);
   await evaluate(`document.querySelector('.decor-shop')?.scrollIntoView({ block: 'start' })`);
   await new Promise((r) => setTimeout(r, 200));
   await screenshot(decorScreenshotPath);
   check("家具商店截图已保存", existsSync(decorScreenshotPath), decorScreenshotPath);
+  await evaluate(`document.querySelector('.furniture-codex')?.scrollIntoView({ block: 'start' })`);
+  await new Promise((r) => setTimeout(r, 200));
+  await screenshot(furnitureCodexScreenshotPath);
+  check("家具图鉴截图已保存", existsSync(furnitureCodexScreenshotPath), furnitureCodexScreenshotPath);
 
   const failed = checks.filter((c) => !c.ok);
   const lines = [

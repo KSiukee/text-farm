@@ -38,7 +38,7 @@ pub struct FurnitureDef {
     pub sprite_rotations: u8,
 }
 
-pub const FURNITURE: [FurnitureDef; 21] = [
+pub const FURNITURE: [FurnitureDef; 23] = [
     FurnitureDef {
         id: "bed",
         name: "木床",
@@ -292,6 +292,30 @@ pub const FURNITURE: [FurnitureDef; 21] = [
         capacity: 0,
         sprite: Some("furn_tv_wood"),
         sprite_rotations: 4,
+    },
+    FurnitureDef {
+        id: "gift_signin_lantern",
+        name: "签到纪念灯",
+        width: 1,
+        depth: 1,
+        layer: 2,
+        collision: true,
+        kind: "lamp",
+        capacity: 0,
+        sprite: Some("furn_lamp_floor"),
+        sprite_rotations: 4,
+    },
+    FurnitureDef {
+        id: "gift_anniversary_quilt",
+        name: "三十日纪念毯",
+        width: 3,
+        depth: 2,
+        layer: 0,
+        collision: false,
+        kind: "rug",
+        capacity: 0,
+        sprite: Some("furn_rug_sage_01"),
+        sprite_rotations: 1,
     },
 ];
 

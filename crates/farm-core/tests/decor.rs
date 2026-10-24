@@ -118,6 +118,27 @@ fn old_claimed_level_gift_is_backfilled() {
 }
 
 #[test]
+fn achievement_and_anniversary_gifts_are_granted_once() {
+    let mut game = Game::new(0);
+    game.state_mut().achievements.insert("sign_in_7".into(), true);
+    game.state_mut().created_at = -31 * 86_400_000;
+    game.sync(0, "2026-10-24");
+    assert_eq!(
+        game.state().room.owned_furniture.get("gift_signin_lantern"),
+        Some(&1)
+    );
+    assert_eq!(
+        game.state().room.owned_furniture.get("gift_anniversary_quilt"),
+        Some(&1)
+    );
+    game.sync(1_000, "2026-10-24");
+    assert_eq!(
+        game.state().room.owned_furniture.get("gift_signin_lantern"),
+        Some(&1)
+    );
+}
+
+#[test]
 fn old_room_ownership_backfills_from_layout() {
     let mut state = RoomState::default();
     state.ownership_initialized = false;

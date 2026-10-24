@@ -1036,6 +1036,10 @@ function buyFurniture(def: string) {
 function buyDecor(id: string) {
   void act({ type: "buyDecor", id });
 }
+
+function furnitureSourceLabel(source: string) {
+  return source === "gift" ? "赠送" : source === "mystery" ? "神秘" : "商店";
+}
 const selectedAquarium = computed(
   () => currentRoom.value?.layout.furniture.find((item) => item.id === selectedAquariumId.value) ?? null,
 );
@@ -3190,6 +3194,27 @@ onUnmounted(() => {
             </div>
           </div>
         </section>
+
+          <section class="panel furniture-codex">
+            <div class="panel-title">
+              家具图鉴
+              <span class="muted">已拥有 {{ furnitureOwnedCount }}/{{ furnitureCatalog.length }}</span>
+            </div>
+            <div class="codex-grid">
+              <div
+                v-for="def in furnitureCatalog"
+                :key="def.id"
+                class="codex-card"
+                :class="{ owned: (currentRoom?.ownedFurniture?.[def.id] ?? 0) > 0 }"
+              >
+                <span class="decor-kind">{{ furnitureSourceLabel(def.source) }}</span>
+                <strong>{{ def.name }}</strong>
+                <span class="muted">
+                  {{ (currentRoom?.ownedFurniture?.[def.id] ?? 0) > 0 ? "已拥有" : "未拥有" }}
+                </span>
+              </div>
+            </div>
+          </section>
       </div>
 
       <div v-show="activeTab === '邻居农场'">

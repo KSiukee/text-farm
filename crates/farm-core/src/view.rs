@@ -835,6 +835,7 @@ pub struct RoomFurnitureDefView {
     pub sprite: Option<String>,
     pub sprite_rotations: u8,
     pub price: u64,
+    pub source: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1075,6 +1076,7 @@ fn room_view_data(room_id: &str, label: &str, width: u32, height: u32, layout: c
                 sprite: def.sprite.map(|s| s.into()),
                 sprite_rotations: def.sprite_rotations,
                 price: crate::decor::furniture_price(def.id),
+                source: crate::decor::furniture_source(def.id).into(),
             })
             .collect(),
         surface_catalog: surface_catalog_views(),
@@ -1189,6 +1191,7 @@ impl Game {
                     sprite: def.sprite.map(|s| s.into()),
                     sprite_rotations: def.sprite_rotations,
                     price: crate::decor::furniture_price(def.id),
+                    source: crate::decor::furniture_source(def.id).into(),
                 })
                 .collect(),
             surface_catalog: surface_catalog_views(),

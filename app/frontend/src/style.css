@@ -1258,6 +1258,31 @@ textarea {
   font-size: 10px;
 }
 
+.furniture-codex {
+  margin-top: 12px;
+}
+
+.codex-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 6px;
+}
+
+.codex-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 8px;
+  border: 1px dashed var(--line);
+  opacity: 0.6;
+}
+
+.codex-card.owned {
+  border-style: solid;
+  border-color: var(--accent);
+  opacity: 1;
+}
+
 .farm-orders-hint {
   margin-top: 8px;
   font-size: 12px;
