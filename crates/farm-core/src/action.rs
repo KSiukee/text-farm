@@ -269,6 +269,10 @@ pub enum Action {
         npc_id: String,
     },
     ClaimSignIn,
+    UpdateProfile {
+        #[serde(rename = "ownerName")]
+        owner_name: String,
+    },
     ClaimDaily {
         id: u8,
     },

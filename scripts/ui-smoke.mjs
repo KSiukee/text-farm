@@ -18,6 +18,7 @@ const fishingScreenshotPath = join(root, "docs", "fishing-v032.png");
 const fishingGameScreenshotPath = join(root, "docs", "fishing-game-v032.png");
 const fishingBgDir = join(root, "app", "frontend", "public", "fishing");
 const farmOrderScreenshotPath = join(root, "docs", "farm-orders-v079.png");
+const playerScreenshotPath = join(root, "docs", "player-panel-v080.png");
 const port = 9333;
 const checks = [];
 let child = null;
@@ -226,8 +227,30 @@ async function clickHidden(text) {
   await new Promise((r) => setTimeout(r, 180));
 }
 
-async function clickText(text, exact = true, nth = 0) {
-  const found = await evaluate(`(() => {
+async function setInput(selector, value) {
+  await evaluate(`(() => {
+    const el = document.querySelector(${JSON.stringify(selector)});
+    if (!el) return false;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    setter?.call(el, ${JSON.stringify(value)});
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.focus();
+    return true;
+  })()`);
+}
+
+async function advanceTimeControl(label) {
+  await clickText("[玩家]", false);
+  await waitFor(async () => (await evaluate(`!!document.querySelector('.player-profile')`)) === true);
+  if (!(await bodyText()).includes(label)) {
+    await clickText("调试：时间加速");
+  }
+  await clickText(label);
+  await clickText("[返回农场]");
+  await waitFor(async () => (await evaluate(`!!document.querySelector('.player-profile')`)) === false);
+}
+
+async function clickText(text, exact = true, nth = 0) {  const found = await evaluate(`(() => {
     const wanted = ${JSON.stringify(text)};
     const exact = ${exact};
     const list = [...document.querySelectorAll('button, a, [role="button"]')].filter((el) => {
@@ -412,6 +435,35 @@ try {
       existsSync(join(fishingBgDir, `bg_${name}.png`)),
     ),
   );
+  check("玩家信息栏已显示", (await bodyText()).includes("农场陪伴你"));
+  await clickText("[玩家]", false);
+  await waitFor(async () => (await evaluate(`!!document.querySelector('.player-profile')`)) === true);
+  check("打开玩家页", await evaluate(`!!document.querySelector('.player-profile')`));
+  const playerText = await bodyText();
+  check(
+    "玩家页整合外观/设置/存档/编辑器",
+    ["专精技能", "外观", "设置", "存档与内容包", "内容编辑器", "A2 存档/内容包已接上"].every(
+      (text) => playerText.includes(text),
+    ),
+  );
+  check(
+    "玩家 tab 已移除",
+    !(await evaluate(`[...document.querySelectorAll('.tabs .tab')].some((el) => el.innerText.trim() === '玩家')`)),
+  );
+  await setInput(".player-name-row input", "测试玩家");
+  await clickText("[保存昵称]");
+  await waitFor(async () => saveState().ownerName === "测试玩家");
+  check("昵称已保存", saveState().ownerName === "测试玩家");
+  await clickText("🌻");
+  check(
+    "头像已切换",
+    (await evaluate(`window.localStorage.getItem('farm.ui.playerAvatar')`)) === "🌻",
+  );
+  await screenshot(playerScreenshotPath);
+  check("玩家页截图已保存", existsSync(playerScreenshotPath), playerScreenshotPath);
+  await clickText("[返回农场]");
+  await waitFor(async () => (await evaluate(`!!document.querySelector('.player-profile')`)) === false);
+  check("返回农场", true);
 
   await clickText("宠物");
   await waitFor(async () => (await bodyText()).includes("宠物用品"));
@@ -525,7 +577,7 @@ try {
   await waitFor(async () => saveState().workshop.jobs[0]?.recipe === "cheese");
   check("制造屋开工（奶酪）", saveState().workshop.jobs[0]?.recipe === "cheese");
   await clickText("返回农场", false);
-  await clickText("+1 天");
+  await advanceTimeControl("+1 天");
   await new Promise((r) => setTimeout(r, 600));
   await clickText("制造屋", false);
   await clickText("[取货]");
@@ -535,7 +587,7 @@ try {
   await waitFor(async () => saveState().workshop.jobs[0]?.cropId === "yumi");
   check("制造屋开工（玉米礼盒）", saveState().workshop.jobs[0]?.cropId === "yumi");
   await clickText("返回农场", false);
-  await clickText("+1 天");
+  await advanceTimeControl("+1 天");
   await new Promise((r) => setTimeout(r, 600));
   await clickText("制造屋", false);
   await clickText("[取货]");
@@ -563,7 +615,7 @@ try {
   await waitFor(async () => saveState().workshop.jobs[1]?.recipe === "corn_starch");
   check("石磨开工（玉米淀粉）", saveState().workshop.jobs[1]?.recipe === "corn_starch");
   await clickText("返回农场", false);
-  await clickText("+1 天");
+  await advanceTimeControl("+1 天");
   await new Promise((r) => setTimeout(r, 600));
   await clickText("制造屋", false);
   await clickText("[取货]");
@@ -719,7 +771,7 @@ try {
   let fightSeen = false;
   for (let index = 0; index < 30 && !fightSeen; index += 1) {
     await clickText("我的农场");
-    await clickText("+1 小时");
+    await advanceTimeControl("+1 小时");
     await new Promise((r) => setTimeout(r, 500));
     await clickText("宠物");
     await clickText("[喂食]");
@@ -733,7 +785,7 @@ try {
   let mischiefSeen = false;
   for (let index = 0; index < 90 && !mischiefSeen; index += 1) {
     await clickText("我的农场");
-    await clickText("+1 天");
+    await advanceTimeControl("+1 天");
     await new Promise((r) => setTimeout(r, 400));
     await clickText("宠物");
     const before = saveState();
@@ -832,7 +884,7 @@ try {
   await waitFor(async () => saveState().fishing.auto.enabled === true);
   check("开自动钓鱼", saveState().fishing.auto.enabled === true);
   await clickText("我的农场");
-  await clickText("+1 天");
+  await advanceTimeControl("+1 天");
   await new Promise((r) => setTimeout(r, 1200));
   await clickText("钓鱼", false);
   await waitFor(async () => saveState().fishing.stats.autoCatches >= 1);

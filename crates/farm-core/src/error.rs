@@ -130,6 +130,8 @@ pub enum GameError {
     FarmOrderNotEnough,
     #[error("这条村庄订单已经过期")]
     FarmOrderExpired,
+    #[error("昵称需要 1–12 个字")]
+    BadPlayerName,
     #[error("没有这个专精")]
     BadSkill,
     #[error("这个专精已经满级")]
@@ -313,6 +315,7 @@ impl GameError {
             GameError::FarmOrderLimit => "farm_order_limit",
             GameError::FarmOrderNotEnough => "farm_order_not_enough",
             GameError::FarmOrderExpired => "farm_order_expired",
+            GameError::BadPlayerName => "bad_player_name",
             GameError::BadSkill => "bad_skill",
             GameError::SkillMax => "skill_max",
             GameError::BadBuffItem => "bad_buff_item",

@@ -1012,6 +1012,7 @@ export interface Snapshot {
   regionLabel: string;
   farmName: string;
   ownerName: string;
+  createdAt: number;
   level: number;
   exp: number;
   expNeed: number;
@@ -1136,6 +1137,7 @@ export type Action =
   | { type: "stealNpcRanch"; npcId: string; index: number }
   | { type: "npcGreeting"; npcId: string }
   | { type: "claimSignIn" }
+  | { type: "updateProfile"; ownerName: string }
   | { type: "claimDaily"; id: number }
   | { type: "acceptFarmOrder"; id: string }
   | { type: "deliverFarmOrder"; id: string }

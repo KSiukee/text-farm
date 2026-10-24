@@ -705,6 +705,192 @@ textarea {
   margin-bottom: 18px;
 }
 
+.player-bar {
+  position: absolute;
+  top: 18px;
+  right: 24px;
+  z-index: 6;
+  width: min(300px, calc(100% - 48px));
+}
+
+.player-bar-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.player-bar-main:hover,
+.player-bar.active .player-bar-main {
+  border-color: var(--accent);
+}
+
+.player-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--inset);
+  font-size: 22px;
+}
+
+.player-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.player-bar-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.player-bar-copy b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-bar-copy .muted {
+  font-size: 12px;
+}
+
+.player-bar-action {
+  flex: none;
+  color: var(--link);
+  font-size: 12px;
+}
+
+.player-bar-action:hover {
+  text-decoration: underline;
+}
+
+.player-profile {
+  border-color: var(--accent);
+}
+
+.player-profile-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.player-profile-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--inset);
+  font-size: 40px;
+}
+
+.player-profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.player-profile-main {
+  flex: 1;
+  min-width: 230px;
+}
+
+.player-profile-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: baseline;
+  margin-bottom: 8px;
+  font-size: 18px;
+}
+
+.player-name-row {
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.player-name-row input {
+  min-width: 160px;
+  padding: 5px 8px;
+  border: 1px solid var(--line-strong);
+  background: var(--inset);
+  color: var(--ink);
+}
+
+.avatar-choice {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--inset);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.avatar-choice.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.avatar-upload {
+  position: relative;
+  overflow: hidden;
+  padding: 5px 9px;
+  border: 1px dashed var(--line-strong);
+  color: var(--link);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.avatar-upload input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.farm-tab.player-mode > :not(.player-section) {
+  display: none !important;
+}
+
+.farm-tab:not(.player-mode) > .player-section {
+  display: none !important;
+}
+
+.page.player-mode .season-banner {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .player-bar {
+    position: static;
+    width: 100%;
+    margin: -6px 0 12px;
+  }
+}
+
 .icon-item {
   display: flex;
   align-items: center;

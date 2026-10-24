@@ -170,6 +170,7 @@ impl Game {
             Action::StealNpcRanch { npc_id, index } => self.steal_npc_ranch(&npc_id, index, now)?,
             Action::NpcGreeting { npc_id } => self.npc_greeting(&npc_id, now)?,
             Action::ClaimSignIn => self.claim_sign_in(now)?,
+            Action::UpdateProfile { owner_name } => self.update_profile(owner_name, now)?,
             Action::ClaimDaily { id } => self.claim_daily(id, now)?,
             Action::AcceptFarmOrder { id } => self.accept_farm_order(&id, now)?,
             Action::DeliverFarmOrder { id } => self.deliver_farm_order(&id, now)?,
@@ -4253,8 +4254,18 @@ impl Game {
         Ok(effects)
     }
 
-    fn accept_farm_order(&mut self, id: &str, now: i64) -> Result<Vec<Effect>, GameError> {
-        let Some(order) = self.state.orders.find_offer(id).cloned() else {
+    fn update_profile(&mut self, owner_name: String, now: i64) -> Result<Vec<Effect>, GameError> {
+        let name = owner_name.trim();
+        if name.is_empty() || name.chars().count() > 12 {
+            return Err(GameError::BadPlayerName);
+        }
+        self.state.owner_name = name.to_string();
+        let text = format!("玩家昵称改为「{name}」");
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn accept_farm_order(&mut self, id: &str, now: i64) -> Result<Vec<Effect>, GameError> {        let Some(order) = self.state.orders.find_offer(id).cloned() else {
             return Err(GameError::FarmOrderInvalid);
         };
         if order.expires_day.as_str() < self.state.daily.day.as_str() {

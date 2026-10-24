@@ -130,6 +130,25 @@ const seedCount = ref(24);
 const seedValue = ref(20261018);
 const seedReviewNotes = ref<string[]>([]);
 const activeTab = ref("我的农场");
+const playerMode = ref(false);
+const PLAYER_AVATAR_KEY = "farm.ui.playerAvatar";
+const PLAYER_AVATAR_IMAGE_KEY = "farm.ui.playerAvatarImage";
+const playerAvatar = ref(window.localStorage.getItem(PLAYER_AVATAR_KEY) || "🧑‍🌾");
+const playerAvatarImage = ref(window.localStorage.getItem(PLAYER_AVATAR_IMAGE_KEY) || "");
+const playerName = ref("");
+const avatarChoices = ["🧑‍🌾", "👩‍🌾", "🐱", "🐶", "🐰", "🌻", "🍓", "🚜"];
+const farmDays = computed(() => {
+  const s = snapshot.value;
+  if (!s || !s.createdAt || s.createdAt <= 0) return 1;
+  return Math.max(1, Math.floor((s.now - s.createdAt) / 86_400_000) + 1);
+});
+watch(
+  () => snapshot.value?.ownerName,
+  (name) => {
+    if (name && !playerName.value) playerName.value = name;
+  },
+  { immediate: true },
+);
 const debugTime = ref(window.localStorage.getItem("farm.debugTime") === "1");
 const initialTheme = readThemePrefs(window.localStorage);
 const themeMode = ref<ThemeMode>(initialTheme.mode);
@@ -169,7 +188,7 @@ const topIcons = [
   { icon: "🎣", name: "钓鱼" },
 ];
 
-const tabs = ["我的农场", "牧村", "邻居农场", "宠物", "标本室", "神秘商店", "图鉴", "神殿", "产业园", "种子精华", "玩家"];
+const tabs = ["我的农场", "牧村", "邻居农场", "宠物", "标本室", "神秘商店", "图鉴", "神殿", "产业园", "种子精华"];
 
 const levelLine = computed(() => {
   const s = snapshot.value;
@@ -476,6 +495,7 @@ const npcMessages = computed(() =>
 );
 
 function selectTab(tab: string) {
+  playerMode.value = false;
   if (
     tab === "我的农场" ||
     tab === "牧村" ||
@@ -484,14 +504,71 @@ function selectTab(tab: string) {
     tab === "标本室" ||
     tab === "畜牧场" ||
     tab === "制造屋" ||
-    tab === "钓鱼" ||
-    tab === "玩家"
+    tab === "钓鱼"
   ) {
     activeTab.value = tab;
     if (tab === "钓鱼") maybeShowAutoReport();
   } else {
     placeholder(tab);
   }
+}
+
+function openPlayer() {
+  playerMode.value = true;
+  activeTab.value = "我的农场";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function closePlayer() {
+  playerMode.value = false;
+}
+
+function savePlayerName() {
+  const name = playerName.value.trim();
+  if (!name) {
+    notice.value = "昵称不能为空";
+    return;
+  }
+  if ([...name].length > 12) {
+    notice.value = "昵称最多 12 个字";
+    return;
+  }
+  playerName.value = name;
+  void act({ type: "updateProfile", ownerName: name });
+}
+
+function setAvatar(choice: string) {
+  playerAvatar.value = choice;
+  playerAvatarImage.value = "";
+  try {
+    window.localStorage.setItem(PLAYER_AVATAR_KEY, choice);
+    window.localStorage.removeItem(PLAYER_AVATAR_IMAGE_KEY);
+  } catch {
+    // 本地存不了就只影响这次显示。
+  }
+}
+
+function onAvatarFile(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  if (file.size > 1_000_000) {
+    notice.value = "头像图片建议小于 1MB";
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const data = String(reader.result || "");
+    if (!data.startsWith("data:image/")) return;
+    playerAvatarImage.value = data;
+    try {
+      window.localStorage.setItem(PLAYER_AVATAR_IMAGE_KEY, data);
+    } catch {
+      notice.value = "头像太大，存不进本机缓存";
+    }
+  };
+  reader.readAsDataURL(file);
+  input.value = "";
 }
 
 function openTop(name: string) {
@@ -1707,7 +1784,7 @@ onUnmounted(() => {
     <div v-if="hasBackgroundImage" class="app-bg-image" :style="bgImageStyle"></div>
     <div v-if="hasBackgroundImage" class="app-bg-shade"></div>
   </div>
-  <div class="page" :class="seasonClass">
+  <div class="page" :class="[seasonClass, { 'player-mode': playerMode }]">
     <header class="icons">
       <button
         v-for="item in topIcons"
@@ -1720,6 +1797,24 @@ onUnmounted(() => {
         <span>{{ item.name }}</span>
       </button>
     </header>
+
+    <aside class="player-bar" :class="{ active: playerMode }">
+      <button
+        class="player-bar-main"
+        type="button"
+        @click="playerMode ? closePlayer() : openPlayer()"
+      >
+        <span class="player-avatar">
+          <img v-if="playerAvatarImage" :src="playerAvatarImage" alt="" />
+          <span v-else>{{ playerAvatar }}</span>
+        </span>
+        <span class="player-bar-copy">
+          <b>{{ snapshot?.ownerName || "玩家" }}</b>
+          <span class="muted">农场陪伴你 {{ farmDays }} 天</span>
+        </span>
+        <span class="player-bar-action">{{ playerMode ? "[返回农场]" : "[玩家]" }}</span>
+      </button>
+    </aside>
 
     <nav v-if="activeTab !== '畜牧场' && activeTab !== '制造屋'" class="tabs">
       <button
@@ -1758,7 +1853,50 @@ onUnmounted(() => {
         <span class="muted">{{ snapshot?.regionLabel }}</span>
         <span class="muted">当季作物正常生长；反季种植会减速、减产，温室只庇护自己的独立地块。</span>
       </div>
-      <div v-show="activeTab === '我的农场'">
+      <div v-show="activeTab === '我的农场'" class="farm-tab" :class="{ 'player-mode': playerMode }">
+      <section v-if="playerMode" class="panel player-section player-profile">
+        <div class="player-profile-head">
+          <div class="player-profile-avatar">
+            <img v-if="playerAvatarImage" :src="playerAvatarImage" alt="玩家头像" />
+            <span v-else>{{ playerAvatar }}</span>
+          </div>
+          <div class="player-profile-main">
+            <div class="player-profile-title">
+              <strong>{{ snapshot?.ownerName || "玩家" }}</strong>
+              <span class="muted">农场陪伴你 {{ farmDays }} 天</span>
+            </div>
+            <div class="row player-name-row">
+              <input
+                v-model="playerName"
+                maxlength="12"
+                placeholder="给自己起个昵称"
+                @keyup.enter="savePlayerName"
+              />
+              <button class="link" type="button" :disabled="acting" @click="savePlayerName">
+                [保存昵称]
+              </button>
+              <button class="link" type="button" @click="closePlayer">[返回农场]</button>
+            </div>
+            <div class="row player-avatar-row">
+              <span class="muted">头像</span>
+              <button
+                v-for="choice in avatarChoices"
+                :key="choice"
+                class="avatar-choice"
+                :class="{ active: !playerAvatarImage && playerAvatar === choice }"
+                type="button"
+                @click="setAvatar(choice)"
+              >
+                {{ choice }}
+              </button>
+              <label class="avatar-upload">
+                上传图片
+                <input type="file" accept="image/*" @change="onAvatarFile" />
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
       <section v-if="snapshot && !snapshot.onboarded" class="guide">
         <div>
           <strong>第一次来？</strong>
@@ -1972,7 +2110,7 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <section class="panel">
+      <section class="panel player-section">
         <div class="panel-title">设置</div>
         <div class="row">
           <span>经验倍率</span>
@@ -2034,7 +2172,7 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <section class="panel">
+      <section class="panel player-section">
         <div class="panel-title">外观</div>
         <div class="row">
           <span>明暗</span>
@@ -2430,7 +2568,7 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <section class="panel">
+      <section class="panel player-section">
         <div class="panel-title">存档与内容包</div>
         <div class="file-actions">
           <button type="button" @click="exportSaveFile">导出存档</button>
@@ -2441,7 +2579,7 @@ onUnmounted(() => {
         <div class="muted">内容包不能删除正在种或仓库里还有的作物。</div>
       </section>
 
-      <details v-if="editor" class="panel">
+      <details v-if="editor" class="panel player-section">
         <summary class="panel-title">内容编辑器（名字 / 数值 / 名词）</summary>
         <div class="editor-nouns">
           <label>农场名 <input v-model="editor.nouns.farm" /></label>
@@ -2506,7 +2644,7 @@ onUnmounted(() => {
         <p v-if="editorMessage" class="muted">{{ editorMessage }}</p>
       </details>
 
-      <section class="boot">
+      <section class="boot player-section">
         <div class="boot-head">
           <strong>A2 存档/内容包已接上</strong>
           <span class="muted">Rust → Tauri → Vue</span>
@@ -2525,6 +2663,70 @@ onUnmounted(() => {
         </div>
         <div v-if="info" class="path">{{ info.savePath }}</div>
         <p v-if="info?.bootWarning" class="warn">{{ info.bootWarning }}</p>
+      </section>
+      <section class="panel player-section">
+        <div class="panel-title">
+          专精技能
+          <span class="muted">四专业共用一套等级与专精；宠物技能在宠物页，不混在这里</span>
+        </div>
+        <div class="player-grid">
+          <div v-for="d in disciplines" :key="d.kind" class="player-card">
+            <div class="row">
+              <b>{{ d.label }} Lv{{ d.level }}</b>
+              <span class="muted">
+                {{ d.expNeed ? d.exp + "/" + d.expNeed : "满级" }} · 技能点 {{ d.points }}
+              </span>
+            </div>
+            <div class="player-exp">
+              <span :style="{ width: expPct(d) }"></span>
+            </div>
+            <div v-if="d.skills.length" class="fishing-skills">
+              <div v-for="skill in d.skills" :key="skill.id" class="fishing-skill">
+                <span class="skill-name">{{ skill.name }} Lv{{ skill.level }}/{{ skill.maxLevel }}</span>
+                <span class="muted">{{ skill.desc }}</span>
+                <button
+                  v-if="skill.canUpgrade"
+                  class="link"
+                  type="button"
+                  :disabled="acting"
+                  @click="upgradeSkill(d.kind, skill.id)"
+                >
+                  [升级 {{ skill.cost }} 点]
+                </button>
+                <span v-else-if="skill.level >= skill.maxLevel" class="ok">已满</span>
+                <span v-else class="muted">需要 {{ skill.cost }} 点</span>
+              </div>
+            </div>
+            <div v-else class="muted">这个专业还没有开放专精。</div>
+          </div>
+        </div>
+      </section>
+      <section class="panel player-section">
+        <div class="panel-title">临时加成</div>
+        <div v-if="buffList.length" class="player-buffs">
+          <div v-for="b in buffList" :key="b.id" class="row">
+            <b>{{ b.name }}</b>
+            <span class="muted">{{ b.desc }} · 剩 {{ formatRemain(b.remainingMs) }}</span>
+          </div>
+        </div>
+        <div v-else class="muted">暂时没有临时加成。</div>
+        <div class="rule"></div>
+        <div class="row">
+          <b>加成食物</b>
+          <span class="muted">在仓库里，点「享用」就生效；同一种只刷新时间，不同种同项相加</span>
+        </div>
+        <div v-if="ownedBuffItems.length">
+          <div v-for="item in ownedBuffItems" :key="item.key" class="row">
+            <span>{{ item.name }}×{{ item.qty }}</span>
+            <span class="muted">{{ item.desc }}</span>
+            <button class="link" type="button" :disabled="acting" @click="useBuffItem(item.key)">
+              [享用]
+            </button>
+          </div>
+        </div>
+        <div v-else class="muted">
+          仓库里还没有加成食物（草莓汁/葡萄汁/西瓜汁/甘蔗汁/奶酪/蛋糕）。
+        </div>
       </section>
       </div>
 
@@ -3644,73 +3846,6 @@ onUnmounted(() => {
             </span>
           </div>
           <div v-else class="muted">还没钓到鱼；去抛一竿吧。</div>
-          </div>
-        </section>
-      </div>
-
-      <div v-show="activeTab === '玩家'">
-        <section class="panel">
-          <div class="panel-title">
-            玩家信息
-            <span class="muted">四专业共用一套等级与专精；宠物技能在宠物页，不混在这里</span>
-          </div>
-          <div class="player-grid">
-            <div v-for="d in disciplines" :key="d.kind" class="player-card">
-              <div class="row">
-                <b>{{ d.label }} Lv{{ d.level }}</b>
-                <span class="muted">
-                  {{ d.expNeed ? d.exp + "/" + d.expNeed : "满级" }} · 技能点 {{ d.points }}
-                </span>
-              </div>
-              <div class="player-exp">
-                <span :style="{ width: expPct(d) }"></span>
-              </div>
-              <div v-if="d.skills.length" class="fishing-skills">
-                <div v-for="skill in d.skills" :key="skill.id" class="fishing-skill">
-                  <span class="skill-name">{{ skill.name }} Lv{{ skill.level }}/{{ skill.maxLevel }}</span>
-                  <span class="muted">{{ skill.desc }}</span>
-                  <button
-                    v-if="skill.canUpgrade"
-                    class="link"
-                    type="button"
-                    :disabled="acting"
-                    @click="upgradeSkill(d.kind, skill.id)"
-                  >
-                    [升级 {{ skill.cost }} 点]
-                  </button>
-                  <span v-else-if="skill.level >= skill.maxLevel" class="ok">已满</span>
-                  <span v-else class="muted">需要 {{ skill.cost }} 点</span>
-                </div>
-              </div>
-              <div v-else class="muted">这个专业还没有开放专精。</div>
-            </div>
-          </div>
-        </section>
-        <section class="panel">
-          <div class="panel-title">临时加成</div>
-          <div v-if="buffList.length" class="player-buffs">
-            <div v-for="b in buffList" :key="b.id" class="row">
-              <b>{{ b.name }}</b>
-              <span class="muted">{{ b.desc }} · 剩 {{ formatRemain(b.remainingMs) }}</span>
-            </div>
-          </div>
-          <div v-else class="muted">暂时没有临时加成。</div>
-          <div class="rule"></div>
-          <div class="row">
-            <b>加成食物</b>
-            <span class="muted">在仓库里，点「享用」就生效；同一种只刷新时间，不同种同项相加</span>
-          </div>
-          <div v-if="ownedBuffItems.length">
-            <div v-for="item in ownedBuffItems" :key="item.key" class="row">
-              <span>{{ item.name }}×{{ item.qty }}</span>
-              <span class="muted">{{ item.desc }}</span>
-              <button class="link" type="button" :disabled="acting" @click="useBuffItem(item.key)">
-                [享用]
-              </button>
-            </div>
-          </div>
-          <div v-else class="muted">
-            仓库里还没有加成食物（草莓汁/葡萄汁/西瓜汁/甘蔗汁/奶酪/蛋糕）。
           </div>
         </section>
       </div>
