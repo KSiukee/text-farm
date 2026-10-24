@@ -578,6 +578,17 @@ pub fn fish_behavior(def: &FishDef) -> FishBehavior {
     }
 }
 
+/// 个别鱼种的速度/转向/抖动修正。难度 5、凶猛、逃逸、爆发四项乘在一起时，
+/// 鳡鱼和江王会比其他江面鱼快出一整档；这里只压这几条离群鱼，不动整片江面。
+pub fn species_tuning(id: &str) -> (u32, u32, u32, u32) {
+    match id {
+        "yellowcheek" => (76, 82, 82, 90),
+        "jiang_king" => (78, 88, 88, 100),
+        "eel" => (88, 90, 90, 95),
+        _ => (100, 100, 100, 100),
+    }
+}
+
 /// 本级升到下一级需要的钓鱼经验；满级返回 0。
 pub fn fishing_exp_need(level: u32) -> u64 {
     crate::skills::Discipline::need(level)
@@ -1798,6 +1809,7 @@ pub fn params_with_reel(
 ) -> FishingParams {
     let difficulty = def.difficulty.clamp(1, 5);
     let base_speed = 12 + difficulty * 2;
+    let (speed_scale, turn_scale, jerk_scale, escape_scale) = species_tuning(def.id);
     let base_escape = match def.rarity {
         FishRarity::Common => 100,
         FishRarity::Uncommon => 106,
@@ -1815,11 +1827,14 @@ pub fn params_with_reel(
         frame_pct: rod.frame_pct(),
         frame_speed_pct: 100,
         frame_accel_pct: if worn { 62 } else { 100 },
-        fish_speed_pct: base_speed * personality.speed_pct() / 100 * king_boost / 100,
-        fish_jerk_pct: 40 + difficulty * 10 + personality.jerk_add(),
-        fish_escape_pct: base_escape * personality.escape_pct() / 100,
+        fish_speed_pct: base_speed * personality.speed_pct() / 100 * king_boost / 100
+            * speed_scale
+            / 100,
+        fish_jerk_pct: (40 + difficulty * 10 + personality.jerk_add()) * jerk_scale / 100,
+        fish_escape_pct: (base_escape * personality.escape_pct() / 100 * escape_scale / 100)
+            .min(170),
         flee_radius_pct: personality.flee_radius_pct(),
-        turn_pct: personality.turn_pct(),
+        turn_pct: personality.turn_pct() * turn_scale / 100,
         target_min_ms,
         target_max_ms,
         personality,

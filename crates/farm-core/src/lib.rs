@@ -58,7 +58,7 @@ pub use fishing::{
     pick_fish_with_bait_condition, pick_from_pool, pick_personality,
     price_for, quality_for, quality_label,
     reel_bonus, rod_exp, rod_unlocked,
-    sell_price, skill_cost, skill_def, skill_level, spot_fish, spot_fish_count, spot_unlocked,
+    sell_price, skill_cost, skill_def, skill_level, species_tuning, spot_fish, spot_fish_count, spot_unlocked,
     weight_tenths_for,
     AutoFishing, BaitQuality, BaitRecipe, BaitType, FishBatch, FishBehavior, FishCatchResult,
     FishCodexEntry, FishConditionTag, FishDef, FishPersonality, FishRarity, FishingCommission,

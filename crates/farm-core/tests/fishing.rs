@@ -1,11 +1,41 @@
 use farm_core::{
-    fish, fish_list, pick_personality, price_for, quality_for, spot_fish, weight_tenths_for,
-    Action, FishCodexEntry, FishPersonality, FishRarity, FishingSpot, Game, GameError, RodKind,
-    FISH, SAVE_SCHEMA,
+    fish, fish_list, params, pick_personality, price_for, quality_for, species_tuning, spot_fish,
+    weight_tenths_for, Action, FishCodexEntry, FishPersonality, FishRarity, FishingSpot, Game,
+    GameError, RodKind, FISH, SAVE_SCHEMA,
 };
 
 fn game(now: i64) -> Game {
     Game::new(now)
+}
+
+#[test]
+fn outlier_fish_are_tuned_down() {
+    let bronze = params(
+        RodKind::Wood,
+        fish("bronze_carp").unwrap(),
+        false,
+        FishPersonality::Fierce,
+    );
+    let yellow = params(
+        RodKind::Wood,
+        fish("yellowcheek").unwrap(),
+        false,
+        FishPersonality::Fierce,
+    );
+    let king = params(
+        RodKind::Wood,
+        fish("jiang_king").unwrap(),
+        false,
+        FishPersonality::Fierce,
+    );
+    // 鳡鱼难度更高，但速度/转向已被单独压到不比普通江鱼更疯。
+    assert!(yellow.fish_speed_pct < bronze.fish_speed_pct);
+    assert!(yellow.turn_pct < bronze.turn_pct);
+    assert!(yellow.fish_escape_pct <= 170);
+    // 江王仍最快，但不再无限叠乘。
+    assert!(king.fish_speed_pct > yellow.fish_speed_pct);
+    assert!(king.fish_speed_pct < 45);
+    assert_eq!(species_tuning("bronze_carp"), (100, 100, 100, 100));
 }
 
 #[test]
@@ -646,7 +676,7 @@ fn rarer_fish_escape_a_bit_faster() {
         FishPersonality::Fierce,
     );
     assert_eq!(common.fish_escape_pct, 130);
-    assert_eq!(king.fish_escape_pct, 191);
+    assert_eq!(king.fish_escape_pct, 170);
     assert!(king.fish_escape_pct < 200);
 }
 

@@ -558,7 +558,7 @@ function tick(now: number) {
   const escaping = frameDist < 30;
   // 行为：贴底/上层垂直慢，洄游更平；爆发鱼周期性冲一下。
   // 逃逸时不再叠满爆发倍率，否则“逃逸×爆发”会把江面稀有鱼放大成疯狗。
-  const burstSpeed = escaping ? 1.35 : 1.8;
+  const burstSpeed = escaping ? 1.15 : 1.5;
   let behaviorSpeed = 1;
   if (behavior.value === "burst") {
     if (burstLeft > 0) {

@@ -72,6 +72,9 @@ function seedSave() {
     { at: 2, text: "雪球和豆豆为食盆打了一架" },
     { at: 3, text: "小柴踩坏了玉米×1，减产了" },
   ];
+  // 真机档可能今天已经接过/买过；测试档强制换天，让订单和神秘商店重新生成。
+  state.orders = { day: "2026-10-18", offers: [], active: [] };
+  state.mystery = { day: "2026-10-18", version: 0, offers: [] };
   state.pets = (state.pets || []).slice(0, 3);
   for (const pet of state.pets) {
     pet.boarded = false;
