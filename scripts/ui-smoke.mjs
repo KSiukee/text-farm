@@ -455,15 +455,42 @@ try {
   await waitFor(async () => saveState().ownerName === "测试玩家");
   check("昵称已保存", saveState().ownerName === "测试玩家");
   await clickText("🌻");
+  const playerProfilePath = join(shadowDir, "custom", "profile.json");
+  await waitFor(() => existsSync(playerProfilePath));
+  const playerProfile = JSON.parse(readFileSync(playerProfilePath, "utf8"));
+  check("头像已存到资源文件夹", playerProfile.avatar === "preset:🌻", playerProfile.avatar);
   check(
-    "头像已切换",
-    (await evaluate(`window.localStorage.getItem('farm.ui.playerAvatar')`)) === "🌻",
+    "自定义资源子目录已建",
+    ["avatars", "backgrounds", "fonts"].every((name) =>
+      existsSync(join(shadowDir, "custom", name)),
+    ),
   );
   await screenshot(playerScreenshotPath);
   check("玩家页截图已保存", existsSync(playerScreenshotPath), playerScreenshotPath);
   await clickText("[返回农场]");
   await waitFor(async () => (await evaluate(`!!document.querySelector('.player-profile')`)) === false);
   check("返回农场", true);
+  const tabNames = await evaluate(
+    `[...document.querySelectorAll('.tabs .tab')].map((el) => el.innerText.trim())`,
+  );
+  check(
+    "未开放 tab 已隐藏",
+    !["神秘商店", "神殿", "产业园", "种子精华"].some((name) => tabNames.includes(name)),
+    tabNames.join(","),
+  );
+  check("矿场图标已隐藏", !(await bodyText()).includes("矿场"));
+  await clickText("图鉴");
+  await waitFor(async () => (await evaluate(`!!document.querySelector('#farm-codex')?.open`)) === true);
+  check("图鉴 tab 打开农场图鉴", true);
+  await evaluate(
+    `[...document.querySelectorAll('header.icons .icon-item')].find((el) => el.innerText.includes('农场'))?.click()`,
+  );
+  await waitFor(
+    async () =>
+      (await evaluate(`document.querySelector('.tabs .tab.active')?.innerText.trim()`)) === "我的农场",
+  );
+  check("顶部农场入口可跳转", true);
+  check("不再出现 M4 占位", !(await bodyText()).includes("排在 M4"));
 
   await clickText("宠物");
   await waitFor(async () => (await bodyText()).includes("宠物用品"));

@@ -1,10 +1,14 @@
 # 更新日志
 
 > 文字农场 · 版本历史。
-> 本文由 `.codex/state.json` 的 `recent_changes` 生成，共 **125 条 / 106 个版本**；早期记录按当时原文保留，同一版本多条按发生顺序排列。
+> 本文由 `.codex/state.json` 的 `recent_changes` 生成，共 **126 条 / 107 个版本**；早期记录按当时原文保留，同一版本多条按发生顺序排列。
 > 版本号以 `Cargo.toml`、`app/tauri.conf.json`、`app/frontend/package.json`、`README.md` 为准。
 
 ---
+
+## 0.81.0 · 2026-10-24
+
+- 玩家自定义资源文件夹 + 导航排查（A109/#132）——新增 app_data/custom/{avatars,backgrounds,fonts}+profile.json；头像预设/上传写文件与 profile，重开可恢复，背景/字体同步落文件夹并优先读文件夹；顶部农场修复，矿场/神秘商店/神殿/产业园/种子精华等未实现入口隐藏，图鉴接农场折叠，页脚改可点按钮，去掉“排在 M4”占位；Rust 296、前端 53、UI 120/120；exe 0.81.0。
 
 ## 0.80.1 · 2026-10-24
 

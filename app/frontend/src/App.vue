@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { open as openFileDialog, save as saveFileDialog } from "@tauri-apps/plugin-dialog";
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import {
   advanceTime,
   applyContent,
@@ -57,8 +57,7 @@ import FishingGame from "./FishingGame.vue";
 import RoomScene from "./RoomScene.vue";
 import {
   applyBackgroundPrefs,
-  BACKGROUND_FITS,
-  BACKGROUND_MODES,
+  BACKGROUND_FITS,  BACKGROUND_MODES,
   backgroundClasses,
   clampPercent,
   DEFAULT_BACKGROUND_PREFS,
@@ -96,6 +95,15 @@ import {
   saveCustomFont,
   type StoredFont,
 } from "./font-store";
+import {
+  bufferToDataUrl,
+  customAssetsDir,
+  dataUrlToBuffer,
+  loadPlayerAssets,
+  readCustomAsset,
+  saveCustomAsset,
+  savePlayerAssets,
+} from "./custom-assets";
 import {
   applyStylePack,
   readStylePack,
@@ -136,6 +144,7 @@ const PLAYER_AVATAR_IMAGE_KEY = "farm.ui.playerAvatarImage";
 const playerAvatar = ref(window.localStorage.getItem(PLAYER_AVATAR_KEY) || "🧑‍🌾");
 const playerAvatarImage = ref(window.localStorage.getItem(PLAYER_AVATAR_IMAGE_KEY) || "");
 const playerName = ref("");
+const customDir = ref("");
 const avatarChoices = ["🧑‍🌾", "👩‍🌾", "🐱", "🐶", "🐰", "🌻", "🍓", "🚜"];
 const farmDays = computed(() => {
   const s = snapshot.value;
@@ -184,11 +193,10 @@ const topIcons = [
   { icon: "🐄", name: "畜牧场" },
   { icon: "🏡", name: "牧村" },
   { icon: "🏭", name: "制造屋" },
-  { icon: "⛏️", name: "矿场" },
   { icon: "🎣", name: "钓鱼" },
 ];
 
-const tabs = ["我的农场", "牧村", "邻居农场", "宠物", "标本室", "神秘商店", "图鉴", "神殿", "产业园", "种子精华"];
+const tabs = ["我的农场", "牧村", "邻居农场", "宠物", "标本室", "图鉴"];
 
 const levelLine = computed(() => {
   const s = snapshot.value;
@@ -496,6 +504,10 @@ const npcMessages = computed(() =>
 
 function selectTab(tab: string) {
   playerMode.value = false;
+  if (tab === "图鉴") {
+    void openCodex();
+    return;
+  }
   if (
     tab === "我的农场" ||
     tab === "牧村" ||
@@ -511,6 +523,31 @@ function selectTab(tab: string) {
   } else {
     placeholder(tab);
   }
+}
+
+async function openFarmSection(id: string) {
+  playerMode.value = false;
+  activeTab.value = "我的农场";
+  await nextTick();
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (el instanceof HTMLDetailsElement) el.open = true;
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function openCodex() {
+  return openFarmSection("farm-codex");
+}
+
+function openPlayerSection(id: string) {
+  playerMode.value = true;
+  activeTab.value = "我的农场";
+  void nextTick(() => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el instanceof HTMLDetailsElement) el.open = true;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
 }
 
 function openPlayer() {
@@ -544,34 +581,114 @@ function setAvatar(choice: string) {
     window.localStorage.setItem(PLAYER_AVATAR_KEY, choice);
     window.localStorage.removeItem(PLAYER_AVATAR_IMAGE_KEY);
   } catch {
-    // 本地存不了就只影响这次显示。
+    // localStorage 只是旧档迁移用的，失败不影响文件保存。
+  }
+  void persistAvatar(`preset:${choice}`);
+}
+
+async function persistAvatar(avatar: string) {
+  try {
+    await savePlayerAssets({ avatar });
+  } catch (error) {
+    notice.value = `头像没存进资源文件夹：${errorText(error)}`;
   }
 }
 
-function onAvatarFile(event: Event) {
+function compressAvatar(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith("image/")) {
+      reject(new Error("请选一张图片"));
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      reject(new Error("头像图片建议小于 8MB"));
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      const size = 256;
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        reject(new Error("这台机器画不了头像"));
+        return;
+      }
+      const scale = Math.max(size / image.naturalWidth, size / image.naturalHeight);
+      const width = image.naturalWidth * scale;
+      const height = image.naturalHeight * scale;
+      context.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("这张图片读不出来"));
+    };
+    image.src = url;
+  });
+}
+
+async function onAvatarFile(event: Event) {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
-  if (!file) return;
-  if (file.size > 1_000_000) {
-    notice.value = "头像图片建议小于 1MB";
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = () => {
-    const data = String(reader.result || "");
-    if (!data.startsWith("data:image/")) return;
-    playerAvatarImage.value = data;
-    try {
-      window.localStorage.setItem(PLAYER_AVATAR_IMAGE_KEY, data);
-    } catch {
-      notice.value = "头像太大，存不进本机缓存";
-    }
-  };
-  reader.readAsDataURL(file);
   input.value = "";
+  if (!file) return;
+  try {
+    const data = await compressAvatar(file);
+    await saveCustomAsset("avatars", "avatar.png", data);
+    await persistAvatar("file:avatar.png");
+    playerAvatarImage.value = data;
+    notice.value = "头像已存进自定义资源文件夹";
+  } catch (error) {
+    notice.value = `头像没存上：${errorText(error)}`;
+  }
+}
+
+async function restorePlayerAssets() {
+  customDir.value = await customAssetsDir().catch(() => "");
+  try {
+    const assets = await loadPlayerAssets();
+    if (assets.avatar.startsWith("preset:")) {
+      playerAvatar.value = assets.avatar.slice("preset:".length);
+      playerAvatarImage.value = "";
+      return;
+    }
+    if (assets.avatar.startsWith("file:")) {
+      const data = await readCustomAsset("avatars", assets.avatar.slice("file:".length));
+      if (data) {
+        playerAvatarImage.value = data;
+        return;
+      }
+    }
+  } catch {
+    // 资源目录读不到就退回 localStorage 旧数据，不拦启动。
+  }
+  try {
+    const legacyImage = window.localStorage.getItem(PLAYER_AVATAR_IMAGE_KEY) || "";
+    if (legacyImage.startsWith("data:image/")) {
+      playerAvatarImage.value = legacyImage;
+      await saveCustomAsset("avatars", "avatar.png", legacyImage).catch(() => null);
+      await persistAvatar("file:avatar.png");
+      return;
+    }
+    const legacyChoice = window.localStorage.getItem(PLAYER_AVATAR_KEY) || "";
+    if (legacyChoice) {
+      playerAvatar.value = legacyChoice;
+      await persistAvatar(`preset:${legacyChoice}`);
+    }
+  } catch {
+    // 旧数据也只是兜底。
+  }
 }
 
 function openTop(name: string) {
+  if (name === "农场") {
+    selectTab("我的农场");
+    return;
+  }
   if (name === "畜牧场" || name === "制造屋" || name === "钓鱼" || name === "牧村") {
     selectTab(name);
   } else {
@@ -1192,7 +1309,11 @@ function callPetHome(petId: string) {
 }
 
 function placeholder(name: string) {
-  notice.value = `${name}：首版只做农场，这块排在 M4。`;
+  notice.value = `「${name}」还没开放；当前可玩：农场、牧村、邻居农场、畜牧场、制造屋、钓鱼、宠物、标本室。`;
+}
+
+function showHelp() {
+  notice.value = "文字农场：种地/养牧/钓鱼/制造；设置、外观和存档在右上角玩家页。";
 }
 
 function fileStamp(): string {
@@ -1507,11 +1628,12 @@ async function onPickBackground(event: Event) {
   try {
     const dataUrl = await compressImage(file);
     await saveBackgroundImage(dataUrl);
+    await saveCustomAsset("backgrounds", "background.webp", dataUrl).catch(() => null);
     backgroundImage.value = dataUrl;
     bgMode.value = "image";
     saveBackground();
     saved = true;
-    notice.value = "背景图已存到本机（最长边 1920）。";
+    notice.value = "背景图已存到自定义资源文件夹（最长边 1920）。";
   } catch (error) {
     bgImageError.value = error instanceof Error ? error.message : "图片处理失败。";
     notice.value = `背景图没存上：${bgImageError.value}`;
@@ -1576,6 +1698,11 @@ async function activateCustomFont(stored: StoredFont) {
   fontName.value = stored.name;
   fontId.value = "custom";
   saveFont();
+  void saveCustomAsset(
+    "fonts",
+    "custom-font.bin",
+    bufferToDataUrl(stored.data, "application/octet-stream"),
+  ).catch(() => null);
 }
 
 async function useCustomFont() {
@@ -1589,6 +1716,12 @@ async function useCustomFont() {
   fontBusy.value = true;
   fontError.value = "";
   try {
+    const custom = await readCustomAsset("fonts", "custom-font.bin").catch(() => null);
+    const buffer = custom ? dataUrlToBuffer(custom) : null;
+    if (buffer) {
+      await activateCustomFont({ name: fontName.value || "自定义字体", data: buffer });
+      return;
+    }
     const stored = await loadCustomFont();
     if (!stored) {
       fontError.value = "本机没有已存的字体文件，先上传一个。";
@@ -1730,13 +1863,27 @@ onMounted(() => {
   syncStylePack();
   syncBackground();
   syncFont();
-  void loadBackgroundImage().then((dataUrl) => {
-    if (dataUrl) backgroundImage.value = dataUrl;
-  });
+  void restorePlayerAssets();
+  void (async () => {
+    const custom = await readCustomAsset("backgrounds", "background.webp").catch(() => null);
+    if (custom) {
+      backgroundImage.value = custom;
+      return;
+    }
+    const legacy = await loadBackgroundImage();
+    if (legacy) backgroundImage.value = legacy;
+  })();
   if (fontId.value === "custom") {
     fontBusy.value = true;
-    void loadCustomFont()
-      .then(async (stored) => {
+    void (async () => {
+      try {
+        const custom = await readCustomAsset("fonts", "custom-font.bin").catch(() => null);
+        const buffer = custom ? dataUrlToBuffer(custom) : null;
+        if (buffer) {
+          await activateCustomFont({ name: fontName.value || "自定义字体", data: buffer });
+          return;
+        }
+        const stored = await loadCustomFont();
         if (fontId.value !== "custom") return;
         if (!stored) {
           fontError.value = "自定义字体文件不在了，已回宋体。";
@@ -1746,15 +1893,14 @@ onMounted(() => {
           return;
         }
         await activateCustomFont(stored);
-      })
-      .catch((error) => {
+      } catch (error) {
         fontError.value = error instanceof Error ? error.message : "字体加载失败。";
         fontId.value = DEFAULT_FONT_PRESET;
         syncFont();
-      })
-      .finally(() => {
+      } finally {
         fontBusy.value = false;
-      });
+      }
+    })();
   }
   themeMedia?.addEventListener("change", onSystemThemeChange);
   void load();
@@ -1893,6 +2039,9 @@ onUnmounted(() => {
                 上传图片
                 <input type="file" accept="image/*" @change="onAvatarFile" />
               </label>
+            </div>
+            <div v-if="customDir" class="muted player-assets-path">
+              自定义资源：{{ customDir }}
             </div>
           </div>
         </div>
@@ -2048,7 +2197,7 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <section class="panel">
+      <section class="panel" id="farm-warehouse">
         <div class="panel-title">仓库</div>
         <div v-if="seedStacks.length" class="row">
           <span class="muted">种子：</span>
@@ -2110,7 +2259,7 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <section class="panel player-section player-settings">
+      <section class="panel player-section player-settings" id="player-settings">
         <div class="panel-title">设置</div>
         <div class="row">
           <span>经验倍率</span>
@@ -2428,7 +2577,7 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <section v-if="daily" class="panel">
+      <section v-if="daily" class="panel" id="farm-daily">
         <div class="panel-title">今日任务 <span class="muted">{{ daily.day }}</span></div>
         <div class="row">
           <span>每日签到</span>
@@ -2493,7 +2642,7 @@ onUnmounted(() => {
         </div>
       </details>
 
-      <details class="panel">
+      <details class="panel" id="farm-achievements">
         <summary class="panel-title">
           成就 {{ snapshot?.achievementsEarned ?? 0 }}/24
         </summary>
@@ -2514,7 +2663,7 @@ onUnmounted(() => {
         </div>
       </details>
 
-      <details class="panel">
+      <details class="panel" id="farm-codex">
         <summary class="panel-title">
           图鉴 {{ snapshot?.codexDiscovered ?? 0 }}/{{ snapshot?.contentCrops ?? 0 }}
         </summary>
@@ -2533,7 +2682,7 @@ onUnmounted(() => {
         </div>
       </details>
 
-      <section class="panel">
+      <section class="panel" id="farm-shop">
         <div class="panel-title">种子铺 <span class="muted">（买完回到地块点播种）</span></div>
         <div class="shop-grid">
           <div
@@ -4390,7 +4539,7 @@ onUnmounted(() => {
       <h2 class="section-title">
         牧场广播
         <span class="muted">最新 10 条</span>
-        <button class="link" type="button" @click="placeholder('我要广播')">我要广播&gt;&gt;</button>
+        <span class="muted">（只读记录）</span>
       </h2>
       <div class="log">
         <div v-for="(entry, index) in logLines" :key="`${entry.at}-${index}`" class="log-line">
@@ -4401,8 +4550,26 @@ onUnmounted(() => {
     </main>
 
     <footer>
-      <div class="footer-links">包裹 | 仓库 | 商城 | 图鉴 | 成就 | 设置 | 说明</div>
-      <div class="footer-links">我的农场 | 邻居留言 | 签到</div>
+      <div class="footer-links">
+        <button class="link" type="button" @click="openFarmSection('farm-warehouse')">仓库</button>
+        |
+        <button class="link" type="button" @click="openFarmSection('farm-shop')">种子铺</button>
+        |
+        <button class="link" type="button" @click="openCodex">图鉴</button>
+        |
+        <button class="link" type="button" @click="openFarmSection('farm-achievements')">成就</button>
+        |
+        <button class="link" type="button" @click="openPlayerSection('player-settings')">设置</button>
+        |
+        <button class="link" type="button" @click="showHelp">说明</button>
+      </div>
+      <div class="footer-links">
+        <button class="link" type="button" @click="selectTab('我的农场')">我的农场</button>
+        |
+        <button class="link" type="button" @click="selectTab('邻居农场')">邻居农场</button>
+        |
+        <button class="link" type="button" @click="openFarmSection('farm-daily')">签到</button>
+      </div>
     </footer>
 
     <div v-if="selectedFish" class="fish-modal-overlay" @click.self="selectedFish = null">

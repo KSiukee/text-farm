@@ -1,4 +1,5 @@
 mod commands;
+mod custom;
 mod error;
 mod paths;
 mod state;
@@ -100,6 +101,12 @@ pub fn run() {
             commands::apply_content,
             commands::app_info,
             commands::save_now,
+            custom::custom_assets_dir,
+            custom::save_custom_asset,
+            custom::read_custom_asset,
+            custom::delete_custom_asset,
+            custom::load_player_assets,
+            custom::save_player_assets,
             ui_ready
         ])
         .run(tauri::generate_context!())

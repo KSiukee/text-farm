@@ -823,6 +823,12 @@ textarea {
   font-size: 18px;
 }
 
+.player-assets-path {
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+
 .player-name-row {
   gap: 8px;
   margin-bottom: 8px;
