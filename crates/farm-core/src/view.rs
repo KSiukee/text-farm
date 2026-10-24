@@ -799,6 +799,7 @@ pub struct RoomStyleView {
     pub name: String,
     pub locked: bool,
     pub unlock_hint: String,
+    pub price: u64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -833,6 +834,7 @@ pub struct RoomFurnitureDefView {
     pub capacity: u32,
     pub sprite: Option<String>,
     pub sprite_rotations: u8,
+    pub price: u64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -849,6 +851,25 @@ pub struct RoomView {
     pub window_styles: Vec<RoomWindowStyleView>,
     pub catalog: Vec<RoomFurnitureDefView>,
     pub surface_catalog: Vec<RoomSurfaceDefView>,
+    pub available_furniture: std::collections::BTreeMap<String, u32>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DecorOfferView {
+    pub id: String,
+    pub kind: String,
+    pub name: String,
+    pub price: u64,
+    pub sold: bool,
+    pub owned: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DecorShopView {
+    pub day: String,
+    pub offers: Vec<DecorOfferView>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -950,6 +971,7 @@ pub struct Snapshot {
     pub fishing: FishingView,
     pub room: RoomView,
     pub extra_room: Option<RoomView>,
+    pub decor_shop: DecorShopView,
     pub npc_rooms: Vec<NpcRoomView>,
     pub skills: SkillsView,
     pub boarding_debt: u64,
@@ -966,33 +988,23 @@ pub struct Snapshot {
 
 fn style_views(
     styles: &[(&'static str, &'static str)],
-    level: u32,
-    achievements: &std::collections::BTreeMap<String, bool>,
-    days: u32,
-    inventory: &std::collections::BTreeMap<String, u32>,
+    owned: &std::collections::BTreeSet<String>,
+    kind: crate::decor::DecorKind,
 ) -> Vec<RoomStyleView> {
     styles
         .iter()
         .map(|(id, name)| {
-            let (locked, hint) = match *id {
-                "terracotta" => (level < 10, "农场 10 级"),
-                "tatami" => (
-                    !achievements.get("harvest_100").copied().unwrap_or(false),
-                    "成就「百次收获」",
-                ),
-                "cafe" => (
-                    inventory.get("craft:coffee_powder").copied().unwrap_or(0) == 0,
-                    "制造屋：咖啡粉 ×1",
-                ),
-                "dusk" => (level < 20, "农场 20 级"),
-                "linen" => (days < 60, "开垦满 60 天"),
-                _ => (false, ""),
+            let price = match kind {
+                crate::decor::DecorKind::Floor => crate::decor::floor_price(id),
+                crate::decor::DecorKind::Wall => crate::decor::wall_price(id),
             };
+            let locked = !owned.contains(*id);
             RoomStyleView {
                 id: (*id).into(),
                 name: (*name).into(),
                 locked,
-                unlock_hint: if locked { hint.into() } else { String::new() },
+                unlock_hint: if locked { "家具店购买".into() } else { String::new() },
+                price,
             }
         })
         .collect()
@@ -1026,6 +1038,7 @@ fn room_view_data(room_id: &str, label: &str, width: u32, height: u32, layout: c
                 name: (*name).into(),
                 locked: false,
                 unlock_hint: String::new(),
+                price: 0,
             })
             .collect(),
         walls: crate::room::wall_styles()
@@ -1035,6 +1048,7 @@ fn room_view_data(room_id: &str, label: &str, width: u32, height: u32, layout: c
                 name: (*name).into(),
                 locked: false,
                 unlock_hint: String::new(),
+                price: 0,
             })
             .collect(),
         window_styles: crate::room::window_styles()
@@ -1059,9 +1073,11 @@ fn room_view_data(room_id: &str, label: &str, width: u32, height: u32, layout: c
                 capacity: def.capacity,
                 sprite: def.sprite.map(|s| s.into()),
                 sprite_rotations: def.sprite_rotations,
+                price: crate::decor::furniture_price(def.id),
             })
             .collect(),
         surface_catalog: surface_catalog_views(),
+        available_furniture: std::collections::BTreeMap::new(),
     }
 }
 
@@ -1119,7 +1135,7 @@ fn npc_room_layout(id: &str) -> crate::room::RoomLayout {
 }
 
 impl Game {
-    fn room_view(&self, room_id: &str, now: i64) -> Option<RoomView> {
+    fn room_view(&self, room_id: &str, _now: i64) -> Option<RoomView> {
         let layout = self
             .state
             .room
@@ -1127,7 +1143,6 @@ impl Game {
             .cloned()
             .or_else(|| (room_id == crate::room::LIVING_ROOM).then(crate::room::default_layout))?;
         let (width, height) = crate::room::room_size(room_id)?;
-        let days = ((now - self.state.created_at).max(0) / 86_400_000) as u32;
         Some(RoomView {
             room_id: room_id.into(),
             label: if room_id == crate::room::LIVING_ROOM {
@@ -1141,17 +1156,13 @@ impl Game {
             layout,
             floors: style_views(
                 &crate::room::floor_styles(),
-                self.state.level,
-                &self.state.achievements,
-                days,
-                &self.state.inventory,
+                &self.state.room.owned_floors,
+                crate::decor::DecorKind::Floor,
             ),
             walls: style_views(
                 &crate::room::wall_styles(),
-                self.state.level,
-                &self.state.achievements,
-                days,
-                &self.state.inventory,
+                &self.state.room.owned_walls,
+                crate::decor::DecorKind::Wall,
             ),
             window_styles: crate::room::window_styles()
                 .iter()
@@ -1175,9 +1186,11 @@ impl Game {
                     capacity: def.capacity,
                     sprite: def.sprite.map(|s| s.into()),
                     sprite_rotations: def.sprite_rotations,
+                    price: crate::decor::furniture_price(def.id),
                 })
                 .collect(),
             surface_catalog: surface_catalog_views(),
+            available_furniture: self.state.room.available_furniture(),
         })
     }
 
@@ -2381,6 +2394,31 @@ impl Game {
             fishing,
             room: self.room_view(crate::room::LIVING_ROOM, now).expect("living room"),
             extra_room: self.room_view(crate::room::EXTRA_ROOM, now),
+            decor_shop: DecorShopView {
+                day: self.state.room.decor_shop.day.clone(),
+                offers: self
+                    .state
+                    .room
+                    .decor_shop
+                    .offers
+                    .iter()
+                    .map(|offer| DecorOfferView {
+                        id: offer.id.clone(),
+                        kind: offer.kind.label().into(),
+                        name: offer.name.clone(),
+                        price: offer.price,
+                        sold: offer.sold,
+                        owned: match offer.kind {
+                            crate::decor::DecorKind::Floor => {
+                                self.state.room.owned_floors.contains(&offer.item_id)
+                            }
+                            crate::decor::DecorKind::Wall => {
+                                self.state.room.owned_walls.contains(&offer.item_id)
+                            }
+                        },
+                    })
+                    .collect(),
+            },
             npc_rooms: self.state.npcs.iter().map(|entry| {
                 let threshold = npc_threshold(&entry.id);
                 NpcRoomView {

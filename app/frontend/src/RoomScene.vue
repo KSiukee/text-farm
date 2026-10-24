@@ -442,7 +442,15 @@ function saveEdit() {
   emit("save", clone(draft.value));
 }
 
+function availableFor(def: RoomFurnitureDefView): number {
+  const base = props.room.availableFurniture?.[def.id] ?? 0;
+  const placed = draft.value.furniture.filter((item) => item.def === def.id).length;
+  const initial = props.room.layout.furniture.filter((item) => item.def === def.id).length;
+  return Math.max(0, base - (placed - initial));
+}
+
 function addFurniture(def: RoomFurnitureDefView) {
+  if (availableFor(def) <= 0) return;
   pushUndo();
   const g = props.room.grid;
   const w = def.width * g;
@@ -1935,9 +1943,10 @@ onBeforeUnmount(stopPetLoop);
           :key="def.id"
           class="link"
           type="button"
+          :disabled="availableFor(def) <= 0"
           @click="addFurniture(def)"
         >
-          +{{ def.name }}
+          +{{ def.name }}（剩 {{ availableFor(def) }}）
         </button>
         <button
           v-for="def in room.surfaceCatalog"

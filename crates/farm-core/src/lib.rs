@@ -6,6 +6,7 @@ mod achievements;
 mod action;
 mod buffs;
 mod content;
+mod decor;
 mod daily;
 mod engine;
 mod error;
@@ -44,11 +45,12 @@ pub use engine::{Effect, Outcome};
 pub use error::{GameError, SaveError};
 pub use room::{
     default_extra_layout, default_layout, floor_styles, furniture_def, room_size, validate_layout,
-    wall_styles, window_style, window_styles, FurnitureDef, RoomDoor, RoomFurniture, RoomLayout,
+    validate_ownership, wall_styles, window_style, window_styles, FurnitureDef, RoomDoor, RoomFurniture, RoomLayout,
     RoomState, RoomSurfaceItem, RoomWindow, DOOR_HEIGHT, DOOR_WIDTH, EXTRA_HEIGHT, EXTRA_ROOM, EXTRA_ROOM_COST,
     EXTRA_WIDTH, FURNITURE, LIVING_HEIGHT, LIVING_ROOM, LIVING_WIDTH, MAX_WINDOWS, ROOM_GRID,
     WALL_HEIGHT_TILES, WALL_HEIGHT_UNITS,
 };
+pub use decor::{DecorKind, DecorOffer, DecorShopState};
 pub use fishing::{
     apply_manual_bonus, auto_interval_ms_with_skill, bait_saver_pct, bait_weight,
     big_fish_bonus_tenths, catch_exp, condition_hint, condition_weight, faces_right, fish,

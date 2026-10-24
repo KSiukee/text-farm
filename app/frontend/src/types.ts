@@ -978,6 +978,7 @@ export interface RoomStyleView {
   name: string;
   locked: boolean;
   unlockHint: string;
+  price: number;
 }
 
 export interface RoomFurnitureDefView {
@@ -991,6 +992,7 @@ export interface RoomFurnitureDefView {
   capacity: number;
   sprite: string | null;
   spriteRotations: number;
+  price: number;
 }
 
 export interface RoomSurfaceDefView {
@@ -1013,6 +1015,21 @@ export interface RoomView {
   windowStyles: RoomWindowStyleView[];
   catalog: RoomFurnitureDefView[];
   surfaceCatalog: RoomSurfaceDefView[];
+  availableFurniture: Record<string, number>;
+}
+
+export interface DecorOfferView {
+  id: string;
+  kind: string;
+  name: string;
+  price: number;
+  sold: boolean;
+  owned: boolean;
+}
+
+export interface DecorShopView {
+  day: string;
+  offers: DecorOfferView[];
 }
 
 export interface RoomWindowStyleView {
@@ -1059,6 +1076,7 @@ export interface Snapshot {
   fishing: FishingView;
   room: RoomView;
   extraRoom: RoomView | null;
+  decorShop: DecorShopView;
   npcRooms: NpcRoomView[];
   skills: SkillsView;
   boardingDebt: number;
@@ -1164,6 +1182,8 @@ export type Action =
   | { type: "acceptFarmOrder"; id: string }
   | { type: "deliverFarmOrder"; id: string }
   | { type: "buyMysteryOffer"; id: string }
+  | { type: "buyFurniture"; def: string }
+  | { type: "buyDecor"; id: string }
   | { type: "useFarmCard" }
   | { type: "claimLevelReward"; level: number }
   | { type: "updateSettings"; expRate: number }

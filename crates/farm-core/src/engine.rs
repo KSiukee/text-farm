@@ -7,6 +7,7 @@ use crate::action::{Action, FacilityKind};
 use crate::buffs;
 use crate::content::{ContentPack, CropDef, RegionAffinity};
 use crate::daily::{daily_progress, mark_claimed, DAILY_TASKS};
+use crate::decor;
 use crate::error::GameError;
 use crate::fishing::{
     self, FishCatchResult, FishingSession, FishingSpot, RodKind, FISHING_AUTO_CAP_MS,
@@ -178,6 +179,8 @@ impl Game {
             Action::AcceptFarmOrder { id } => self.accept_farm_order(&id, now)?,
             Action::DeliverFarmOrder { id } => self.deliver_farm_order(&id, now)?,
             Action::BuyMysteryOffer { id } => self.buy_mystery_offer(&id, now)?,
+            Action::BuyFurniture { def } => self.buy_furniture(&def, now)?,
+            Action::BuyDecor { id } => self.buy_decor(&id, now)?,
             Action::UseFarmCard => self.use_farm_card(now)?,
             Action::ClaimLevelReward { level } => self.claim_level_reward(level, now)?,
             Action::UpdateSettings { exp_rate } => self.update_settings(exp_rate, now)?,
@@ -4550,6 +4553,11 @@ impl Game {
         let mut effects = Vec::new();
         let mut changed = false;
 
+        self.state.room.ensure_defaults();
+        if self.state.room.ensure_decor_shop(today) {
+            changed = true;
+        }
+
         let buffs_before = self.state.buffs.len();
         buffs::prune(&mut self.state.buffs, now);
         if self.state.buffs.len() != buffs_before {
@@ -4794,9 +4802,61 @@ impl Game {
         layout: RoomLayout,
         now: i64,
     ) -> Result<Vec<Effect>, GameError> {
+        self.state.room.ensure_ownership();
         room::validate_layout(room_id, &layout)?;
+        room::validate_ownership(room_id, &layout, &self.state.room)?;
         self.state.room.rooms.insert(room_id.to_string(), layout);
         let text = "你重新布置了小屋。".to_string();
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn buy_furniture(&mut self, def_id: &str, now: i64) -> Result<Vec<Effect>, GameError> {
+        let def = room::furniture_def(def_id)
+            .ok_or_else(|| GameError::RoomLayoutInvalid("没有这件家具".into()))?;
+        let price = decor::furniture_price(def_id);
+        if self.state.coins < price {
+            return Err(GameError::NotEnoughCoins { need: price });
+        }
+        self.state.coins -= price;
+        self.state.room.ensure_ownership();
+        *self
+            .state
+            .room
+            .owned_furniture
+            .entry(def_id.to_string())
+            .or_insert(0) += 1;
+        let text = format!("买下 {}，金币-{}", def.name, price);
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn buy_decor(&mut self, id: &str, now: i64) -> Result<Vec<Effect>, GameError> {
+        self.state.room.ensure_ownership();
+        let offer = self
+            .state
+            .room
+            .decor_shop
+            .offer(id)
+            .cloned()
+            .ok_or(GameError::DecorOfferInvalid)?;
+        if offer.sold {
+            return Err(GameError::DecorOfferSold);
+        }
+        if self.state.coins < offer.price {
+            return Err(GameError::NotEnoughCoins { need: offer.price });
+        }
+        self.state.coins -= offer.price;
+        self.state.room.decor_shop.mark_sold(id);
+        match offer.kind {
+            decor::DecorKind::Floor => {
+                self.state.room.owned_floors.insert(offer.item_id.clone());
+            }
+            decor::DecorKind::Wall => {
+                self.state.room.owned_walls.insert(offer.item_id.clone());
+            }
+        }
+        let text = format!("买下{}「{}」，金币-{}", offer.kind.label(), offer.name, offer.price);
         self.push_log(now, text.clone());
         Ok(vec![Effect::Log { text }])
     }
@@ -4896,10 +4956,12 @@ impl Game {
             });
         }
         self.state.coins -= room::EXTRA_ROOM_COST;
+        let extra = room::default_extra_layout();
+        self.state.room.grant_layout(&extra);
         self.state
             .room
             .rooms
-            .insert(room::EXTRA_ROOM.to_string(), room::default_extra_layout());
+            .insert(room::EXTRA_ROOM.to_string(), extra);
         let text = format!("你推开门，里屋亮了起来（花费 {}）", room::EXTRA_ROOM_COST);
         self.push_log(now, text.clone());
         Ok(vec![Effect::Log { text }])

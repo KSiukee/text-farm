@@ -1019,6 +1019,15 @@ const currentRoom = computed(() => {
   if (currentRoomId.value === "extra_1" && snapshot.value?.extraRoom) return snapshot.value.extraRoom;
   return snapshot.value?.room ?? null;
 });
+const decorShop = computed(() => snapshot.value?.decorShop ?? null);
+
+function buyFurniture(def: string) {
+  void act({ type: "buyFurniture", def });
+}
+
+function buyDecor(id: string) {
+  void act({ type: "buyDecor", id });
+}
 const selectedAquarium = computed(
   () => currentRoom.value?.layout.furniture.find((item) => item.id === selectedAquariumId.value) ?? null,
 );
@@ -3119,6 +3128,48 @@ onUnmounted(() => {
               readonly
               @notice="notice = $event"
             />
+          </div>
+
+          <div class="decor-shop">
+            <div class="panel-title">
+              家具与装饰店
+              <span class="muted">当前金币 {{ snapshot?.coins ?? 0 }}</span>
+            </div>
+            <p class="muted decor-shop-tip">
+              家具直接金币买；地板/墙纸每天随机上架 2+2 件，买过永久拥有，不再看制造屋。
+            </p>
+            <div class="decor-shop-grid">
+              <div v-for="offer in decorShop?.offers ?? []" :key="offer.id" class="decor-card">
+                <span class="decor-kind">{{ offer.kind }}</span>
+                <strong>{{ offer.name }}</strong>
+                <span class="muted">{{ offer.price }} 金币</span>
+                <button
+                  v-if="!offer.sold && !offer.owned"
+                  class="link"
+                  type="button"
+                  :disabled="acting || (snapshot?.coins ?? 0) < offer.price"
+                  @click="buyDecor(offer.id)"
+                >
+                  {{ (snapshot?.coins ?? 0) >= offer.price ? "[购买]" : "[金币不足]" }}
+                </button>
+                <span v-else class="muted">{{ offer.owned ? "已拥有" : "已售罄" }}</span>
+              </div>
+            </div>
+            <div class="panel-title">家具</div>
+            <div class="decor-shop-grid">
+              <div v-for="def in currentRoom?.catalog ?? []" :key="def.id" class="decor-card">
+                <strong>{{ def.name }}</strong>
+                <span class="muted">{{ def.price }} 金币 · 可摆 {{ currentRoom?.availableFurniture?.[def.id] ?? 0 }}</span>
+                <button
+                  class="link"
+                  type="button"
+                  :disabled="acting || (snapshot?.coins ?? 0) < def.price"
+                  @click="buyFurniture(def.id)"
+                >
+                  {{ (snapshot?.coins ?? 0) >= def.price ? "[购买]" : "[金币不足]" }}
+                </button>
+              </div>
+            </div>
           </div>
         </section>
       </div>

@@ -46,28 +46,56 @@ fn default_room_is_valid_and_visible() {
 }
 
 #[test]
-fn room_styles_unlock_from_level_achievement_days_and_craft() {
+fn room_styles_unlock_only_after_buying_them() {
     let mut game = Game::new(1_000);
-    let now = 1_000;
-    let before = game.snapshot(now);
-    assert!(before.room.floors.iter().find(|style| style.id == "terracotta").unwrap().locked);
-    assert!(before.room.floors.iter().find(|style| style.id == "tatami").unwrap().locked);
+    game.state_mut().coins = 100_000;
+    game.sync(1_000, "2026-10-24");
+    let before = game.snapshot(1_000);
+    assert!(
+        before
+            .room
+            .floors
+            .iter()
+            .find(|style| style.id == "terracotta")
+            .unwrap()
+            .locked
+    );
 
     game.state_mut().level = 20;
     game.state_mut().achievements.insert("harvest_100".into(), true);
     game.state_mut().inventory.insert("craft:coffee_powder".into(), 1);
-    game.state_mut().created_at = now - 60 * 86_400_000;
-    let after = game.snapshot(now);
-    for (list, id) in [
-        (&after.room.floors, "terracotta"),
-        (&after.room.floors, "tatami"),
-        (&after.room.floors, "cafe"),
-        (&after.room.walls, "dusk"),
-        (&after.room.walls, "linen"),
-    ] {
-        let style = list.iter().find(|style| style.id == id).unwrap();
-        assert!(!style.locked, "{id} should be unlocked");
-    }
+    game.state_mut().created_at = 1_000 - 60 * 86_400_000;
+    let still_locked = game.snapshot(1_000);
+    assert!(
+        still_locked
+            .room
+            .floors
+            .iter()
+            .find(|style| style.id == "terracotta")
+            .unwrap()
+            .locked
+    );
+
+    let offer = game
+        .state()
+        .room
+        .decor_shop
+        .offers
+        .iter()
+        .find(|offer| offer.kind == farm_core::DecorKind::Floor)
+        .unwrap()
+        .clone();
+    game.dispatch(Action::BuyDecor { id: offer.id }, 1_000).unwrap();
+    let after = game.snapshot(1_000);
+    assert!(
+        !after
+            .room
+            .floors
+            .iter()
+            .find(|style| style.id == offer.item_id)
+            .unwrap()
+            .locked
+    );
 }
 
 #[test]
@@ -102,6 +130,14 @@ fn npc_rooms_are_read_only_views_with_thresholds() {
 #[test]
 fn aquarium_moves_fish_between_tank_and_inventory() {
     let mut game = Game::new(1_000);
+    game.state_mut().coins = 100_000;
+    game.dispatch(
+        Action::BuyFurniture {
+            def: "aquarium_small".into(),
+        },
+        1_500,
+    )
+    .unwrap();
     let mut room = layout();
     room.furniture.push(RoomFurniture {
         id: "tank".into(),

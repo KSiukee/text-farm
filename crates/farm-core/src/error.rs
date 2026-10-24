@@ -138,6 +138,10 @@ pub enum GameError {
     MysteryOfferSold,
     #[error("背包里没有农场一键卡")]
     FarmCardMissing,
+    #[error("这家店没有这件装饰")]
+    DecorOfferInvalid,
+    #[error("这件装饰已经卖掉了")]
+    DecorOfferSold,
     #[error("没有这个专精")]
     BadSkill,
     #[error("这个专精已经满级")]
@@ -325,6 +329,8 @@ impl GameError {
             GameError::MysteryOfferInvalid => "mystery_offer_invalid",
             GameError::MysteryOfferSold => "mystery_offer_sold",
             GameError::FarmCardMissing => "farm_card_missing",
+            GameError::DecorOfferInvalid => "decor_offer_invalid",
+            GameError::DecorOfferSold => "decor_offer_sold",
             GameError::BadSkill => "bad_skill",
             GameError::SkillMax => "skill_max",
             GameError::BadBuffItem => "bad_buff_item",

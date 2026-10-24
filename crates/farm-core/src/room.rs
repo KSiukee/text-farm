@@ -1,7 +1,8 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
+use crate::decor::{self, DecorShopState};
 use crate::error::GameError;
 
 /// 房间坐标用 1/8 格；16×12 的客厅就是 128×96 个位置。
@@ -327,13 +328,34 @@ pub struct RoomLayout {
 pub struct RoomState {
     #[serde(default)]
     pub rooms: BTreeMap<String, RoomLayout>,
+    /// 已拥有家具（含已摆放）；商店/赠送/神秘商店都加到这里。
+    #[serde(default)]
+    pub owned_furniture: BTreeMap<String, u32>,
+    #[serde(default)]
+    pub owned_floors: BTreeSet<String>,
+    #[serde(default)]
+    pub owned_walls: BTreeSet<String>,
+    /// 旧档第一次读入时按已摆放家具回填一次。
+    #[serde(default)]
+    pub ownership_initialized: bool,
+    #[serde(default)]
+    pub decor_shop: DecorShopState,
 }
 
 impl Default for RoomState {
     fn default() -> Self {
         let mut rooms = BTreeMap::new();
         rooms.insert(LIVING_ROOM.to_string(), default_layout());
-        Self { rooms }
+        let mut state = Self {
+            rooms,
+            owned_furniture: BTreeMap::new(),
+            owned_floors: BTreeSet::new(),
+            owned_walls: BTreeSet::new(),
+            ownership_initialized: false,
+            decor_shop: DecorShopState::default(),
+        };
+        state.ensure_ownership();
+        state
     }
 }
 
@@ -351,6 +373,46 @@ impl RoomState {
                 extra.door = default_door(EXTRA_ROOM);
             }
         }
+        self.ensure_ownership();
+    }
+
+    /// 首次读旧档：把当前已摆放的家具/地板/墙纸算成已拥有。
+    pub fn ensure_ownership(&mut self) {
+        if self.ownership_initialized {
+            return;
+        }
+        let (furniture, floors, walls) = decor::seed_ownership(&self.rooms);
+        self.owned_furniture = furniture;
+        self.owned_floors = floors;
+        self.owned_walls = walls;
+        self.ownership_initialized = true;
+    }
+
+    /// 解锁里屋时，默认摆进去的家具也一并算已拥有。
+    pub fn grant_layout(&mut self, layout: &RoomLayout) {
+        self.ensure_ownership();
+        for (id, qty) in decor::layout_furniture(layout) {
+            *self.owned_furniture.entry(id).or_insert(0) += qty;
+        }
+        self.owned_floors.insert(layout.floor.clone());
+        self.owned_walls.insert(layout.wall.clone());
+    }
+
+    /// 当前还能拿出来摆的家具数量（总拥有 - 所有房间已摆放）。
+    pub fn available_furniture(&self) -> BTreeMap<String, u32> {
+        let mut available = self.owned_furniture.clone();
+        for layout in self.rooms.values() {
+            for (id, qty) in decor::layout_furniture(layout) {
+                let entry = available.entry(id).or_insert(0);
+                *entry = entry.saturating_sub(qty);
+            }
+        }
+        available
+    }
+
+    pub fn ensure_decor_shop(&mut self, day: &str) -> bool {
+        self.decor_shop
+            .ensure_day(day, &self.owned_floors, &self.owned_walls)
     }
 
     pub fn is_unlocked(&self, room: &str) -> bool {
@@ -520,6 +582,42 @@ fn footprint(def: &FurnitureDef, rot: u32) -> (u32, u32) {
 
 fn overlaps(a: (u32, u32, u32, u32), b: (u32, u32, u32, u32)) -> bool {
     a.0 < b.0 + b.2 && b.0 < a.0 + a.2 && a.1 < b.1 + b.3 && b.1 < a.1 + a.3
+}
+
+/// 校验这次保存没有摆出“没买过的家具/样式”。
+pub fn validate_ownership(
+    room_id: &str,
+    layout: &RoomLayout,
+    room: &RoomState,
+) -> Result<(), GameError> {
+    if !room.owned_floors.contains(&layout.floor) {
+        return Err(GameError::RoomLayoutInvalid("这个地板还没买".into()));
+    }
+    if !room.owned_walls.contains(&layout.wall) {
+        return Err(GameError::RoomLayoutInvalid("这个墙纸还没买".into()));
+    }
+    let mut counts: BTreeMap<String, u32> = BTreeMap::new();
+    for (id, current) in &room.rooms {
+        let source = if id == room_id { layout } else { current };
+        for (def, qty) in decor::layout_furniture(source) {
+            *counts.entry(def).or_insert(0) += qty;
+        }
+    }
+    if !room.rooms.contains_key(room_id) {
+        for (def, qty) in decor::layout_furniture(layout) {
+            *counts.entry(def).or_insert(0) += qty;
+        }
+    }
+    for (def, qty) in counts {
+        let owned = room.owned_furniture.get(&def).copied().unwrap_or(0);
+        if qty > owned {
+            let name = furniture_def(&def).map(|def| def.name).unwrap_or(&def);
+            return Err(GameError::RoomLayoutInvalid(format!(
+                "「{name}」还没买够（要 {qty}，只有 {owned}）"
+            )));
+        }
+    }
+    Ok(())
 }
 
 /// 校验装修草稿：房间、样式、边界、重复 id、家具碰撞。

@@ -130,12 +130,14 @@ try {
     }
   });
 
-  await clickText("牧村", true, 0);
+  await clickText("牧村", true);
   await waitFor(async () => (await bodyText()).includes("牧村 · 小屋"));
   check("牧村页出现小屋", true);
   check("小屋画布存在", !!(await evaluate("!!document.querySelector('.room-canvas')")));
   check("普通模式有装修按钮", (await bodyText()).includes("装修"));
   check("普通模式有解锁里屋按钮", (await bodyText()).includes("解锁里屋"));
+  check("家具与装饰店已显示", (await bodyText()).includes("家具与装饰店"));
+  check("家具与装饰卡片已生成", (await evaluate(`document.querySelectorAll('.decor-card').length`)) > 0);
   await screenshot(shot);
 
   await clickText("装修", false);
@@ -143,9 +145,6 @@ try {
   check("进入装修模式", true);
   check("编辑器有家具面板", (await bodyText()).includes("+绿植"));
   check("默认有一扇窗", (await bodyText()).includes("窗户 1/5"));
-  await clickText("+绿植", true);
-  await new Promise((r) => setTimeout(r, 200));
-  check("加绿植后出现选中", (await bodyText()).includes("选中：绿植"));
   await clickText("+小窗", true);
   await new Promise((r) => setTimeout(r, 200));
   check("加窗后 2/5", (await bodyText()).includes("窗户 2/5"));
@@ -168,7 +167,7 @@ try {
   await new Promise((r) => setTimeout(r, 500));
   const save = JSON.parse(readFileSync(savePath, "utf8")).state;
   const layout = save.room.rooms.living;
-  check("完成写回存档", layout.furniture.length >= 7, `furniture=${layout.furniture.length}`);
+  check("完成写回存档", layout.furniture.length >= 6, `furniture=${layout.furniture.length}`);
   check("地板样式写回", layout.floor === "tile", `floor=${layout.floor}`);
   check("窗户写回", layout.windows.length >= 2, `windows=${layout.windows.length}`);
   check("退出装修模式", (await bodyText()).includes("装修") && !(await bodyText()).includes("完成"));

@@ -885,6 +885,7 @@ impl Game {
             return Err(SaveError::InvalidContent(issues.join("；")));
         }
         save.state.schema = save.schema;
+        save.state.room.ensure_defaults();
         Ok(Game::from_parts(save.state, save.content))
     }
 }

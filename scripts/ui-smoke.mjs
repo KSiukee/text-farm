@@ -22,6 +22,7 @@ const playerScreenshotPath = join(root, "docs", "player-panel-v080.png");
 const seedPickerScreenshotPath = join(root, "docs", "seed-picker-v081.png");
 const mysteryScreenshotPath = join(root, "docs", "mystery-shop-v083.png");
 const mysteryWalletScreenshotPath = join(root, "docs", "mystery-wallet-v083.png");
+const decorScreenshotPath = join(root, "docs", "decor-shop-v085.png");
 const port = 9333;
 const checks = [];
 let child = null;
@@ -1039,6 +1040,22 @@ try {
   await clickText("[放生]");
   await waitFor(async () => saveState().pets.length === 3);
   check("点击放生（确认框自动接受）", saveState().pets.length === 3);
+
+  await clickText("牧村", true);
+  await waitFor(async () => (await bodyText()).includes("家具与装饰店"));
+  check("家具与装饰店已显示", (await bodyText()).includes("家具与装饰店"));
+  check("家具金币商店有货", (await evaluate(`document.querySelectorAll('.decor-card').length`)) > 0);
+  const decorCoins = saveState().coins;
+  await evaluate(`(() => {
+    const card = [...document.querySelectorAll('.decor-card')].find((el) => el.innerText.includes('绿植'));
+    card?.querySelector('button')?.click();
+  })()`);
+  await waitFor(async () => saveState().coins < decorCoins);
+  check("家具金币购买可用", saveState().coins < decorCoins);
+  await evaluate(`document.querySelector('.decor-shop')?.scrollIntoView({ block: 'start' })`);
+  await new Promise((r) => setTimeout(r, 200));
+  await screenshot(decorScreenshotPath);
+  check("家具商店截图已保存", existsSync(decorScreenshotPath), decorScreenshotPath);
 
   const failed = checks.filter((c) => !c.ok);
   const lines = [

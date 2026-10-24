@@ -1224,6 +1224,40 @@ textarea {
   padding: 4px 0;
 }
 
+.decor-shop {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+
+.decor-shop-tip {
+  margin: 0 0 8px;
+}
+
+.decor-shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.decor-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.decor-kind {
+  align-self: flex-start;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  color: var(--accent-text);
+  font-size: 10px;
+}
+
 .farm-orders-hint {
   margin-top: 8px;
   font-size: 12px;
