@@ -220,9 +220,51 @@ textarea {
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
 }
 
-.specimen-result-icon {
-  font-size: 36px;
-  line-height: 1.2;
+.specimen-glass-frame {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  margin: 8px auto 12px;
+  display: grid;
+  place-items: center;
+  border: 2px solid rgba(205, 226, 219, 0.7);
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.18), transparent 42%),
+    linear-gradient(180deg, rgba(178, 210, 200, 0.14), rgba(70, 95, 86, 0.18));
+  box-shadow:
+    inset 0 0 20px rgba(190, 225, 212, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+    0 10px 24px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(1px);
+}
+
+.specimen-glass-frame::before {
+  content: "";
+  position: absolute;
+  inset: 6px 8px auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+}
+
+.specimen-glass-frame::after {
+  content: "";
+  position: absolute;
+  left: 12%;
+  bottom: 10%;
+  width: 76%;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(30, 42, 36, 0.45);
+  filter: blur(2px);
+}
+
+.specimen-glass-icon {
+  position: relative;
+  z-index: 1;
+  font-size: 48px;
+  line-height: 1;
+  filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.35));
 }
 
 .pet-adopt {

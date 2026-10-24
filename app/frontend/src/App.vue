@@ -550,6 +550,9 @@ const specimenFeatured = computed(
 );
 const specimenMilestones = computed(() => snapshot.value?.specimenMilestones ?? []);
 const specimenResult = ref<Extract<Effect, { kind: "specimen" }> | null>(null);
+const specimenResultCrop = computed(
+  () => specimens.value.find((item) => item.cropId === specimenResult.value?.cropId) ?? null,
+);
 const seasonClass = computed(() => `season-${snapshot.value?.season ?? "spring"}`);
 const SEASON_NAMES: Record<Season, string> = {
   spring: "春",
@@ -4832,7 +4835,9 @@ onUnmounted(() => {
         <div v-if="specimenResult" class="specimen-result-overlay" @click.self="specimenResult = null">
           <div class="specimen-result-card">
             <div class="panel-title">标本完成</div>
-            <div class="specimen-result-icon">🧪</div>
+            <div class="specimen-glass-frame">
+              <span class="specimen-glass-icon">{{ specimenResultCrop?.icon ?? "🌱" }}</span>
+            </div>
             <strong>{{ specimenResult.cropName }}标本</strong>
             <p v-if="specimenResult.featured" class="specimen-featured">今日推荐，金币奖励 +50%</p>
             <p>
