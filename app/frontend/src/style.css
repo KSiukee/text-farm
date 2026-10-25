@@ -1710,6 +1710,10 @@ textarea {
   font-size: 11px;
 }
 
+.market-talk-card {
+  width: min(440px, 92vw);
+}
+
 .festival-story-entry {
   display: inline-block;
   margin: 0 0 8px;

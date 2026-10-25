@@ -236,6 +236,8 @@ pub enum GameError {
     FestivalMarketGiftLocked,
     #[error("这份回礼已经领过了")]
     FestivalMarketGiftClaimed,
+    #[error("今天已经和这个人聊过了")]
+    FestivalMarketAlreadyTalked,
     #[error("这个用品已经买了")]
     PetSupplyOwned,
     #[error("这个用品没有损坏")]
@@ -470,6 +472,7 @@ impl GameError {
             GameError::FestivalMarketSoldOut => "festival_market_sold_out",
             GameError::FestivalMarketGiftLocked => "festival_market_gift_locked",
             GameError::FestivalMarketGiftClaimed => "festival_market_gift_claimed",
+            GameError::FestivalMarketAlreadyTalked => "festival_market_already_talked",
             GameError::WorkshopAutoBusy => "workshop_auto_busy",
             GameError::HandbookGoalUnavailable => "handbook_goal_unavailable",
             GameError::PetSupplyOwned => "pet_supply_owned",

@@ -201,6 +201,7 @@ impl Game {
             Action::BuyFestivalOffer { offer_id } => {
                 self.buy_festival_offer(&offer_id, now)?
             }
+            Action::TalkFestivalMarket { id } => self.talk_festival_market(&id, now)?,
             Action::SellFestivalGoods { key } => self.sell_festival_goods(&key, now)?,
             Action::ClaimFestivalGift { threshold } => {
                 self.claim_festival_gift(threshold, now)?
@@ -5514,6 +5515,24 @@ impl Game {
             "你给{}的集市备货交了 {}×{}，集市贡献+{}",
             request.npc_name, request.item_name, request.qty, request.contribution
         );
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn talk_festival_market(&mut self, id: &str, now: i64) -> Result<Vec<Effect>, GameError> {
+        if !crate::festival_market::active_today(&self.state) {
+            return Err(GameError::FestivalMarketUnavailable);
+        }
+        if !id.starts_with("vendor:")
+            && !id.starts_with("crowd:")
+            && !id.starts_with("crowd-")
+        {
+            return Err(GameError::FestivalMarketUnavailable);
+        }
+        if !self.state.festival_market.talked.insert(id.to_string()) {
+            return Err(GameError::FestivalMarketAlreadyTalked);
+        }
+        let text = "你在集市上和人聊了两句，热闹声从棚子底下漫过来".to_string();
         self.push_log(now, text.clone());
         Ok(vec![Effect::Log { text }])
     }

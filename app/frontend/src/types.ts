@@ -720,14 +720,19 @@ export interface MarketOfferView {
   stall: string;
   itemName: string;
   price: number;
+  talk: string;
   bought: boolean;
+  talked: boolean;
   canBuy: boolean;
 }
 
 export interface MarketCrowdView {
+  id: string;
   name: string;
   text: string;
+  talk: string;
   named: boolean;
+  talked: boolean;
 }
 
 export interface MarketGiftView {
@@ -1689,6 +1694,7 @@ export type Action =
   | { type: "buyFestivalOffer"; offerId: string }
   | { type: "sellFestivalGoods"; key: string }
   | { type: "claimFestivalGift"; threshold: number }
+  | { type: "talkFestivalMarket"; id: string }
   | { type: "chooseFestivalStory"; choiceId: string }
   | { type: "buyMysteryOffer"; id: string }
   | { type: "buyFurniture"; def: string }

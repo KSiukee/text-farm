@@ -240,6 +240,7 @@ const selectedFish = ref<FishCodexView | null>(null);
 const autoReportVisible = ref(false);
 const helpVisible = ref(false);
 const festivalStoryVisible = ref(false);
+const marketTalk = ref<{ name: string; text: string } | null>(null);
 const autoReportShownAt = ref(
   Number(window.localStorage.getItem("farm.autoReportShownAt") || 0),
 );
@@ -1251,6 +1252,11 @@ function openFestivalStory() {
 function chooseFestivalStory(choiceId: string) {
   festivalStoryVisible.value = false;
   void act({ type: "chooseFestivalStory", choiceId });
+}
+
+function talkMarket(id: string, name: string, text: string) {
+  marketTalk.value = { name, text };
+  void act({ type: "talkFestivalMarket", id });
 }
 
 function acceptFarmOrder(id: string) {
@@ -3243,6 +3249,15 @@ onUnmounted(() => {
             <b v-if="person.named">{{ person.name }}</b>
             <span v-else class="market-role">{{ person.name }}</span>
             <span>{{ person.text }}</span>
+            <button
+              v-if="!person.talked"
+              class="link"
+              type="button"
+              @click="talkMarket(person.id, person.name, person.talk)"
+            >
+              [聊两句]
+            </button>
+            <span v-else class="muted">聊过了</span>
           </div>
         </div>
 
@@ -3284,6 +3299,15 @@ onUnmounted(() => {
               <span><b>{{ offer.vendor }}</b> · {{ offer.stall }}</span>
               <span>{{ offer.itemName }}</span>
               <span class="muted">{{ offer.price }} 金币</span>
+              <button
+                v-if="!offer.talked"
+                class="link"
+                type="button"
+                @click="talkMarket(`vendor:${offer.id}`, offer.vendor, offer.talk)"
+              >
+                [聊两句]
+              </button>
+              <span v-else class="muted">聊过了</span>
               <span v-if="offer.bought" class="ok">已买</span>
               <button
                 v-else-if="offer.canBuy"
@@ -6276,6 +6300,18 @@ onUnmounted(() => {
         <button class="link" type="button" @click="festivalStoryVisible = false">
           [再等等]
         </button>
+      </div>
+    </div>
+
+    <div
+      v-if="marketTalk"
+      class="npc-scene-overlay story-overlay"
+      @click.self="marketTalk = null"
+    >
+      <div class="npc-scene-card market-talk-card">
+        <div class="npc-scene-title">{{ marketTalk.name }}</div>
+        <p class="festival-story-text">{{ marketTalk.text }}</p>
+        <button class="link" type="button" @click="marketTalk = null">[知道了]</button>
       </div>
     </div>
 

@@ -1,10 +1,14 @@
 # 更新日志
 
 > 文字农场 · 版本历史。
-> 本文由 `.codex/state.json` 的 `recent_changes` 生成，共 **184 条 / 165 个版本**；早期记录按当时原文保留，同一版本多条按发生顺序排列。
+> 本文由 `.codex/state.json` 的 `recent_changes` 生成，共 **185 条 / 166 个版本**；早期记录按当时原文保留，同一版本多条按发生顺序排列。
 > 版本号以 `Cargo.toml`、`app/tauri.conf.json`、`app/frontend/package.json`、`README.md` 为准。
 
 ---
+
+## 0.126.0 · 2026-10-25
+
+- 集市可聊（A154/#183）——摊主和赶集人群都能点开一句，聊过标记；不奖励，不加货币；schema 56。Rust 394、前端 53、UI 216/216；exe 0.126.0。详见 docs/NPC有血有肉.md。
 
 ## 0.125.0 · 2026-10-25
 

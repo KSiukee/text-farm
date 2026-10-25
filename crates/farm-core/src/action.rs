@@ -387,6 +387,10 @@ pub enum Action {
         #[serde(rename = "choiceId")]
         choice_id: String,
     },
+    /// 和集市上的摊主/村人聊两句。
+    TalkFestivalMarket {
+        id: String,
+    },
     /// 给节日集市交一份备货。
     SupplyFestivalMarket {
         #[serde(rename = "requestId")]

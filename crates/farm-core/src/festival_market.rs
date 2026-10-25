@@ -47,6 +47,9 @@ pub struct FestivalMarketState {
     pub sold: u32,
     pub gifts: Vec<MarketGift>,
     pub gifts_claimed: BTreeSet<u32>,
+    /// 本次集市已经聊过的人（vendor:... / crowd:...）。
+    #[serde(default)]
+    pub talked: BTreeSet<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -70,6 +73,7 @@ pub struct MarketOffer {
     pub item_key: String,
     pub item_name: String,
     pub price: u64,
+    pub talk: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -103,9 +107,12 @@ pub struct FestivalMarketView {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MarketCrowdView {
+    pub id: String,
     pub name: String,
     pub text: String,
+    pub talk: String,
     pub named: bool,
+    pub talked: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -130,7 +137,9 @@ pub struct MarketOfferView {
     pub stall: String,
     pub item_name: String,
     pub price: u64,
+    pub talk: String,
     pub bought: bool,
+    pub talked: bool,
     pub can_buy: bool,
 }
 
@@ -275,6 +284,7 @@ impl FestivalMarketState {
                     item_key: format!("seed:{id}"),
                     item_name: format!("{}种子", crop.name),
                     price: (crop.seed_price * 2).max(60),
+                    talk: stall_talk(id).into(),
                 })
             })
             .collect();
@@ -332,6 +342,7 @@ impl FestivalMarketState {
             sold: 0,
             gifts,
             gifts_claimed: BTreeSet::new(),
+            talked: BTreeSet::new(),
         }
     }
 
@@ -359,114 +370,163 @@ fn stall_info(id: &str) -> (&'static str, &'static str) {
     }
 }
 
-fn crowd(name: &str, major: bool, phase: &str) -> Vec<MarketCrowdView> {
-    let mut lines = vec![
-        MarketCrowdView {
-            name: "阿禾".into(),
-            text: if phase == "prepare" {
-                "把长凳搬到树下，等会儿有人坐。".into()
-            } else {
-                "菜摊前挤着人，她一边称菜一边笑。".into()
-            },
-            named: true,
-        },
-        MarketCrowdView {
-            name: "小满".into(),
-            text: if phase == "prepare" {
-                "灶上蒸着米糕，香味先到了。".into()
-            } else {
-                "米糕切成一角一角，热气还没散。".into()
-            },
-            named: true,
-        },
-        MarketCrowdView {
-            name: "青杏".into(),
-            text: if phase == "prepare" {
-                "把药箱放在棚子边，怕有人磕着。".into()
-            } else {
-                "给一个扭了脚的孩子看脚，没要钱。".into()
-            },
-            named: true,
-        },
-        MarketCrowdView {
-            name: "老陶".into(),
-            text: if phase == "prepare" {
-                "最后一根横梁敲进去，棚子稳了。".into()
-            } else {
-                "木器摊前有人试凳子，他蹲着看榫头。".into()
-            },
-            named: true,
-        },
-        MarketCrowdView {
-            name: "六月".into(),
-            text: if phase == "prepare" {
-                "河风把灯笼吹得直转。".into()
-            } else {
-                "鱼摊上的水花溅到人脚边，她笑着道歉。".into()
-            },
-            named: true,
-        },
-        MarketCrowdView {
-            name: "卖糖画的老汉".into(),
-            text: if phase == "prepare" {
-                "先熬一锅糖，明天给孩子画兔子。".into()
-            } else {
-                "小铜勺一转，糖丝在石板上变成一只鸟。".into()
-            },
-            named: false,
-        },
-        MarketCrowdView {
-            name: "挑担的婶子".into(),
-            text: if phase == "prepare" {
-                "从邻村赶来，担子还没放下。".into()
-            } else {
-                "担子一头是花布，一头是自家晒的干菜。".into()
-            },
-            named: false,
-        },
-        MarketCrowdView {
-            name: "货郎老周".into(),
-            text: if phase == "prepare" {
-                "摇着拨浪鼓，在村口转了一圈。".into()
-            } else {
-                "拨浪鼓一响，半条街的孩子都围过去了。".into()
-            },
-            named: true,
-        },
-        MarketCrowdView {
-            name: "两个小孩".into(),
-            text: if phase == "prepare" {
-                "围着空摊子跑，被大人喊回来。".into()
-            } else {
-                "一人手里一支糖画，谁也不肯先咬。".into()
-            },
-            named: false,
-        },
-        MarketCrowdView {
-            name: "戴草帽的姑娘".into(),
-            text: if phase == "prepare" {
-                "蹲在地上摆自家编的小竹篮。".into()
-            } else {
-                "竹篮卖得只剩最后两个，她正收摊。".into()
-            },
-            named: false,
-        },
-    ];
-    if major {
+fn stall_talk(id: &str) -> &'static str {
+    match id {
+        "caomei" => "阿婆把种子袋口拢了拢：这批是自家留的，出芽齐，别埋太深。",
+        "yumi" => "老周摇了下拨浪鼓：下个月还来，针线、盐巴都带。",
+        "xigua" => "老把式敲了敲瓜：听声，闷的才熟。",
+        "putao" => "秦婶抖开一块花布：这颜色衬你，做窗帘好看。",
+        "xiangrikui" => "阿梁蹲下看了看榫头：松了就来，别等散架。",
+        _ => "摊主笑着招呼：随便看看，不买也没事。",
+    }
+}
+
+fn crowd(
+    name: &str,
+    major: bool,
+    phase: &str,
+    talked: &BTreeSet<String>,
+) -> Vec<MarketCrowdView> {
+    let mut lines = Vec::new();
+    let mut add = |id: &str, name: &str, text: String, talk: &str, named: bool| {
         lines.push(MarketCrowdView {
-            name: "隔壁村的木匠阿梁".into(),
-            text: "挑着两把新椅子来赶集，当场给人修凳腿。".into(),
-            named: true,
+            id: id.to_string(),
+            name: name.to_string(),
+            text,
+            talk: talk.to_string(),
+            named,
+            talked: talked.contains(id),
         });
-        lines.push(MarketCrowdView {
-            name: "戏台边".into(),
-            text: if phase == "prepare" {
+    };
+    add(
+        "crowd-ahe",
+        "阿禾",
+        if phase == "prepare" {
+            "把长凳搬到树下，等会儿有人坐。".into()
+        } else {
+            "菜摊前挤着人，她一边称菜一边笑。".into()
+        },
+        "阿禾说：今天不急着收摊，你也歇会儿。",
+        true,
+    );
+    add(
+        "crowd-xiaoman",
+        "小满",
+        if phase == "prepare" {
+            "灶上蒸着米糕，香味先到了。".into()
+        } else {
+            "米糕切成一角一角，热气还没散。".into()
+        },
+        "小满说：米糕趁热吃，凉了就硬了。",
+        true,
+    );
+    add(
+        "crowd-qingxing",
+        "青杏",
+        if phase == "prepare" {
+            "把药箱放在棚子边，怕有人磕着。".into()
+        } else {
+            "给一个扭了脚的孩子看脚，没要钱。".into()
+        },
+        "青杏说：逛归逛，别踩湿滑的地方。",
+        true,
+    );
+    add(
+        "crowd-laotao",
+        "老陶",
+        if phase == "prepare" {
+            "最后一根横梁敲进去，棚子稳了。".into()
+        } else {
+            "木器摊前有人试凳子，他蹲着看榫头。".into()
+        },
+        "老陶说：这棚子再撑十年没问题。",
+        true,
+    );
+    add(
+        "crowd-liuyue",
+        "六月",
+        if phase == "prepare" {
+            "河风把灯笼吹得直转。".into()
+        } else {
+            "鱼摊上的水花溅到人脚边，她笑着道歉。".into()
+        },
+        "六月说：河上今天有风，灯会漂得远。",
+        true,
+    );
+    add(
+        "crowd-sugar",
+        "卖糖画的老汉",
+        if phase == "prepare" {
+            "先熬一锅糖，明天给孩子画兔子。".into()
+        } else {
+            "小铜勺一转，糖丝在石板上变成一只鸟。".into()
+        },
+        "老汉说：糖画不经放，买了就吃。",
+        false,
+    );
+    add(
+        "crowd-basket",
+        "挑担的婶子",
+        if phase == "prepare" {
+            "从邻村赶来，担子还没放下。".into()
+        } else {
+            "担子一头是花布，一头是自家晒的干菜。".into()
+        },
+        "婶子说：干菜拿水一泡，炖肉最香。",
+        false,
+    );
+    add(
+        "crowd-zhou",
+        "货郎老周",
+        if phase == "prepare" {
+            "摇着拨浪鼓，在村口转了一圈。".into()
+        } else {
+            "拨浪鼓一响，半条街的孩子都围过去了。".into()
+        },
+        "老周说：下个月还来，给你留个好物件。",
+        true,
+    );
+    add(
+        "crowd-kids",
+        "两个小孩",
+        if phase == "prepare" {
+            "围着空摊子跑，被大人喊回来。".into()
+        } else {
+            "一人手里一支糖画，谁也不肯先咬。".into()
+        },
+        "两个小孩说：等会儿还要去看戏台。",
+        false,
+    );
+    add(
+        "crowd-hat",
+        "戴草帽的姑娘",
+        if phase == "prepare" {
+            "蹲在地上摆自家编的小竹篮。".into()
+        } else {
+            "竹篮卖得只剩最后两个，她正收摊。".into()
+        },
+        "姑娘说：篮子是自己编的，装菜不漏。",
+        false,
+    );
+    if major {
+        add(
+            "crowd-liang",
+            "隔壁村的木匠阿梁",
+            "挑着两把新椅子来赶集，当场给人修凳腿。".into(),
+            "阿梁说：椅子坐坏了别扔，拿来我看看。",
+            true,
+        );
+        add(
+            "crowd-stage",
+            "戏台边",
+            if phase == "prepare" {
                 "有人在试锣鼓，断断续续敲了两声。".into()
             } else {
                 "锣鼓一响，老人孩子都往戏台那边走。".into()
             },
-            named: false,
-        });
+            "戏台边有人说：再等一会儿就开唱。",
+            false,
+        );
     }
     let _ = name;
     lines
@@ -528,7 +588,11 @@ pub fn view(state: &GameState) -> Option<FestivalMarketView> {
             stall: offer.stall.clone(),
             item_name: offer.item_name.clone(),
             price: offer.price,
+            talk: offer.talk.clone(),
             bought: market.bought.contains(&offer.id),
+            talked: market
+                .talked
+                .contains(&format!("vendor:{}", offer.id)),
             can_buy: phase == "open"
                 && !market.bought.contains(&offer.id)
                 && state.coins >= offer.price,
@@ -559,7 +623,7 @@ pub fn view(state: &GameState) -> Option<FestivalMarketView> {
         requests,
         offers,
         gifts,
-        crowd: crowd(&market.name, market.major, phase),
+        crowd: crowd(&market.name, market.major, phase, &market.talked),
         sold: market.sold,
         max_sells: max_sells(market.major),
     })

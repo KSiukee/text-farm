@@ -30,6 +30,33 @@ fn market_prepares_then_opens_and_takes_supplies() {
 }
 
 #[test]
+fn market_crowd_can_be_talked_to_once() {
+    let mut game = Game::new(0);
+    game.sync(0, "2026-10-01");
+    let market = game.snapshot(0).festival_market.unwrap();
+    let person = market.crowd[0].clone();
+    assert!(!person.talked);
+    game.dispatch(
+        Action::TalkFestivalMarket {
+            id: person.id.clone(),
+        },
+        0,
+    )
+    .unwrap();
+    let market = game.snapshot(0).festival_market.unwrap();
+    assert!(market.crowd[0].talked);
+    assert!(matches!(
+        game.dispatch(
+            Action::TalkFestivalMarket {
+                id: person.id,
+            },
+            0
+        ),
+        Err(farm_core::GameError::FestivalMarketAlreadyTalked)
+    ));
+}
+
+#[test]
 fn market_offers_and_gifts_are_limited() {
     let mut game = Game::new(0);
     game.sync(0, "2026-09-21");
