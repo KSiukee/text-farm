@@ -160,6 +160,29 @@ enum PondJobReward {
     Fry,
 }
 
+fn companion_event(a: &PetState, b: &PetState, roll: u64) -> String {
+    let names = format!("{}和{}", a.name, b.name);
+    let index = (roll % 3) as usize;
+    let action = match (a.species, b.species) {
+        (PetSpecies::Dog, PetSpecies::Dog) => [
+            "在院子里追着跑了一圈，最后一起趴在门口喘气",
+            "为了同一根树枝较劲，谁也不肯松口",
+            "并排趴在台阶上，看了一下午云",
+        ][index],
+        (PetSpecies::Cat, PetSpecies::Cat) => [
+            "为了同一个纸箱挤了半天，最后各占一半",
+            "互相舔了舔耳朵，又各自扭头看窗外",
+            "一前一后蹲在窗台上，尾巴挨着尾巴",
+        ][index],
+        _ => [
+            "狗把球推到猫面前，猫看了很久，才伸爪碰了一下",
+            "猫占了狗窝，狗在门口转了两圈，最后趴下了",
+            "一起蹲在食盆边，谁也没先动",
+        ][index],
+    };
+    format!("{names}{action}")
+}
+
 impl Game {
     pub fn dispatch(&mut self, action: Action, now: i64) -> Result<Outcome, GameError> {
         let effects = match action {
@@ -4375,6 +4398,50 @@ impl Game {
         changed
     }
 
+    fn pet_companion_tick(&mut self, now: i64, today: &str) -> bool {
+        if self.state.pets.len() < 2 {
+            return false;
+        }
+        let mut chosen: Option<(usize, usize, String)> = None;
+        for left in 0..self.state.pets.len() {
+            if chosen.is_some() {
+                break;
+            }
+            let a = &self.state.pets[left];
+            if a.boarded || a.sickness.is_some() || a.last_companion_day == today {
+                continue;
+            }
+            for right in (left + 1)..self.state.pets.len() {
+                let b = &self.state.pets[right];
+                if b.boarded
+                    || b.sickness.is_some()
+                    || b.last_companion_day == today
+                    || a.location != b.location
+                {
+                    continue;
+                }
+                let roll = job_roll(
+                    day_seed(today) as i64 ^ 0x434F_4D50,
+                    &format!("{}-{}", a.name, b.name),
+                );
+                chosen = Some((left, right, companion_event(a, b, roll)));
+                break;
+            }
+        }
+        let Some((left, right, text)) = chosen else {
+            return false;
+        };
+        for index in [left, right] {
+            let pet = &mut self.state.pets[index];
+            pet.last_companion_day = today.to_string();
+            pet.last_companion = text.clone();
+            pet.bond = (pet.bond + 1).min(100);
+            pet.mood = (pet.mood + 2).min(100);
+        }
+        self.push_log(now, text);
+        true
+    }
+
     fn pond_job_tick(&mut self, now: i64, today: &str) -> bool {
         if !self.state.pond.built() || self.state.pets.is_empty() {
             return false;
@@ -6937,6 +7004,9 @@ impl Game {
         }
 
         if !self.state.pets.is_empty() && self.pet_tick(now, today) {
+            changed = true;
+        }
+        if self.pet_companion_tick(now, today) {
             changed = true;
         }
         if !self.state.pets.is_empty() && self.ranch_job_tick(now, today) {

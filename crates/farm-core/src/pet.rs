@@ -1473,6 +1473,10 @@ pub struct PetState {
     pub last_event_day: String,
     #[serde(default)]
     pub last_event: String,
+    #[serde(default)]
+    pub last_companion_day: String,
+    #[serde(default)]
+    pub last_companion: String,
 }
 
 impl Default for PetState {
@@ -1517,6 +1521,8 @@ impl Default for PetState {
             milestones: BTreeSet::new(),
             last_event_day: String::new(),
             last_event: String::new(),
+            last_companion_day: String::new(),
+            last_companion: String::new(),
         }
     }
 }

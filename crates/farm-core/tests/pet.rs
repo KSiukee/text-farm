@@ -631,6 +631,28 @@ fn pet_daily_event_is_recorded_once_per_day() {
 }
 
 #[test]
+fn pet_companions_share_one_daily_moment() {
+    let mut game = game_with_pet(PetSpecies::Cat);
+    let mut second = PetState::new("雪球".into(), PetSpecies::Dog, 0).with_id("pet_2".into());
+    second.location = PetLocation::Farm;
+    game.state_mut().pets.push(second);
+
+    game.sync(1_000_000, "2026-10-19");
+    let first = game.state().pets[0].last_companion.clone();
+    let second = game.state().pets[1].last_companion.clone();
+    assert!(!first.is_empty());
+    assert_eq!(first, second);
+    assert!(first.contains("豆豆") && first.contains("雪球"));
+    assert_eq!(game.state().pets[0].last_companion_day, "2026-10-19");
+    assert_eq!(game.state().pets[1].last_companion_day, "2026-10-19");
+
+    let mood = game.state().pets[0].mood;
+    game.sync(2_000_000, "2026-10-19");
+    assert_eq!(game.state().pets[0].last_companion, first);
+    assert!(game.state().pets[0].mood >= mood);
+}
+
+#[test]
 fn pet_fishing_job_settles_once_per_day_and_levels_up() {
     let mut game = game_with_pet(PetSpecies::Dog);
     game.state_mut().pets[0].location = PetLocation::Fishing;

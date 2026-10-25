@@ -5798,6 +5798,7 @@ onUnmounted(() => {
                   </div>
                   <div class="pet-quote">“{{ pet.behavior }}”</div>
                   <div v-if="pet.lastEvent" class="pet-last-event">最近：{{ pet.lastEvent }}</div>
+                  <div v-if="pet.lastCompanion" class="pet-last-event">搭子：{{ pet.lastCompanion }}</div>
                   <div v-if="pet.milestones.length" class="pet-milestones">
                     <span v-for="milestone in pet.milestones" :key="milestone" class="pet-chip milestone">
                       {{ milestone }}

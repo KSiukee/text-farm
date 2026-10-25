@@ -552,6 +552,7 @@ export interface PetView {
   pondJobNeed: number;
   milestones: string[];
   lastEvent: string;
+  lastCompanion: string;
   talentTiers: PetTalentTierView[];
   canFeed: boolean;
   canTouch: boolean;
