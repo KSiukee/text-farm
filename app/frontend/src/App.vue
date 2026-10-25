@@ -2994,6 +2994,7 @@ onUnmounted(() => {
             <span v-if="order.isCraft" class="npc-tag">加工</span>
             <span v-if="order.favorite" class="npc-tag">偏爱</span>
             <span v-if="order.fresh" class="npc-tag">当天摘</span>
+            <span v-if="order.minQuality" class="npc-tag">{{ order.qualityLabel }}</span>
           </span>
           <span class="muted">
             {{ order.expiresDay }} 前 · 仓库 {{ order.have }}/{{ order.qty }}
@@ -3003,6 +3004,9 @@ onUnmounted(() => {
           </span>
           <span v-if="order.fresh && !order.freshToday" class="muted">
             今天还没收 {{ order.itemName }}，这单要当天摘的
+          </span>
+          <span v-if="order.minQuality && !order.qualityReady" class="muted">
+            今天还没收出{{ order.qualityLabel.replace("今日", "") }}的{{ order.itemName }}
           </span>
           <button
             v-if="order.canDeliver"

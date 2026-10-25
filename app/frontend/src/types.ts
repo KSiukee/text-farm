@@ -716,6 +716,9 @@ export interface FarmOrderView {
   favorite: boolean;
   fresh: boolean;
   freshToday: boolean;
+  minQuality: number;
+  qualityLabel: string;
+  qualityReady: boolean;
   isCraft: boolean;
   craft: CraftOrderTrackView | null;
 }

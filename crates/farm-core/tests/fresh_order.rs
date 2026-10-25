@@ -17,6 +17,7 @@ fn fresh_order() -> FarmOrder {
         auto: false,
         favorite: true,
         fresh: true,
+        min_quality: 0,
     }
 }
 

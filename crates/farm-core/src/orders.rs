@@ -76,6 +76,9 @@ pub struct FarmOrder {
     /// 是否要求“当天摘”的作物。
     #[serde(default)]
     pub fresh: bool,
+    /// 今日品相要求（0 不限，2 精品，3 特级）。
+    #[serde(default)]
+    pub min_quality: u8,
 }
 
 impl FarmOrder {
@@ -207,13 +210,21 @@ fn crop_offer(
     let item_key = format!("crop:{}", crop.id);
     let favorite = is_favorite(npc_id, &item_key);
     let fresh = npc_id == "ahe" && (roll >> 48) % 100 < 55;
+    let min_quality = if (npc_id == "xiaoman" || npc_id == "qingxing")
+        && (roll >> 56) % 100 < 45
+    {
+        2
+    } else {
+        0
+    };
     let reward_coins = crop
         .sell_price
         .saturating_mul(u64::from(qty))
         .saturating_mul(premium)
         .saturating_mul(if favorite { 125 } else { 100 })
         .saturating_mul(if fresh { 120 } else { 100 })
-        / 1_000_000;
+        .saturating_mul(if min_quality > 0 { 130 } else { 100 })
+        / 100_000_000;
     FarmOrder {
         id: format!("{today}-{index}"),
         npc_id: npc_id.into(),
@@ -226,13 +237,15 @@ fn crop_offer(
         reward_exp: 10
             + u64::from(qty) * 2
             + if favorite { 5 } else { 0 }
-            + if fresh { 5 } else { 0 },
+            + if fresh { 5 } else { 0 }
+            + if min_quality > 0 { 10 } else { 0 },
         item_key,
         item_name: crop.name.clone(),
         recipe: None,
         auto: false,
         favorite,
         fresh,
+        min_quality,
     }
 }
 
@@ -273,6 +286,7 @@ fn craft_offer(today: &str, level: u32) -> Option<FarmOrder> {
         auto: false,
         favorite,
         fresh: false,
+        min_quality: 0,
     })
 }
 

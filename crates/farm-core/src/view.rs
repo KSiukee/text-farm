@@ -1171,6 +1171,9 @@ pub struct FarmOrderView {
     pub favorite: bool,
     pub fresh: bool,
     pub fresh_today: bool,
+    pub min_quality: u8,
+    pub quality_label: String,
+    pub quality_ready: bool,
     pub craft: Option<CraftOrderTrackView>,
 }
 
@@ -3219,6 +3222,22 @@ impl Game {
             let fresh_today = !order.fresh
                 || self.state.crop_fresh_day.get(&order.crop_id)
                     == Some(&self.state.daily.day);
+            let quality_ready = order.min_quality == 0
+                || self
+                    .state
+                    .crop_quality
+                    .get(&order.crop_id)
+                    .map(|mark| {
+                        mark.day == self.state.daily.day
+                            && mark.quality >= order.min_quality
+                    })
+                    .unwrap_or(false);
+            let quality_label = match order.min_quality {
+                3 => "今日特级",
+                2 => "今日精品",
+                _ => "",
+            }
+            .to_string();
             FarmOrderView {
                 id: order.id.clone(),
                 npc_name: order.npc_name.clone(),
@@ -3231,11 +3250,14 @@ impl Game {
                 reward_coins: order.reward_coins,
                 reward_exp: order.reward_exp,
                 have,
-                can_deliver: have >= order.qty && fresh_today,
+                can_deliver: have >= order.qty && fresh_today && quality_ready,
                 is_craft: order.is_craft(),
                 favorite: order.favorite,
                 fresh: order.fresh,
                 fresh_today,
+                min_quality: order.min_quality,
+                quality_label,
+                quality_ready,
                 craft: order
                     .recipe
                     .map(|_| craft_order_track(self, order, now)),

@@ -39,6 +39,16 @@ fn farm_order_accept_deliver_and_expire() {
             .crop_fresh_day
             .insert(first.crop_id.clone(), today);
     }
+    if first.min_quality > 0 {
+        let today = game.state().daily.day.clone();
+        game.state_mut().crop_quality.insert(
+            first.crop_id.clone(),
+            farm_core::CropQualityMark {
+                day: today,
+                quality: 3,
+            },
+        );
+    }
     let coins = game.state().coins;
     game.dispatch(
         Action::DeliverFarmOrder {

@@ -588,11 +588,35 @@ impl Game {
 
         let produce_key = format!("crop:{}", def.id);
         *self.state.inventory.entry(produce_key).or_insert(0) += qty;
+        let quality_roll = roll_pest(
+            (now.max(0) as u64) ^ 0x71a7_0c3d,
+            index,
+            &def.id,
+        ) % 100;
+        let prime_cut = 5 + u32::from(tier) * 3 + self.state.level / 3;
+        let fine_cut = 25 + u32::from(tier) * 5 + self.state.level;
+        let quality = if quality_roll < u64::from(prime_cut) {
+            3
+        } else if quality_roll < u64::from(fine_cut) {
+            2
+        } else {
+            1
+        };
         let today = self.state.daily.day.clone();
         if !today.is_empty() {
             self.state
                 .crop_fresh_day
-                .insert(def.id.clone(), today);
+                .insert(def.id.clone(), today.clone());
+            let mark = crate::model::CropQualityMark {
+                day: today,
+                quality,
+            };
+            let entry = self.state.crop_quality.entry(def.id.clone()).or_default();
+            if entry.day == mark.day {
+                entry.quality = entry.quality.max(mark.quality);
+            } else {
+                *entry = mark;
+            }
         }
         let seed_returned = plant_seed_level > 0
             && roll_pest((now.max(0) as u64) ^ 0x5eed, index, &def.id) % 100
@@ -629,6 +653,9 @@ impl Game {
         entry.best = entry.best.max(qty);
 
         let mut parts = vec![format!("你收获了 {}×{}", def.name, qty)];
+        if quality >= 2 {
+            parts.push(if quality == 3 { "特级品相" } else { "精品品相" }.into());
+        }
         if yield_bonus > 0 {
             parts.push(format!("土地收成+{}", yield_bonus));
         }
@@ -5699,6 +5726,19 @@ impl Game {
             && self.state.crop_fresh_day.get(&order.crop_id) != Some(&self.state.daily.day)
         {
             return Err(GameError::FarmOrderNotFresh);
+        }
+        if order.min_quality > 0 {
+            let ok = self
+                .state
+                .crop_quality
+                .get(&order.crop_id)
+                .map(|mark| {
+                    mark.day == self.state.daily.day && mark.quality >= order.min_quality
+                })
+                .unwrap_or(false);
+            if !ok {
+                return Err(GameError::FarmOrderNotQuality);
+            }
         }
         if have == order.qty {
             self.state.inventory.remove(&key);

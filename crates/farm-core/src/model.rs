@@ -15,7 +15,7 @@ use crate::room::RoomState;
 use crate::skills::PlayerSkills;
 use crate::workshop::WorkshopState;
 
-pub const SAVE_SCHEMA: u32 = 51;
+pub const SAVE_SCHEMA: u32 = 52;
 pub const MAX_LEVEL: u32 = 30;
 pub const PLOT_COUNT: usize = 8;
 pub const PLOT_MAX_TIER: u8 = 3;
@@ -350,6 +350,13 @@ pub struct CodexEntry {
     pub best: u32,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+pub struct CropQualityMark {
+    pub day: String,
+    pub quality: u8,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameState {
@@ -385,6 +392,9 @@ pub struct GameState {
     /// 每种作物最近一次收获的日期（YYYY-MM-DD），用于“当天摘”订单。
     #[serde(default)]
     pub crop_fresh_day: BTreeMap<String, String>,
+    /// 每种作物今天收出的最高品相（1 普通 / 2 精品 / 3 特级）。
+    #[serde(default)]
+    pub crop_quality: BTreeMap<String, CropQualityMark>,
     /// 每种作物做过多少份标本；键是 crop id。
     #[serde(default)]
     pub specimen_collection: BTreeMap<String, u32>,
@@ -495,6 +505,7 @@ impl Game {
             achievements: BTreeMap::new(),
             handbook_claimed: BTreeSet::new(),
             crop_fresh_day: BTreeMap::new(),
+            crop_quality: BTreeMap::new(),
             specimen_collection: BTreeMap::new(),
             specimen_milestones_claimed: BTreeSet::new(),
             npcs,

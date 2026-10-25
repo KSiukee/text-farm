@@ -130,6 +130,8 @@ pub enum GameError {
     FarmOrderNotEnough,
     #[error("这单要当天摘的，今天还没收这种菜")]
     FarmOrderNotFresh,
+    #[error("这单要今天的精品/特级，品相还不够")]
+    FarmOrderNotQuality,
     #[error("这条村庄订单已经过期")]
     FarmOrderExpired,
     #[error("昵称需要 1–12 个字")]
@@ -392,6 +394,7 @@ impl GameError {
             GameError::FarmOrderLimit => "farm_order_limit",
             GameError::FarmOrderNotEnough => "farm_order_not_enough",
             GameError::FarmOrderNotFresh => "farm_order_not_fresh",
+            GameError::FarmOrderNotQuality => "farm_order_not_quality",
             GameError::FarmOrderExpired => "farm_order_expired",
             GameError::BadPlayerName => "bad_player_name",
             GameError::MysteryOfferInvalid => "mystery_offer_invalid",

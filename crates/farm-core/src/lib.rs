@@ -80,8 +80,8 @@ pub use fishing::{
 pub use level_reward::{LevelRewardView, LEVEL_REWARD_MIN};
 pub use model::{
     facility_cost, facility_name, facility_unlock_level, level_need, plot_tier, plot_unlock_cost,
-    plot_unlock_level, CodexEntry, CropInstance, DailyState, Disaster, DisasterKind, Facilities,
-    Game, GameState, LogEntry, Pest, PestKind, Plot, PlotKind, PlotTier, Region, Season, Settings,
+    plot_unlock_level, CodexEntry, CropInstance, CropQualityMark, DailyState, Disaster,
+    DisasterKind, Facilities, Game, GameState, LogEntry, Pest, PestKind, Plot, PlotKind, PlotTier, Region, Season, Settings,
     Stats, MAX_LEVEL, PLOT_COUNT, PLOT_MAX_TIER, SAVE_SCHEMA,
 };
 pub use mystery::{
