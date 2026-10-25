@@ -6,6 +6,7 @@ use crate::action::FacilityKind;
 use crate::buffs::Buff;
 use crate::content::ContentPack;
 use crate::fishing::FishingState;
+use crate::festival_market::FestivalMarketState;
 use crate::npc::{self, NpcMessage, NpcState};
 use crate::pet::{PetCare, PetState};
 use crate::ranch::RanchState;
@@ -15,7 +16,7 @@ use crate::room::RoomState;
 use crate::skills::PlayerSkills;
 use crate::workshop::WorkshopState;
 
-pub const SAVE_SCHEMA: u32 = 52;
+pub const SAVE_SCHEMA: u32 = 53;
 pub const MAX_LEVEL: u32 = 30;
 pub const PLOT_COUNT: usize = 8;
 pub const PLOT_MAX_TIER: u8 = 3;
@@ -406,6 +407,8 @@ pub struct GameState {
     #[serde(default)]
     pub festival_claims: BTreeMap<String, i32>,
     #[serde(default)]
+    pub festival_market: FestivalMarketState,
+    #[serde(default)]
     pub npc_messages: Vec<NpcMessage>,
     #[serde(default)]
     pub last_npc_tick_at: i64,
@@ -510,6 +513,7 @@ impl Game {
             specimen_milestones_claimed: BTreeSet::new(),
             npcs,
             festival_claims: BTreeMap::new(),
+            festival_market: FestivalMarketState::default(),
             npc_messages: Vec::new(),
             last_npc_tick_at: now,
             season: Season::Spring,

@@ -700,6 +700,49 @@ export interface HandbookView {
   allDone: boolean;
 }
 
+export interface MarketRequestView {
+  id: string;
+  npcName: string;
+  itemName: string;
+  qty: number;
+  have: number;
+  coins: number;
+  contribution: number;
+  supplied: boolean;
+  canSupply: boolean;
+}
+
+export interface MarketOfferView {
+  id: string;
+  itemName: string;
+  price: number;
+  bought: boolean;
+  canBuy: boolean;
+}
+
+export interface MarketGiftView {
+  threshold: number;
+  label: string;
+  itemName: string;
+  qty: number;
+  coins: number;
+  claimed: boolean;
+  canClaim: boolean;
+}
+
+export interface FestivalMarketView {
+  phase: string;
+  name: string;
+  targetDay: string;
+  daysUntil: number;
+  contribution: number;
+  requests: MarketRequestView[];
+  offers: MarketOfferView[];
+  gifts: MarketGiftView[];
+  sold: number;
+  maxSells: number;
+}
+
 export interface FarmOrderView {
   id: string;
   npcName: string;
@@ -1400,6 +1443,7 @@ export interface Snapshot {
   onboarded: boolean;
   daily: DailyView;
   handbook: HandbookView;
+  festivalMarket: FestivalMarketView | null;
   orders: FarmOrdersView;
   mystery: MysteryShopView;
   levelRewards: LevelRewardView[];
@@ -1583,6 +1627,10 @@ export type Action =
   | { type: "cancelWorkshopAuto" }
   | { type: "claimHandbookGoal"; id: string }
   | { type: "askNpcHelp"; npcId: string }
+  | { type: "supplyFestivalMarket"; requestId: string }
+  | { type: "buyFestivalOffer"; offerId: string }
+  | { type: "sellFestivalGoods"; key: string }
+  | { type: "claimFestivalGift"; threshold: number }
   | { type: "buyMysteryOffer"; id: string }
   | { type: "buyFurniture"; def: string }
   | { type: "buyDecor"; id: string }

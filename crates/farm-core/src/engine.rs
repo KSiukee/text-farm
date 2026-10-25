@@ -192,6 +192,16 @@ impl Game {
             }
             Action::GiveNpcGift { npc_id } => self.give_npc_gift(&npc_id, now)?,
             Action::CelebrateFestival => self.celebrate_festival(now)?,
+            Action::SupplyFestivalMarket { request_id } => {
+                self.supply_festival_market(&request_id, now)?
+            }
+            Action::BuyFestivalOffer { offer_id } => {
+                self.buy_festival_offer(&offer_id, now)?
+            }
+            Action::SellFestivalGoods { key } => self.sell_festival_goods(&key, now)?,
+            Action::ClaimFestivalGift { threshold } => {
+                self.claim_festival_gift(threshold, now)?
+            }
             Action::ClaimHandbookGoal { id } => self.claim_handbook_goal(&id, now)?,
             Action::PetCompanion { pet_id } => self.touch_pet(&pet_id, now)?,
             Action::PlayWithPet { pet_id } => self.play_pet(&pet_id, now)?,
@@ -5445,6 +5455,153 @@ impl Game {
         Ok(vec![Effect::Log { text }])
     }
 
+    fn supply_festival_market(
+        &mut self,
+        request_id: &str,
+        now: i64,
+    ) -> Result<Vec<Effect>, GameError> {
+        let today = self.state.daily.day.clone();
+        if !crate::festival_market::active_today(&self.state)
+            || today == self.state.festival_market.target_day
+        {
+            return Err(GameError::FestivalMarketClosed);
+        }
+        let request = self
+            .state
+            .festival_market
+            .request(request_id)
+            .cloned()
+            .ok_or(GameError::FestivalMarketUnavailable)?;
+        if self.state.festival_market.supplied.contains(&request.id) {
+            return Err(GameError::FestivalMarketRequestDone);
+        }
+        let have = self
+            .state
+            .inventory
+            .get(&request.item_key)
+            .copied()
+            .unwrap_or(0);
+        if have < request.qty {
+            return Err(GameError::FestivalMarketNotEnough);
+        }
+        if have == request.qty {
+            self.state.inventory.remove(&request.item_key);
+        } else {
+            self.state
+                .inventory
+                .insert(request.item_key.clone(), have - request.qty);
+        }
+        self.state.coins = self.state.coins.saturating_add(request.coins);
+        self.state.festival_market.contribution = self
+            .state
+            .festival_market
+            .contribution
+            .saturating_add(request.contribution);
+        self.state
+            .festival_market
+            .supplied
+            .insert(request.id.clone());
+        let text = format!(
+            "你给{}的集市备货交了 {}×{}，集市贡献+{}",
+            request.npc_name, request.item_name, request.qty, request.contribution
+        );
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn buy_festival_offer(
+        &mut self,
+        offer_id: &str,
+        now: i64,
+    ) -> Result<Vec<Effect>, GameError> {
+        let today = self.state.daily.day.clone();
+        if !crate::festival_market::active_today(&self.state)
+            || today != self.state.festival_market.target_day
+        {
+            return Err(GameError::FestivalMarketClosed);
+        }
+        let offer = self
+            .state
+            .festival_market
+            .offer(offer_id)
+            .cloned()
+            .ok_or(GameError::FestivalMarketUnavailable)?;
+        if self.state.festival_market.bought.contains(&offer.id) {
+            return Err(GameError::FestivalMarketOfferDone);
+        }
+        if self.state.coins < offer.price {
+            return Err(GameError::NotEnoughCoins { need: offer.price });
+        }
+        self.state.coins -= offer.price;
+        *self.state.inventory.entry(offer.item_key.clone()).or_insert(0) += 1;
+        self.state.festival_market.bought.insert(offer.id.clone());
+        let text = format!(
+            "集市开张，你用 {} 金币买下 {}",
+            offer.price, offer.item_name
+        );
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn sell_festival_goods(&mut self, key: &str, now: i64) -> Result<Vec<Effect>, GameError> {
+        let today = self.state.daily.day.clone();
+        if !crate::festival_market::active_today(&self.state)
+            || today != self.state.festival_market.target_day
+        {
+            return Err(GameError::FestivalMarketClosed);
+        }
+        if self.state.festival_market.sold >= crate::festival_market::MAX_SELLS {
+            return Err(GameError::FestivalMarketSoldOut);
+        }
+        let before = self.state.coins;
+        let mut effects = self.sell(key, 1, now)?;
+        let gained = self.state.coins.saturating_sub(before);
+        let bonus = gained.saturating_mul(30) / 100;
+        self.state.coins = self.state.coins.saturating_add(bonus);
+        self.state.festival_market.sold += 1;
+        let text = format!("集市寄卖：原价 {}，节日多卖 {} 金币", gained, bonus);
+        self.push_log(now, text.clone());
+        effects.push(Effect::Log { text });
+        Ok(effects)
+    }
+
+    fn claim_festival_gift(
+        &mut self,
+        threshold: u32,
+        now: i64,
+    ) -> Result<Vec<Effect>, GameError> {
+        let today = self.state.daily.day.clone();
+        if !crate::festival_market::active_today(&self.state)
+            || today != self.state.festival_market.target_day
+        {
+            return Err(GameError::FestivalMarketClosed);
+        }
+        let gift = self
+            .state
+            .festival_market
+            .gift(threshold)
+            .cloned()
+            .ok_or(GameError::FestivalMarketUnavailable)?;
+        if self.state.festival_market.gifts_claimed.contains(&gift.threshold) {
+            return Err(GameError::FestivalMarketGiftClaimed);
+        }
+        if self.state.festival_market.contribution < gift.threshold {
+            return Err(GameError::FestivalMarketGiftLocked);
+        }
+        self.state
+            .festival_market
+            .gifts_claimed
+            .insert(gift.threshold);
+        self.state.coins = self.state.coins.saturating_add(gift.coins);
+        *self.state.inventory.entry(gift.item_key.clone()).or_insert(0) += gift.qty;
+        let text = format!(
+            "集市回礼：{}，收到 {}×{} 和 {} 金币",
+            gift.label, gift.item_name, gift.qty, gift.coins
+        );
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
     fn claim_handbook_goal(
         &mut self,
         id: &str,
@@ -6394,6 +6551,21 @@ impl Game {
             let text = format!("新的一周牧场评比开始了（{contest_week}）");
             self.push_log(now, text.clone());
             effects.push(Effect::Log { text });
+            changed = true;
+        }
+        if self
+            .state
+            .festival_market
+            .ensure(today, self.state.level, &self.content)
+        {
+            if !self.state.festival_market.name.is_empty() {
+                let text = format!(
+                    "{}快到了，村里在准备集市",
+                    self.state.festival_market.name
+                );
+                self.push_log(now, text.clone());
+                effects.push(Effect::Log { text });
+            }
             changed = true;
         }
         let season = self.state.season;

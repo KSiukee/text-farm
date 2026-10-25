@@ -1186,6 +1186,31 @@ function claimHandbook(id: string) {
   void act({ type: "claimHandbookGoal", id });
 }
 
+const festivalSellKey = ref("");
+const marketSellables = computed(() =>
+  (snapshot.value?.inventory ?? []).filter(
+    (item) => item.sellable && item.qty > 0,
+  ),
+);
+
+function supplyFestivalMarket(requestId: string) {
+  void act({ type: "supplyFestivalMarket", requestId });
+}
+
+function buyFestivalOffer(offerId: string) {
+  void act({ type: "buyFestivalOffer", offerId });
+}
+
+function sellFestivalGoods() {
+  const key = festivalSellKey.value || marketSellables.value[0]?.key;
+  if (!key) return;
+  void act({ type: "sellFestivalGoods", key });
+}
+
+function claimFestivalGift(threshold: number) {
+  void act({ type: "claimFestivalGift", threshold });
+}
+
 function acceptFarmOrder(id: string) {
   void act({ type: "acceptFarmOrder", id });
 }
@@ -3102,6 +3127,124 @@ onUnmounted(() => {
           <span v-else-if="task.claimed" class="ok">已领</span>
           <span class="muted">金币+{{ task.rewardCoins }} · 经验+{{ task.rewardExp }}</span>
         </div>
+      </section>
+
+      <section v-if="snapshot?.festivalMarket" class="panel festival-market">
+        <div class="panel-title">
+          {{ snapshot.festivalMarket.name }} · 集市
+          <span v-if="snapshot.festivalMarket.phase === 'prepare'" class="muted">
+            还有 {{ snapshot.festivalMarket.daysUntil }} 天
+          </span>
+          <span v-else class="ok">今天开市</span>
+        </div>
+        <div class="muted market-lead">
+          村里在准备集市。备货交不交都行，不会扣你别的。
+        </div>
+        <div class="market-contribution">
+          集市贡献 <b>{{ snapshot.festivalMarket.contribution }}</b> / 9
+          <span class="muted">· 节日当天换回礼</span>
+        </div>
+
+        <template v-if="snapshot.festivalMarket.phase === 'prepare'">
+          <div
+            v-for="request in snapshot.festivalMarket.requests"
+            :key="request.id"
+            class="market-row"
+          >
+            <span>
+              <b>{{ request.npcName }}</b> 要 {{ request.itemName }} ×{{ request.qty }}
+            </span>
+            <span class="muted">
+              仓库 {{ request.have }}/{{ request.qty }} · 回礼 {{ request.coins }} 金币 + 贡献
+              {{ request.contribution }}
+            </span>
+            <span v-if="request.supplied" class="ok">已交</span>
+            <button
+              v-else-if="request.canSupply"
+              class="link"
+              type="button"
+              :disabled="acting"
+              @click="supplyFestivalMarket(request.id)"
+            >
+              [交过去]
+            </button>
+            <span v-else class="muted">还不够</span>
+          </div>
+        </template>
+
+        <template v-else>
+          <div class="market-block">
+            <div class="market-block-title">限定摊</div>
+            <div
+              v-for="offer in snapshot.festivalMarket.offers"
+              :key="offer.id"
+              class="market-row"
+            >
+              <span>{{ offer.itemName }}</span>
+              <span class="muted">{{ offer.price }} 金币</span>
+              <span v-if="offer.bought" class="ok">已买</span>
+              <button
+                v-else-if="offer.canBuy"
+                class="link"
+                type="button"
+                :disabled="acting"
+                @click="buyFestivalOffer(offer.id)"
+              >
+                [买下]
+              </button>
+              <span v-else class="muted">金币不够</span>
+            </div>
+          </div>
+
+          <div class="market-block">
+            <div class="market-block-title">
+              寄卖摊 <span class="muted">{{ snapshot.festivalMarket.sold }} / {{ snapshot.festivalMarket.maxSells }}</span>
+            </div>
+            <div class="market-sell-row">
+              <select v-model="festivalSellKey" class="market-select">
+                <option value="">选一件卖</option>
+                <option
+                  v-for="item in marketSellables"
+                  :key="item.key"
+                  :value="item.key"
+                >
+                  {{ item.name }} ×{{ item.qty }}（原价 {{ item.unitPrice }}）
+                </option>
+              </select>
+              <button
+                class="link"
+                type="button"
+                :disabled="acting || !marketSellables.length || snapshot.festivalMarket.sold >= snapshot.festivalMarket.maxSells"
+                @click="sellFestivalGoods"
+              >
+                [寄卖1件 +30%]
+              </button>
+            </div>
+            <div class="muted market-hint">一天最多寄卖 3 次，卖的是仓库里的一件。</div>
+          </div>
+
+          <div class="market-block">
+            <div class="market-block-title">集市回礼</div>
+            <div
+              v-for="gift in snapshot.festivalMarket.gifts"
+              :key="gift.threshold"
+              class="market-row"
+            >
+              <span>{{ gift.label }}：{{ gift.itemName }} ×{{ gift.qty }} + {{ gift.coins }} 金币</span>
+              <span v-if="gift.claimed" class="ok">已领</span>
+              <button
+                v-else-if="gift.canClaim"
+                class="link"
+                type="button"
+                :disabled="acting"
+                @click="claimFestivalGift(gift.threshold)"
+              >
+                [领回礼]
+              </button>
+              <span v-else class="muted">贡献 {{ gift.threshold }}</span>
+            </div>
+          </div>
+        </template>
       </section>
 
       <details v-if="snapshot?.handbook" class="panel handbook-panel" open>

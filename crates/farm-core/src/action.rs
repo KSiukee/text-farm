@@ -382,6 +382,24 @@ pub enum Action {
     },
     /// 参加今天的节日，领一份小回礼（每年一次）。
     CelebrateFestival,
+    /// 给节日集市交一份备货。
+    SupplyFestivalMarket {
+        #[serde(rename = "requestId")]
+        request_id: String,
+    },
+    /// 在节日集市买一件限定品。
+    BuyFestivalOffer {
+        #[serde(rename = "offerId")]
+        offer_id: String,
+    },
+    /// 节日集市寄卖一件库存（+30%，每天 3 次）。
+    SellFestivalGoods {
+        key: String,
+    },
+    /// 领节日集市贡献回礼。
+    ClaimFestivalGift {
+        threshold: u32,
+    },
     ClaimSignIn,
     UpdateProfile {
         #[serde(rename = "ownerName")]

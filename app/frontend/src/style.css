@@ -1565,10 +1565,76 @@ textarea {
   opacity: 1;
 }
 
+.festival-market .panel-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.market-lead {
+  margin: 4px 0 8px;
+  font-size: 12px;
+}
+
+.market-contribution {
+  margin-bottom: 8px;
+  padding: 5px 8px;
+  border-left: 2px solid var(--accent-text);
+  background: var(--panel-soft);
+  font-size: 13px;
+}
+
+.market-block {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dotted var(--line);
+}
+
+.market-block-title {
+  margin-bottom: 5px;
+  color: var(--accent-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.market-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 4px 0;
+  border-bottom: 1px dotted var(--line);
+  font-size: 13px;
+}
+
+.market-sell-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.market-select {
+  flex: 1;
+  min-width: 180px;
+  max-width: 360px;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+}
+
+.market-hint {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
 .handbook-panel summary {
   cursor: pointer;
 }
-
 .handbook-progress {
   margin-left: 8px;
   color: var(--accent-text);

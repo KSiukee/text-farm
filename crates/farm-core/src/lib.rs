@@ -11,6 +11,7 @@ mod daily;
 mod engine;
 mod error;
 mod fishing;
+mod festival_market;
 mod handbook;
 mod level_reward;
 mod model;
@@ -47,6 +48,9 @@ pub use content::{
 };
 pub use daily::{DailyTaskView, DailyView, DAILY_TASKS};
 pub use engine::{Effect, Outcome};
+pub use festival_market::{
+    FestivalMarketState, FestivalMarketView, MarketGiftView, MarketOfferView, MarketRequestView,
+};
 pub use error::{GameError, SaveError};
 pub use room::{
     default_extra_layout, default_layout, floor_styles, furniture_def, room_size, validate_layout,
@@ -56,8 +60,7 @@ pub use room::{
     WALL_HEIGHT_TILES, WALL_HEIGHT_UNITS,
 };
 pub use decor::{DecorKind, DecorOffer, DecorShopState};
-pub use fishing::{
-    apply_manual_bonus, auto_interval_ms_with_skill, bait_saver_pct, bait_weight,
+pub use fishing::{    apply_manual_bonus, auto_interval_ms_with_skill, bait_saver_pct, bait_weight,
     big_fish_bonus_tenths, catch_exp, condition_hint, condition_weight, faces_right, fish,
     fish_behavior, fish_list, fishing_exp_need, golden_floor_price,
     golden_session, king_base_price, market_pct, params, pet_fish_pool, pick_auto_fish,
