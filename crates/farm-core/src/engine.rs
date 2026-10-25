@@ -5447,7 +5447,7 @@ impl Game {
         if self.state.festival_claims.get(name) == Some(&year) {
             return Err(GameError::FestivalUnavailable);
         }
-        let reward = crate::npc_story::festival_reward();
+        let reward = crate::npc_story::festival_reward_for(name);
         self.state.coins = self.state.coins.saturating_add(reward);
         self.state.festival_claims.insert(name.to_string(), year);
         let text = format!("你参加了{name}，收到 {reward} 金币的小回礼");
@@ -5550,7 +5550,9 @@ impl Game {
         {
             return Err(GameError::FestivalMarketClosed);
         }
-        if self.state.festival_market.sold >= crate::festival_market::MAX_SELLS {
+        if self.state.festival_market.sold
+            >= crate::festival_market::max_sells(self.state.festival_market.major)
+        {
             return Err(GameError::FestivalMarketSoldOut);
         }
         let before = self.state.coins;

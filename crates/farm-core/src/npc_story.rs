@@ -556,11 +556,38 @@ pub fn request(id: &str) -> Option<NpcRequest> {
     }
 }
 
-const FESTIVALS: [(&str, &str); 4] = [
+const FESTIVALS: [(&str, &str); 5] = [
     ("03-20", "播种节"),
     ("06-21", "凉夏宴"),
     ("09-23", "丰收节"),
+    ("10-01", "国庆节"),
     ("12-21", "围炉日"),
+];
+
+/// 2020–2040 年春节（农历正月初一）对应的公历日期。
+/// 单机版不需要支持几百年；先钉一张可测的表，比引入农历算法稳。
+const LUNAR_NEW_YEARS: [(i32, &str); 21] = [
+    (2020, "2020-01-25"),
+    (2021, "2021-02-12"),
+    (2022, "2022-02-01"),
+    (2023, "2023-01-22"),
+    (2024, "2024-02-10"),
+    (2025, "2025-01-29"),
+    (2026, "2026-02-17"),
+    (2027, "2027-02-06"),
+    (2028, "2028-01-26"),
+    (2029, "2029-02-13"),
+    (2030, "2030-02-03"),
+    (2031, "2031-01-23"),
+    (2032, "2032-02-11"),
+    (2033, "2033-01-31"),
+    (2034, "2034-02-19"),
+    (2035, "2035-02-08"),
+    (2036, "2036-01-28"),
+    (2037, "2037-02-15"),
+    (2038, "2038-02-04"),
+    (2039, "2039-01-24"),
+    (2040, "2040-02-12"),
 ];
 
 fn month_day(day: &str) -> &str {
@@ -655,6 +682,18 @@ pub fn festival_reward() -> u64 {
     300
 }
 
+pub fn festival_reward_for(name: &str) -> u64 {
+    if matches!(name, "春节" | "国庆节") {
+        500
+    } else {
+        festival_reward()
+    }
+}
+
+pub fn is_major_festival(name: &str) -> bool {
+    matches!(name, "春节" | "国庆节")
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct VillageEvent {
     pub text: &'static str,
@@ -683,10 +722,25 @@ pub fn village_event(day: i64) -> VillageEvent {
 
 pub fn festival_of(day: &str) -> Option<&'static str> {
     let md = month_day(day);
-    FESTIVALS
+    if let Some((_, name)) = FESTIVALS.iter().find(|(date, _)| *date == md) {
+        return Some(*name);
+    }
+    lunar_festival_of(day)
+}
+
+fn lunar_festival_of(day: &str) -> Option<&'static str> {
+    let year = year_of(day);
+    let new_year = LUNAR_NEW_YEARS
         .iter()
-        .find(|(date, _)| *date == md)
-        .map(|(_, name)| *name)
+        .find(|(value, _)| *value == year)
+        .map(|(_, date)| *date)?;
+    if day == new_year {
+        Some("春节")
+    } else if day == crate::orders::add_days(new_year, 14) {
+        Some("元宵节")
+    } else {
+        None
+    }
 }
 
 fn birthday_line(id: &str) -> &'static str {
@@ -706,22 +760,37 @@ fn festival_line(id: &str, festival: &str) -> &'static str {
         ("ahe", "凉夏宴") => "凉夏宴。井里镇着瓜，等会儿切。",
         ("ahe", "丰收节") => "丰收节。今年这垄地，没白忙。",
         ("ahe", "围炉日") => "围炉日。地里没活，手倒闲不住。",
+        ("ahe", "国庆节") => "国庆节，村里挂了旗，晒谷场热闹。",
+        ("ahe", "春节") => "春节，先吃顿好的，地不急。",
+        ("ahe", "元宵节") => "元宵节，晚上去河边看灯。",
         ("xiaoman", "播种节") => "播种节我熬了锅甜粥，等会儿给你盛一碗。",
         ("xiaoman", "凉夏宴") => "凉夏宴我做了冰果酱，酸甜的。",
         ("xiaoman", "丰收节") => "丰收节我把最甜的一篮留出来了。",
         ("xiaoman", "围炉日") => "围炉日我煮了果茶，给你留了位子。",
+        ("xiaoman", "国庆节") => "国庆节我蒸了米糕，来拿一块。",
+        ("xiaoman", "春节") => "春节的糖我熬好了，甜。",
+        ("xiaoman", "元宵节") => "元宵节煮了汤圆，黑芝麻的。",
         ("qingxing", "播种节") => "播种节别光顾着下地，晌午记得歇。",
         ("qingxing", "凉夏宴") => "凉夏宴别贪凉，晚上还要盖薄被。",
         ("qingxing", "丰收节") => "丰收节家家都忙，我得多备点药。",
         ("qingxing", "围炉日") => "围炉日别坐太久，起来走动走动。",
+        ("qingxing", "国庆节") => "国庆节人多，别挤着。",
+        ("qingxing", "春节") => "春节别守太晚，身子要紧。",
+        ("qingxing", "元宵节") => "元宵节灯亮，路也亮，慢点走。",
         ("laotao", "播种节") => "播种节我给锄头换了个新柄。",
         ("laotao", "凉夏宴") => "凉夏宴我在门口支了张桌子，来坐。",
         ("laotao", "丰收节") => "丰收节木匠也歇一天，喝口茶。",
         ("laotao", "围炉日") => "围炉日火旺，来烤烤手。",
+        ("laotao", "国庆节") => "国庆节我把门口修了修，挂盏灯。",
+        ("laotao", "春节") => "春节歇工，锯子也歇。",
+        ("laotao", "元宵节") => "元宵节做个兔子灯，给小孩。",
         ("liuyue", "播种节") => "播种节河风软，鱼也肯开口。",
         ("liuyue", "凉夏宴") => "凉夏宴船上有风，比岸上凉快。",
         ("liuyue", "丰收节") => "丰收节河里的鱼肥，今晚有汤。",
         ("liuyue", "围炉日") => "围炉日河面起雾，船就不出了。",
+        ("liuyue", "国庆节") => "国庆节河上也有灯，船慢些。",
+        ("liuyue", "春节") => "春节河面静，鱼也过年。",
+        ("liuyue", "元宵节") => "元宵节放河灯，好看。",
         _ => "今天是个好日子。",
     }
 }

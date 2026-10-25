@@ -734,6 +734,7 @@ export interface FestivalMarketView {
   phase: string;
   name: string;
   targetDay: string;
+  major: boolean;
   daysUntil: number;
   contribution: number;
   requests: MarketRequestView[];

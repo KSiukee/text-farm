@@ -12,7 +12,25 @@ use crate::model::GameState;
 use crate::orders::add_days;
 
 pub const PREPARE_DAYS: u32 = 3;
+pub const MAJOR_PREPARE_DAYS: u32 = 5;
 pub const MAX_SELLS: u32 = 3;
+pub const MAJOR_MAX_SELLS: u32 = 5;
+
+pub fn prepare_days(name: &str) -> u32 {
+    if crate::npc_story::is_major_festival(name) {
+        MAJOR_PREPARE_DAYS
+    } else {
+        PREPARE_DAYS
+    }
+}
+
+pub fn max_sells(major: bool) -> u32 {
+    if major {
+        MAJOR_MAX_SELLS
+    } else {
+        MAX_SELLS
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
@@ -20,6 +38,7 @@ pub struct FestivalMarketState {
     pub year: i32,
     pub name: String,
     pub target_day: String,
+    pub major: bool,
     pub requests: Vec<MarketRequest>,
     pub supplied: BTreeSet<String>,
     pub contribution: u32,
@@ -68,6 +87,7 @@ pub struct FestivalMarketView {
     pub phase: String,
     pub name: String,
     pub target_day: String,
+    pub major: bool,
     pub days_until: u32,
     pub contribution: u32,
     pub requests: Vec<MarketRequestView>,
@@ -140,6 +160,7 @@ impl FestivalMarketState {
         level: u32,
         content: &ContentPack,
     ) -> Self {
+        let major = crate::npc_story::is_major_festival(name);
         let crops = &content.crops;
         let find = |id: &str| crops.iter().find(|crop| crop.id == id);
         let crop_name = |id: &str| {
@@ -187,8 +208,48 @@ impl FestivalMarketState {
                 contribution: 4,
             });
         }
+        if major {
+            requests.push(MarketRequest {
+                id: "r3".into(),
+                npc_name: "老陶".into(),
+                item_key: if level >= 3 {
+                    "crop:caomei".into()
+                } else {
+                    "seed:luobo".into()
+                },
+                item_name: if level >= 3 {
+                    crop_name("caomei")
+                } else {
+                    format!("{}种子", crop_name("luobo"))
+                },
+                qty: 3,
+                coins: 120,
+                contribution: 3,
+            });
+            requests.push(MarketRequest {
+                id: "r4".into(),
+                npc_name: "六月".into(),
+                item_key: if level >= 5 {
+                    "crop:yumi".into()
+                } else {
+                    "seed:xiaobaicai".into()
+                },
+                item_name: if level >= 5 {
+                    crop_name("yumi")
+                } else {
+                    format!("{}种子", crop_name("xiaobaicai"))
+                },
+                qty: 3,
+                coins: 120,
+                contribution: 3,
+            });
+        }
 
-        let offer_ids = ["caomei", "yumi", "xigua"];
+        let mut offer_ids = vec!["caomei", "yumi", "xigua"];
+        if major {
+            offer_ids.push("putao");
+            offer_ids.push("xiangrikui");
+        }
         let offers = offer_ids
             .iter()
             .filter_map(|id| {
@@ -202,29 +263,51 @@ impl FestivalMarketState {
             })
             .collect();
 
-        let gifts = [
-            (3, "集市回礼·一", "caomei", 100),
-            (6, "集市回礼·二", "yumi", 200),
-            (9, "集市回礼·三", "xigua", 300),
-        ]
-        .into_iter()
-        .filter_map(|(threshold, label, id, coins)| {
-            let crop = find(id)?;
-            Some(MarketGift {
-                threshold,
-                label: label.into(),
-                item_key: format!("seed:{id}"),
-                item_name: format!("{}种子", crop.name),
-                qty: 1,
-                coins,
+        let gifts: Vec<MarketGift> = if major {
+            [
+                (5, "大集回礼·一", "caomei", 150),
+                (10, "大集回礼·二", "yumi", 300),
+                (15, "大集回礼·三", "xigua", 500),
+            ]
+            .into_iter()
+            .filter_map(|(threshold, label, id, coins)| {
+                let crop = find(id)?;
+                Some(MarketGift {
+                    threshold,
+                    label: label.into(),
+                    item_key: format!("seed:{id}"),
+                    item_name: format!("{}种子", crop.name),
+                    qty: 1,
+                    coins,
+                })
             })
-        })
-        .collect();
+            .collect()
+        } else {
+            [
+                (3, "集市回礼·一", "caomei", 100),
+                (6, "集市回礼·二", "yumi", 200),
+                (9, "集市回礼·三", "xigua", 300),
+            ]
+            .into_iter()
+            .filter_map(|(threshold, label, id, coins)| {
+                let crop = find(id)?;
+                Some(MarketGift {
+                    threshold,
+                    label: label.into(),
+                    item_key: format!("seed:{id}"),
+                    item_name: format!("{}种子", crop.name),
+                    qty: 1,
+                    coins,
+                })
+            })
+            .collect()
+        };
 
         Self {
             year,
             name: name.to_string(),
             target_day,
+            major,
             requests,
             supplied: BTreeSet::new(),
             contribution: 0,
@@ -250,9 +333,11 @@ impl FestivalMarketState {
 }
 
 pub fn next_festival(today: &str) -> Option<(&'static str, u32, String)> {
-    (0..=PREPARE_DAYS).find_map(|offset| {
+    (0..=MAJOR_PREPARE_DAYS).find_map(|offset| {
         let day = add_days(today, offset);
-        crate::npc_story::festival_of(&day).map(|name| (name, offset, day))
+        crate::npc_story::festival_of(&day).and_then(|name| {
+            (offset <= prepare_days(name)).then_some((name, offset, day))
+        })
     })
 }
 
@@ -326,12 +411,13 @@ pub fn view(state: &GameState) -> Option<FestivalMarketView> {
         phase: phase.into(),
         name: market.name.clone(),
         target_day: market.target_day.clone(),
+        major: market.major,
         days_until,
         contribution: market.contribution,
         requests,
         offers,
         gifts,
         sold: market.sold,
-        max_sells: MAX_SELLS,
+        max_sells: max_sells(market.major),
     })
 }

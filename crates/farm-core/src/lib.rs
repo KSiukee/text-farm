@@ -48,6 +48,7 @@ pub use content::{
 };
 pub use daily::{DailyTaskView, DailyView, DAILY_TASKS};
 pub use engine::{Effect, Outcome};
+pub use npc_story::{festival_of, festival_reward_for, is_major_festival};
 pub use festival_market::{
     FestivalMarketState, FestivalMarketView, MarketGiftView, MarketOfferView, MarketRequestView,
 };

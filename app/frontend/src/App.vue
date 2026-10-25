@@ -3131,7 +3131,7 @@ onUnmounted(() => {
 
       <section v-if="snapshot?.festivalMarket" class="panel festival-market">
         <div class="panel-title">
-          {{ snapshot.festivalMarket.name }} · 集市
+          {{ snapshot.festivalMarket.name }} · {{ snapshot.festivalMarket.major ? "大集" : "集市" }}
           <span v-if="snapshot.festivalMarket.phase === 'prepare'" class="muted">
             还有 {{ snapshot.festivalMarket.daysUntil }} 天
           </span>

@@ -97,3 +97,36 @@ fn market_offers_and_gifts_are_limited() {
         ));
     }
 }
+
+#[test]
+fn national_day_is_a_major_festival_with_five_day_prep() {
+    assert_eq!(
+        farm_core::festival_of("2026-10-01"),
+        Some("国庆节")
+    );
+    let mut game = Game::new(0);
+    game.sync(0, "2026-09-27");
+    let market = game.snapshot(0).festival_market.expect("国庆大集应出现");
+    assert!(market.major);
+    assert_eq!(market.days_until, 4);
+    assert_eq!(market.requests.len(), 5);
+    assert_eq!(market.max_sells, 5);
+}
+
+#[test]
+fn spring_festival_and_lantern_festival_follow_lunar_dates() {
+    assert_eq!(
+        farm_core::festival_of("2026-02-17"),
+        Some("春节")
+    );
+    assert_eq!(
+        farm_core::festival_of("2026-03-03"),
+        Some("元宵节")
+    );
+    assert_eq!(
+        farm_core::festival_of("2027-02-06"),
+        Some("春节")
+    );
+}
+
+

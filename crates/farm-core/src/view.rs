@@ -2036,7 +2036,7 @@ impl Game {
             let year = crate::npc_story::year_of(&self.state.daily.day);
             NpcFestivalView {
                 name: name.to_string(),
-                reward: crate::npc_story::festival_reward(),
+                reward: crate::npc_story::festival_reward_for(name),
                 claimed: self.state.festival_claims.get(name) == Some(&year),
             }
         });
