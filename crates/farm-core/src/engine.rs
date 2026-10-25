@@ -187,6 +187,8 @@ impl Game {
             Action::StartRanchCraft { recipe } => self.start_ranch_craft(recipe, now)?,
             Action::StartCropCraft { crop_id } => self.start_crop_craft(&crop_id, now)?,
             Action::StartEquipmentCraft { recipe } => self.start_equipment_craft(recipe, now)?,
+            Action::AutoCraftWorkshop { recipe } => self.auto_craft_workshop(recipe, now)?,
+            Action::CancelWorkshopAuto => self.cancel_workshop_auto(now)?,
             Action::StartBaitCraft { recipe } => self.start_bait_craft(recipe, now)?,
             Action::StartFishCraft { recipe } => self.start_fish_craft(recipe, now)?,
             Action::CollectCraft { slot } => self.collect_craft(slot, now)?,
@@ -3909,6 +3911,16 @@ impl Game {
         if now < job.ready_at() {
             return Err(GameError::RanchCraftNotReady);
         }
+        let auto_meta = if let WorkshopJob::Equipment {
+            recipe,
+            auto_order,
+            ..
+        } = &job
+        {
+            (*auto_order == "workshop").then_some(*recipe)
+        } else {
+            None
+        };
         let quality = job.quality();
         let mut bait_output: Option<(fishing::BaitType, u32)> = None;
         let mut fish_output: Option<(String, u32)> = None;
@@ -3987,6 +3999,30 @@ impl Game {
             .skills
             .processing
             .add_exp(exp * u64::from(100 + pct) / 100);
+        let mut report_craft = None;
+        let mut report_log = None;
+        if let Some(recipe) = auto_meta {
+            if let Some(task) = self.state.workshop.auto_task.as_mut() {
+                if task.recipe == recipe {
+                    task.done = task.done.saturating_add(qty);
+                    if task.done >= task.qty {
+                        report_craft = Some((recipe.label().to_string(), task.done));
+                    }
+                }
+            }
+            if let Some((name, finished)) = report_craft {
+                self.state.workshop.auto_task = None;
+                self.state.workshop.auto_report =
+                    Some(crate::workshop::WorkshopAutoReport {
+                        at: now,
+                        product_name: name.clone(),
+                        qty: finished,
+                    });
+                let text = format!("制造屋自动做完成：{name}×{finished}");
+                self.push_log(now, text.clone());
+                report_log = Some(text);
+            }
+        }
         let note = if extra { "，出品+1" } else { "" };
         let destination = if bait_output.is_some() {
             "鱼饵篓"
@@ -3996,12 +4032,16 @@ impl Game {
         let text = format!("你从制造屋取出了{label}×{qty}{note}，放进了{destination}");
         self.push_log(now, text.clone());
         let mut effects = vec![Effect::Log { text }];
+        if let Some(text) = report_log {
+            effects.push(Effect::Log { text });
+        }
         for _ in 0..levels {
             let text = format!("加工等级升到 {} 级", self.state.skills.processing.level);
             self.push_log(now, text.clone());
             effects.push(Effect::Log { text });
         }
         self.advance_auto_orders(now, &mut effects);
+        self.advance_workshop_task(now, &mut effects);
         Ok(effects)
     }
 
@@ -5670,6 +5710,68 @@ impl Game {
                 self.push_log(now, text.clone());
                 effects.push(Effect::Log { text });
             }
+        }
+    }
+
+    fn auto_craft_workshop(
+        &mut self,
+        recipe: EquipmentRecipe,
+        now: i64,
+    ) -> Result<Vec<Effect>, GameError> {
+        if !self.state.workshop.built {
+            return Err(GameError::RanchWorkshopMissing);
+        }
+        if self.state.workshop.auto_task.is_some() {
+            return Err(GameError::WorkshopAutoBusy);
+        }
+        self.state.workshop.auto_task = Some(crate::workshop::WorkshopAutoTask {
+            recipe,
+            qty: 1,
+            done: 0,
+            started_at: now,
+        });
+        let mut started = Vec::new();
+        self.plan_recipe(recipe, now, 0, "workshop", &mut started)?;
+        if started.is_empty() {
+            self.state.workshop.auto_task = None;
+            let text = "自动做没找到能开工的步骤：先看看缺原料还是缺设备".to_string();
+            self.push_log(now, text.clone());
+            return Ok(vec![Effect::Log { text }]);
+        }
+        let text = format!("制造屋开始自动做{}：{}", recipe.label(), started.join("、"));
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn cancel_workshop_auto(&mut self, now: i64) -> Result<Vec<Effect>, GameError> {
+        if self.state.workshop.auto_task.take().is_none() {
+            return Ok(vec![]);
+        }
+        let text = "你取消了制造屋的自动做任务".to_string();
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn advance_workshop_task(&mut self, now: i64, effects: &mut Vec<Effect>) {
+        let Some(task) = self.state.workshop.auto_task.clone() else {
+            return;
+        };
+        if task.done >= task.qty {
+            return;
+        }
+        let mut started = Vec::new();
+        if self
+            .plan_recipe(task.recipe, now, 0, "workshop", &mut started)
+            .is_ok()
+            && !started.is_empty()
+        {
+            let text = format!(
+                "制造屋自动做继续：{} → {}",
+                task.recipe.label(),
+                started.join("、")
+            );
+            self.push_log(now, text.clone());
+            effects.push(Effect::Log { text });
         }
     }
 

@@ -111,8 +111,7 @@ fn craft_order_can_be_sent_to_workshop_and_delivered() {
 }
 
 #[test]
-fn auto_schedule_builds_intermediate_steps() {
-    let mut game = Game::new(0);
+fn auto_schedule_builds_intermediate_steps() {    let mut game = Game::new(0);
     game.state_mut().level = 14;
     game.state_mut().coins = 50_000;
     game.dispatch(Action::BuildWorkshop, 0).unwrap();
@@ -206,4 +205,79 @@ fn auto_schedule_builds_intermediate_steps() {
     assert!(game.state().inventory.contains_key("craft:sugar"));
     assert!(!game.state().orders.active[0].auto);
 }
+
+#[test]
+fn workshop_auto_task_reports_finished_product() {
+    let mut game = Game::new(0);
+    game.state_mut().level = 14;
+    game.state_mut().coins = 50_000;
+    game.dispatch(Action::BuildWorkshop, 0).unwrap();
+    game.dispatch(
+        Action::InstallEquipment {
+            slot: 1,
+            kind: EquipmentKind::Juicer,
+        },
+        0,
+    )
+    .unwrap();
+    game.dispatch(
+        Action::InstallEquipment {
+            slot: 2,
+            kind: EquipmentKind::BoilingPot,
+        },
+        0,
+    )
+    .unwrap();
+    game.state_mut().daily.day = "2026-10-24".into();
+    game.state_mut().inventory.insert("crop:ganzhe".into(), 8);
+    game.dispatch(
+        Action::AutoCraftWorkshop {
+            recipe: EquipmentRecipe::Sugar,
+        },
+        0,
+    )
+    .unwrap();
+    let snapshot = game.snapshot(0);
+    let task = snapshot.workshop.auto_task.as_ref().unwrap();
+    assert_eq!(task.label, "白糖");
+    assert_eq!(task.qty, 1);
+    assert!(snapshot
+        .workshop
+        .equipment_recipes
+        .iter()
+        .any(|recipe| recipe.is_multi));
+
+    let finish_ready = |game: &mut Game, slot: u8| {
+        if let Some(Some(job)) = game.state_mut().workshop.job_mut(slot) {
+            if let WorkshopJob::Equipment { ready_at, .. } = job {
+                *ready_at = 0;
+            }
+        }
+    };
+    finish_ready(&mut game, 1);
+    game.sync(0, "2026-10-24");
+    finish_ready(&mut game, 1);
+    game.sync(0, "2026-10-24");
+    assert!(matches!(
+        game.state().workshop.job(2),
+        Some(WorkshopJob::Equipment {
+            recipe: EquipmentRecipe::Sugar,
+            ..
+        })
+    ));
+    finish_ready(&mut game, 2);
+    game.sync(0, "2026-10-24");
+
+    assert!(game.state().workshop.auto_task.is_none());
+    assert!(game.state().inventory.contains_key("craft:sugar"));
+    let report = game
+        .state()
+        .workshop
+        .auto_report
+        .as_ref()
+        .expect("auto report");
+    assert_eq!(report.product_name, "白糖");
+    assert_eq!(report.qty, 1);
+}
+
 

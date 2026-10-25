@@ -204,6 +204,12 @@ pub enum Action {
     StartEquipmentCraft {
         recipe: crate::workshop::EquipmentRecipe,
     },
+    /// 制造屋自动做：自动拆半成品、自动收取，直到做完一份。
+    AutoCraftWorkshop {
+        recipe: crate::workshop::EquipmentRecipe,
+    },
+    /// 取消当前制造屋自动做。
+    CancelWorkshopAuto,
     StartBaitCraft {
         recipe: crate::fishing::BaitRecipe,
     },

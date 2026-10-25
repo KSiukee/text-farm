@@ -200,6 +200,8 @@ pub enum GameError {
     NpcBirthdayGiftUnavailable,
     #[error("今天已经送过礼物了，明天再来")]
     NpcGiftUnavailable,
+    #[error("制造屋里已有一个自动做任务了")]
+    WorkshopAutoBusy,
     #[error("今天不是节日，或者今年已经庆祝过了")]
     FestivalUnavailable,
     #[error("这个用品已经买了")]
@@ -419,6 +421,7 @@ impl GameError {
             GameError::NpcBirthdayGiftUnavailable => "npc_birthday_gift_unavailable",
             GameError::NpcGiftUnavailable => "npc_gift_unavailable",
             GameError::FestivalUnavailable => "festival_unavailable",
+            GameError::WorkshopAutoBusy => "workshop_auto_busy",
             GameError::PetSupplyOwned => "pet_supply_owned",
             GameError::PetSupplyNotBroken => "pet_supply_not_broken",
             GameError::NoBoardingDebt => "no_boarding_debt",

@@ -261,16 +261,18 @@ function dismissAutoReport() {
 
 /// 自动钓鱼报告只在启动和进入钓鱼页时露一次；新报告才再弹，避免每条鱼都打断。
 function maybeShowAutoReport() {
-  const report = fishing.value?.lastAutoReport;
-  if (!report || report.totalCaught <= 0) return;
-  if (report.at <= autoReportShownAt.value) return;
-  autoReportShownAt.value = report.at;
-  window.localStorage.setItem("farm.autoReportShownAt", String(report.at));
+  const fishingReport = fishing.value?.lastAutoReport;
+  const workshopReport = workshop.value?.autoReport;
+  const at = Math.max(fishingReport?.at ?? 0, workshopReport?.at ?? 0);
+  if (at <= 0) return;
+  if (at <= autoReportShownAt.value) return;
+  autoReportShownAt.value = at;
+  window.localStorage.setItem("farm.autoReportShownAt", String(at));
   autoReportVisible.value = true;
 }
 
 watch(
-  () => snapshot.value?.fishing.lastCatch?.at ?? 0,
+  () => fishing.value?.lastCatch?.at ?? 0,
   () => {
     const current = snapshot.value?.fishing.lastCatch;
     if (!current) return;
@@ -281,6 +283,11 @@ watch(
       catchResult.value = null;
     }, 4_200);
   },
+);
+
+watch(
+  () => workshop.value?.autoReport?.at ?? 0,
+  () => maybeShowAutoReport(),
 );
 
 watch(
@@ -353,8 +360,10 @@ interface WsRecipeRow {
   price: number;
   durationMs: number;
   canStart: boolean;
+  multi?: boolean;
   missing: string;
   start: () => void;
+  auto?: () => void;
 }
 
 interface WsRecipeGroup {
@@ -420,8 +429,10 @@ const wsRecipeGroups = computed<WsRecipeGroup[]>(() => {
     price: recipe.outputPrice,
     durationMs: recipe.durationMs,
     canStart: recipe.canStart,
+    multi: recipe.isMulti,
     missing: recipe.missing,
     start: () => startEquipmentCraft(recipe.recipe),
+    auto: recipe.isMulti ? () => autoCraftWorkshop(recipe.recipe) : undefined,
   }));
   return [
     ["ranch", "牧场配方", ranch],
@@ -713,7 +724,7 @@ function selectTab(tab: string) {
     tab === "神秘商店"
   ) {
     activeTab.value = tab;
-    if (tab === "钓鱼") maybeShowAutoReport();
+    if (tab === "钓鱼" || tab === "制造屋") maybeShowAutoReport();
   } else {
     placeholder(tab);
   }
@@ -1181,6 +1192,14 @@ function startOrderCraft(id: string) {
 
 function autoCraftOrder(id: string) {
   void act({ type: "autoCraftOrder", id });
+}
+
+function autoCraftWorkshop(recipe: EquipmentRecipe) {
+  void act({ type: "autoCraftWorkshop", recipe });
+}
+
+function cancelWorkshopAuto() {
+  void act({ type: "cancelWorkshopAuto" });
 }
 
 function claimLevelReward(level: number) {
@@ -4148,6 +4167,19 @@ onUnmounted(() => {
               </div>
             </div>
 
+            <div v-if="workshop.autoTask" class="ws-card ws-auto-task">
+              <div class="ws-card-head">
+                <b>自动做：{{ workshop.autoTask.label }}</b>
+                <span class="muted">
+                  {{ workshop.autoTask.done }}/{{ workshop.autoTask.qty }} · {{ workshop.autoTask.status }}
+                </span>
+                <button class="link" type="button" :disabled="acting" @click="cancelWorkshopAuto">
+                  [取消]
+                </button>
+              </div>
+              <div class="muted">自动拆半成品、自动收取；做完会出现在自动汇报卡里。</div>
+            </div>
+
             <div class="ws-card ws-today">
               <div class="ws-card-head">
                 <b>今天做这几件</b>
@@ -4307,6 +4339,15 @@ onUnmounted(() => {
                       </span>
                     </span>
                     <button class="link" type="button" :disabled="acting || !row.canStart" @click="row.start()">[开工]</button>
+                  <button
+                    v-if="row.auto"
+                    class="link"
+                    type="button"
+                    :disabled="acting || !!workshop.autoTask"
+                    @click="row.auto()"
+                  >
+                    [自动做]
+                  </button>
                     <span v-if="row.missing" class="muted">{{ row.missing }}</span>
                   </div>
                 </div>
@@ -5819,23 +5860,38 @@ onUnmounted(() => {
     </div>
 
     <div
-      v-if="autoReportVisible && fishing?.lastAutoReport"
+      v-if="autoReportVisible && (fishing?.lastAutoReport || workshop?.autoReport)"
       class="auto-report-overlay"
       @click.self="dismissAutoReport"
     >
       <div class="auto-report-card">
-        <div class="catch-kicker">自动钓鱼报告</div>
-        <div class="auto-report-title">收上来 {{ fishing.lastAutoReport.totalCaught }} 条鱼</div>
-        <div class="fish-stats">
-          <div><b>{{ fishing.lastAutoReport.baitBought }}</b><span>买了鱼饵</span></div>
-          <div><b>{{ fishing.lastAutoReport.baitUsed }}</b><span>消耗鱼饵</span></div>
-          <div><b>{{ fishing.lastAutoReport.coinsSpent }}</b><span>花费金币</span></div>
-          <div><b>{{ fishing.lastAutoReport.totalCaught }}</b><span>渔获条数</span></div>
+        <div class="catch-kicker">
+          {{ fishing?.lastAutoReport ? "自动钓鱼报告" : "自动汇报" }}
         </div>
-        <div class="auto-report-catches">
-          <span v-for="item in fishing.lastAutoReport.catches" :key="item.fishId">
-            {{ item.name }}×{{ item.count }}
-          </span>
+        <template v-if="fishing?.lastAutoReport">
+          <div class="auto-report-title">收上来 {{ fishing.lastAutoReport.totalCaught }} 条鱼</div>
+          <div class="fish-stats">
+            <div><b>{{ fishing.lastAutoReport.baitBought }}</b><span>买了鱼饵</span></div>
+            <div><b>{{ fishing.lastAutoReport.baitUsed }}</b><span>消耗鱼饵</span></div>
+            <div><b>{{ fishing.lastAutoReport.coinsSpent }}</b><span>花费金币</span></div>
+            <div><b>{{ fishing.lastAutoReport.totalCaught }}</b><span>渔获条数</span></div>
+          </div>
+          <div class="auto-report-catches">
+            <span v-for="item in fishing.lastAutoReport.catches" :key="item.fishId">
+              {{ item.name }}×{{ item.count }}
+            </span>
+          </div>
+        </template>
+        <div v-if="workshop?.autoReport" class="auto-report-craft">
+          <div class="auto-report-sub">制造屋自动做完成</div>
+          <div class="auto-report-title">{{ workshop.autoReport.productName }} ×{{ workshop.autoReport.qty }}</div>
+        </div>
+        <div v-if="craftOrders.length" class="auto-report-orders">
+          <div class="auto-report-sub">村民订单进度</div>
+          <div v-for="order in craftOrders" :key="`report-${order.id}`" class="auto-report-order">
+            <span>{{ order.npcName }} · {{ order.itemName }} ×{{ order.qty }}</span>
+            <span class="muted">{{ order.craft?.status }} · {{ order.craft?.detail }}</span>
+          </div>
         </div>
         <button class="link" type="button" @click="dismissAutoReport">[知道了]</button>
       </div>

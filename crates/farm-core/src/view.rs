@@ -427,7 +427,25 @@ pub struct WorkshopRecipeView {
     pub output_name: String,
     pub output_price: u64,
     pub can_start: bool,
+    pub is_multi: bool,
     pub missing: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkshopAutoTaskView {
+    pub label: String,
+    pub qty: u32,
+    pub done: u32,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkshopAutoReportView {
+    pub at: i64,
+    pub product_name: String,
+    pub qty: u32,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -449,6 +467,8 @@ pub struct WorkshopView {
     pub fish_recipes: Vec<FishRecipeView>,
     pub crop_recipes: Vec<CropRecipeView>,
     pub equipment_recipes: Vec<WorkshopRecipeView>,
+    pub auto_task: Option<WorkshopAutoTaskView>,
+    pub auto_report: Option<WorkshopAutoReportView>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -2317,6 +2337,10 @@ impl Game {
                         .map(|item| item.price)
                         .unwrap_or(0),
                     can_start: workshop_state.built && installed && idle && missing.is_empty(),
+                    is_multi: recipe
+                        .inputs()
+                        .iter()
+                        .any(|(key, _)| key.starts_with("craft:")),
                     missing: missing.join("、"),
                 }
             })
@@ -2340,6 +2364,31 @@ impl Game {
             fish_recipes,
             crop_recipes,
             equipment_recipes,
+            auto_task: workshop_state.auto_task.as_ref().map(|task| {
+                let running = (0..workshop_state.slots).any(|slot| {
+                    matches!(
+                        workshop_state.job(slot),
+                        Some(WorkshopJob::Equipment { auto_order, .. }) if auto_order == "workshop"
+                    )
+                });
+                WorkshopAutoTaskView {
+                    label: task.recipe.label().into(),
+                    qty: task.qty,
+                    done: task.done,
+                    status: if running {
+                        "加工中".into()
+                    } else {
+                        "等原料/设备".into()
+                    },
+                }
+            }),
+            auto_report: workshop_state.auto_report.as_ref().map(|report| {
+                WorkshopAutoReportView {
+                    at: report.at,
+                    product_name: report.product_name.clone(),
+                    qty: report.qty,
+                }
+            }),
         };
         let fishing_state = &self.state.fishing;
         let player_fishing = &self.state.skills.fishing;

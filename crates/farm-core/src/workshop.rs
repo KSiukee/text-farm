@@ -652,6 +652,29 @@ pub struct WorkshopState {
     /// 与 equipment 对齐的 1–5 级；旧档默认 1。
     #[serde(default)]
     pub equipment_levels: Vec<u8>,
+    /// 制造屋“自动做”当前任务。
+    #[serde(default)]
+    pub auto_task: Option<WorkshopAutoTask>,
+    /// 最近一次自动做完成报告；给自动汇报卡用。
+    #[serde(default)]
+    pub auto_report: Option<WorkshopAutoReport>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkshopAutoTask {
+    pub recipe: EquipmentRecipe,
+    pub qty: u32,
+    pub done: u32,
+    pub started_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkshopAutoReport {
+    pub at: i64,
+    pub product_name: String,
+    pub qty: u32,
 }
 
 impl Default for WorkshopState {
@@ -668,6 +691,8 @@ impl WorkshopState {
             equipment: Vec::new(),
             jobs: Vec::new(),
             equipment_levels: Vec::new(),
+            auto_task: None,
+            auto_report: None,
         };
         state.ensure();
         state

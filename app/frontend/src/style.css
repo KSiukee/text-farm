@@ -2070,6 +2070,10 @@ textarea {
   margin-bottom: 10px;
 }
 
+.ws-auto-task {
+  border-color: var(--accent-text);
+}
+
 .craft-track {
   padding: 8px 0;
   border-top: 1px dotted var(--line);
@@ -4511,6 +4515,27 @@ footer {
   gap: 6px 12px;
   margin-bottom: 12px;
   color: var(--muted);
+  font-size: 13px;
+}
+
+.auto-report-craft,
+.auto-report-orders {
+  margin: 10px 0;
+  padding-top: 8px;
+  border-top: 1px dotted var(--line);
+}
+
+.auto-report-sub {
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.auto-report-order {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 4px 0;
   font-size: 13px;
 }
 

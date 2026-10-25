@@ -210,7 +210,21 @@ export interface WorkshopRecipeView {
   outputName: string;
   outputPrice: number;
   canStart: boolean;
+  isMulti: boolean;
   missing: string;
+}
+
+export interface WorkshopAutoTaskView {
+  label: string;
+  qty: number;
+  done: number;
+  status: string;
+}
+
+export interface WorkshopAutoReportView {
+  at: number;
+  productName: string;
+  qty: number;
 }
 
 export interface CropRecipeView {
@@ -265,6 +279,8 @@ export interface WorkshopView {
   fishRecipes: FishRecipeView[];
   cropRecipes: CropRecipeView[];
   equipmentRecipes: WorkshopRecipeView[];
+  autoTask: WorkshopAutoTaskView | null;
+  autoReport: WorkshopAutoReportView | null;
 }
 
 export interface RanchOrdersView {
@@ -1525,6 +1541,8 @@ export type Action =
   | { type: "deliverFarmOrder"; id: string }
   | { type: "startOrderCraft"; id: string }
   | { type: "autoCraftOrder"; id: string }
+  | { type: "autoCraftWorkshop"; recipe: EquipmentRecipe }
+  | { type: "cancelWorkshopAuto" }
   | { type: "buyMysteryOffer"; id: string }
   | { type: "buyFurniture"; def: string }
   | { type: "buyDecor"; id: string }
