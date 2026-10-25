@@ -714,10 +714,18 @@ export interface MarketRequestView {
 
 export interface MarketOfferView {
   id: string;
+  vendor: string;
+  stall: string;
   itemName: string;
   price: number;
   bought: boolean;
   canBuy: boolean;
+}
+
+export interface MarketCrowdView {
+  name: string;
+  text: string;
+  named: boolean;
 }
 
 export interface MarketGiftView {
@@ -740,6 +748,7 @@ export interface FestivalMarketView {
   requests: MarketRequestView[];
   offers: MarketOfferView[];
   gifts: MarketGiftView[];
+  crowd: MarketCrowdView[];
   sold: number;
   maxSells: number;
 }

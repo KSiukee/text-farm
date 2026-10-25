@@ -65,6 +65,8 @@ pub struct MarketRequest {
 #[serde(rename_all = "camelCase", default)]
 pub struct MarketOffer {
     pub id: String,
+    pub vendor: String,
+    pub stall: String,
     pub item_key: String,
     pub item_name: String,
     pub price: u64,
@@ -93,8 +95,17 @@ pub struct FestivalMarketView {
     pub requests: Vec<MarketRequestView>,
     pub offers: Vec<MarketOfferView>,
     pub gifts: Vec<MarketGiftView>,
+    pub crowd: Vec<MarketCrowdView>,
     pub sold: u32,
     pub max_sells: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MarketCrowdView {
+    pub name: String,
+    pub text: String,
+    pub named: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -115,6 +126,8 @@ pub struct MarketRequestView {
 #[serde(rename_all = "camelCase")]
 pub struct MarketOfferView {
     pub id: String,
+    pub vendor: String,
+    pub stall: String,
     pub item_name: String,
     pub price: u64,
     pub bought: bool,
@@ -254,8 +267,11 @@ impl FestivalMarketState {
             .iter()
             .filter_map(|id| {
                 let crop = find(id)?;
+                let (vendor, stall) = stall_info(id);
                 Some(MarketOffer {
                     id: format!("o-{id}"),
+                    vendor: vendor.into(),
+                    stall: stall.into(),
                     item_key: format!("seed:{id}"),
                     item_name: format!("{}种子", crop.name),
                     price: (crop.seed_price * 2).max(60),
@@ -332,6 +348,130 @@ impl FestivalMarketState {
     }
 }
 
+fn stall_info(id: &str) -> (&'static str, &'static str) {
+    match id {
+        "caomei" => ("卖种子的阿婆", "种子摊"),
+        "yumi" => ("货郎老周", "杂货担"),
+        "xigua" => ("隔壁村的老把式", "瓜摊"),
+        "putao" => ("绣坊的秦婶", "绣品摊"),
+        "xiangrikui" => ("木匠阿梁", "木器摊"),
+        _ => ("赶集的村人", "临时摊"),
+    }
+}
+
+fn crowd(name: &str, major: bool, phase: &str) -> Vec<MarketCrowdView> {
+    let mut lines = vec![
+        MarketCrowdView {
+            name: "阿禾".into(),
+            text: if phase == "prepare" {
+                "把长凳搬到树下，等会儿有人坐。".into()
+            } else {
+                "菜摊前挤着人，她一边称菜一边笑。".into()
+            },
+            named: true,
+        },
+        MarketCrowdView {
+            name: "小满".into(),
+            text: if phase == "prepare" {
+                "灶上蒸着米糕，香味先到了。".into()
+            } else {
+                "米糕切成一角一角，热气还没散。".into()
+            },
+            named: true,
+        },
+        MarketCrowdView {
+            name: "青杏".into(),
+            text: if phase == "prepare" {
+                "把药箱放在棚子边，怕有人磕着。".into()
+            } else {
+                "给一个扭了脚的孩子看脚，没要钱。".into()
+            },
+            named: true,
+        },
+        MarketCrowdView {
+            name: "老陶".into(),
+            text: if phase == "prepare" {
+                "最后一根横梁敲进去，棚子稳了。".into()
+            } else {
+                "木器摊前有人试凳子，他蹲着看榫头。".into()
+            },
+            named: true,
+        },
+        MarketCrowdView {
+            name: "六月".into(),
+            text: if phase == "prepare" {
+                "河风把灯笼吹得直转。".into()
+            } else {
+                "鱼摊上的水花溅到人脚边，她笑着道歉。".into()
+            },
+            named: true,
+        },
+        MarketCrowdView {
+            name: "卖糖画的老汉".into(),
+            text: if phase == "prepare" {
+                "先熬一锅糖，明天给孩子画兔子。".into()
+            } else {
+                "小铜勺一转，糖丝在石板上变成一只鸟。".into()
+            },
+            named: false,
+        },
+        MarketCrowdView {
+            name: "挑担的婶子".into(),
+            text: if phase == "prepare" {
+                "从邻村赶来，担子还没放下。".into()
+            } else {
+                "担子一头是花布，一头是自家晒的干菜。".into()
+            },
+            named: false,
+        },
+        MarketCrowdView {
+            name: "货郎老周".into(),
+            text: if phase == "prepare" {
+                "摇着拨浪鼓，在村口转了一圈。".into()
+            } else {
+                "拨浪鼓一响，半条街的孩子都围过去了。".into()
+            },
+            named: true,
+        },
+        MarketCrowdView {
+            name: "两个小孩".into(),
+            text: if phase == "prepare" {
+                "围着空摊子跑，被大人喊回来。".into()
+            } else {
+                "一人手里一支糖画，谁也不肯先咬。".into()
+            },
+            named: false,
+        },
+        MarketCrowdView {
+            name: "戴草帽的姑娘".into(),
+            text: if phase == "prepare" {
+                "蹲在地上摆自家编的小竹篮。".into()
+            } else {
+                "竹篮卖得只剩最后两个，她正收摊。".into()
+            },
+            named: false,
+        },
+    ];
+    if major {
+        lines.push(MarketCrowdView {
+            name: "隔壁村的木匠阿梁".into(),
+            text: "挑着两把新椅子来赶集，当场给人修凳腿。".into(),
+            named: true,
+        });
+        lines.push(MarketCrowdView {
+            name: "戏台边".into(),
+            text: if phase == "prepare" {
+                "有人在试锣鼓，断断续续敲了两声。".into()
+            } else {
+                "锣鼓一响，老人孩子都往戏台那边走。".into()
+            },
+            named: false,
+        });
+    }
+    let _ = name;
+    lines
+}
+
 pub fn next_festival(today: &str) -> Option<(&'static str, u32, String)> {
     (0..=MAJOR_PREPARE_DAYS).find_map(|offset| {
         let day = add_days(today, offset);
@@ -384,6 +524,8 @@ pub fn view(state: &GameState) -> Option<FestivalMarketView> {
         .iter()
         .map(|offer| MarketOfferView {
             id: offer.id.clone(),
+            vendor: offer.vendor.clone(),
+            stall: offer.stall.clone(),
             item_name: offer.item_name.clone(),
             price: offer.price,
             bought: market.bought.contains(&offer.id),
@@ -417,6 +559,7 @@ pub fn view(state: &GameState) -> Option<FestivalMarketView> {
         requests,
         offers,
         gifts,
+        crowd: crowd(&market.name, market.major, phase),
         sold: market.sold,
         max_sells: max_sells(market.major),
     })

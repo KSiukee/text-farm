@@ -111,6 +111,9 @@ fn national_day_is_a_major_festival_with_five_day_prep() {
     assert_eq!(market.days_until, 4);
     assert_eq!(market.requests.len(), 5);
     assert_eq!(market.max_sells, 5);
+    assert!(market.crowd.len() >= 10);
+    assert!(!market.offers[0].vendor.is_empty());
+    assert!(!market.offers[0].stall.is_empty());
 }
 
 #[test]
@@ -126,6 +129,23 @@ fn spring_festival_and_lantern_festival_follow_lunar_dates() {
     assert_eq!(
         farm_core::festival_of("2027-02-06"),
         Some("春节")
+    );
+}
+
+#[test]
+fn solar_festivals_follow_the_year_table() {
+    assert_eq!(
+        farm_core::festival_of("2024-09-22"),
+        Some("丰收节")
+    );
+    assert_eq!(farm_core::festival_of("2024-09-23"), None);
+    assert_eq!(
+        farm_core::festival_of("2027-03-21"),
+        Some("播种节")
+    );
+    assert_eq!(
+        farm_core::festival_of("2026-12-22"),
+        Some("围炉日")
     );
 }
 

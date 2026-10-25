@@ -3141,8 +3141,22 @@ onUnmounted(() => {
           村里在准备集市。备货交不交都行，不会扣你别的。
         </div>
         <div class="market-contribution">
-          集市贡献 <b>{{ snapshot.festivalMarket.contribution }}</b> / 9
+          集市贡献 <b>{{ snapshot.festivalMarket.contribution }}</b> /
+          {{ snapshot.festivalMarket.major ? 15 : 9 }}
           <span class="muted">· 节日当天换回礼</span>
+        </div>
+
+        <div class="market-block market-crowd">
+          <div class="market-block-title">集市上</div>
+          <div
+            v-for="(person, index) in snapshot.festivalMarket.crowd"
+            :key="index"
+            class="market-crowd-line"
+          >
+            <b v-if="person.named">{{ person.name }}</b>
+            <span v-else class="market-role">{{ person.name }}</span>
+            <span>{{ person.text }}</span>
+          </div>
         </div>
 
         <template v-if="snapshot.festivalMarket.phase === 'prepare'">
@@ -3180,6 +3194,7 @@ onUnmounted(() => {
               :key="offer.id"
               class="market-row"
             >
+              <span><b>{{ offer.vendor }}</b> · {{ offer.stall }}</span>
               <span>{{ offer.itemName }}</span>
               <span class="muted">{{ offer.price }} 金币</span>
               <span v-if="offer.bought" class="ok">已买</span>

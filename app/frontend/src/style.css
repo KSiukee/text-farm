@@ -1632,6 +1632,24 @@ textarea {
   font-size: 12px;
 }
 
+.market-crowd-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  padding: 3px 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.market-role {
+  color: var(--muted);
+}
+
+.market-crowd-line b {
+  color: var(--accent-text);
+}
+
 .handbook-panel summary {
   cursor: pointer;
 }
