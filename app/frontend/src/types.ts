@@ -839,6 +839,7 @@ export interface NpcView {
   lastSouvenir: string | null;
   birthdayGift: NpcBirthdayGiftView | null;
   freeGift: NpcFreeGiftView | null;
+  help: NpcHelpView;
   plots: NpcPlotView[];
   ranch: NpcRanchAnimalView[];
 }
@@ -847,6 +848,11 @@ export interface NpcFreeGiftView {
   itemName: string;
   have: number;
   canGive: boolean;
+}
+
+export interface NpcHelpView {
+  canHelp: boolean;
+  hint: string;
 }
 
 export interface NpcBirthdayGiftView {
@@ -1561,6 +1567,7 @@ export type Action =
   | { type: "autoCraftWorkshop"; recipe: EquipmentRecipe }
   | { type: "cancelWorkshopAuto" }
   | { type: "claimHandbookGoal"; id: string }
+  | { type: "askNpcHelp"; npcId: string }
   | { type: "buyMysteryOffer"; id: string }
   | { type: "buyFurniture"; def: string }
   | { type: "buyDecor"; id: string }

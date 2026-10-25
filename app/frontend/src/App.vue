@@ -1107,6 +1107,10 @@ function giveNpcGift(npc: NpcView) {
   void act({ type: "giveNpcGift", npcId: npc.id });
 }
 
+function askNpcHelp(npc: NpcView) {
+  void act({ type: "askNpcHelp", npcId: npc.id });
+}
+
 function celebrateFestival() {
   void act({ type: "celebrateFestival" });
 }
@@ -3752,6 +3756,19 @@ onUnmounted(() => {
               >
                 [送给他]
               </button>
+            </div>
+            <div class="npc-help-line">
+              <span class="muted">搭把手：{{ npc.help.hint }}</span>
+              <button
+                v-if="npc.help.canHelp"
+                class="link"
+                type="button"
+                :disabled="acting"
+                @click="askNpcHelp(npc)"
+              >
+                [搭把手]
+              </button>
+              <span v-else class="muted">今天已经搭过手了</span>
             </div>
             <div v-for="plot in npc.plots" :key="plot.index" class="npc-plot">
               <span>{{ plot.label }}[普通]:{{ plot.cropName }}</span>

@@ -580,6 +580,7 @@ try {
       neighborText.includes("慢热") &&
       neighborText.includes("下一段故事：30 好感 · 老锄头"),
   );
+  check("邻居搭把手入口已显示", neighborText.includes("搭把手："));
   check(
     "村中近事已显示",
     (await evaluate(`document.querySelectorAll('.village-event').length`)) === 3,

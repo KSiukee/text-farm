@@ -2127,6 +2127,17 @@ textarea {
   font-size: 12px;
 }
 
+.npc-help-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 4px 0 6px;
+  padding: 4px 8px;
+  border-left: 2px solid var(--line);
+  font-size: 12px;
+}
+
 .panel-title .link {
   margin-left: 8px;
 }

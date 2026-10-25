@@ -95,6 +95,9 @@ pub struct NpcState {
     /// 最近一次随手送礼的日期；每天一次。
     #[serde(default)]
     pub last_gift_day: String,
+    /// 最近一次请这位邻居搭把手的日期；每天一次。
+    #[serde(default)]
+    pub last_help_day: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -155,8 +158,16 @@ pub struct NpcView {
     pub last_souvenir: Option<String>,
     pub birthday_gift: Option<NpcBirthdayGiftView>,
     pub free_gift: Option<NpcFreeGiftView>,
+    pub help: NpcHelpView,
     pub plots: Vec<NpcPlotView>,
     pub ranch: Vec<NpcRanchAnimalView>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NpcHelpView {
+    pub can_help: bool,
+    pub hint: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -232,8 +243,18 @@ pub struct NpcMessageView {
     pub from_player: bool,
 }
 
-pub fn relation(friendship: i32) -> &'static str {
-    if friendship >= 70 {
+fn help_hint(id: &str) -> &'static str {
+    match id {
+        "ahe" => "帮你把正在长的地浇一遍",
+        "xiaoman" => "今天加工会顺手一点",
+        "qingxing" => "帮你看看牲畜",
+        "laotao" => "帮你把设备调顺一点",
+        "liuyue" => "帮你看看鱼塘",
+        _ => "帮你搭把手",
+    }
+}
+
+pub fn relation(friendship: i32) -> &'static str {    if friendship >= 70 {
         "老友"
     } else if friendship >= 40 {
         "熟识"
@@ -328,6 +349,7 @@ pub fn starter(now: i64, content: &ContentPack) -> Vec<NpcState> {
                 choices: BTreeMap::new(),
                 birthday_gift_year: 0,
                 last_gift_day: String::new(),
+                last_help_day: String::new(),
             }
         })
         .collect()
@@ -417,6 +439,10 @@ pub fn view(
         })
     } else {
         None
+    };
+    let help = NpcHelpView {
+        can_help: npc.last_help_day != today,
+        hint: help_hint(&npc.id).to_string(),
     };
     let memories = npc
         .memories
@@ -515,6 +541,7 @@ pub fn view(
         last_souvenir: npc.souvenirs.last().cloned(),
         birthday_gift,
         free_gift,
+        help,
         plots,
         ranch,
     }

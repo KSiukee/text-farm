@@ -352,6 +352,11 @@ pub enum Action {
         #[serde(rename = "npcId")]
         npc_id: String,
     },
+    /// 请邻居搭把手，每天一次。
+    AskNpcHelp {
+        #[serde(rename = "npcId")]
+        npc_id: String,
+    },
     /// 给已触发的故事做二选一。
     NpcStoryChoice {
         #[serde(rename = "npcId")]

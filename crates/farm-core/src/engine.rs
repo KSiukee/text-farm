@@ -44,6 +44,54 @@ use crate::workshop::{
     CROP_BOX_INTERVAL_MS, WORKSHOP_COST, WORKSHOP_LEVEL,
 };
 
+const NPC_HELP_MS: i64 = 4 * 60 * 60 * 1000;
+const XIAOMAN_HELP_BUFF: buffs::BuffDef = buffs::BuffDef {
+    item_key: "npc:xiaoman",
+    id: "npc_help_xiaoman",
+    name: "小满搭把手",
+    desc: "加工速度 +15%，4 小时",
+    stat: buffs::BuffStat::CraftSpeed,
+    value: 15,
+    duration_ms: NPC_HELP_MS,
+};
+const QINGXING_HELP_BUFF: buffs::BuffDef = buffs::BuffDef {
+    item_key: "npc:qingxing",
+    id: "npc_help_qingxing",
+    name: "青杏搭把手",
+    desc: "畜产品品质 +15%，4 小时",
+    stat: buffs::BuffStat::RanchQuality,
+    value: 15,
+    duration_ms: NPC_HELP_MS,
+};
+const LAOTAO_HELP_BUFF: buffs::BuffDef = buffs::BuffDef {
+    item_key: "npc:laotao",
+    id: "npc_help_laotao",
+    name: "老陶搭把手",
+    desc: "加工速度 +10%，4 小时",
+    stat: buffs::BuffStat::CraftSpeed,
+    value: 10,
+    duration_ms: NPC_HELP_MS,
+};
+const LIUYUE_HELP_BUFF: buffs::BuffDef = buffs::BuffDef {
+    item_key: "npc:liuyue",
+    id: "npc_help_liuyue",
+    name: "六月搭把手",
+    desc: "钓鱼经验 +20%，4 小时",
+    stat: buffs::BuffStat::ExpFishing,
+    value: 20,
+    duration_ms: NPC_HELP_MS,
+};
+
+fn job_ready_at_mut(job: &mut WorkshopJob) -> &mut i64 {
+    match job {
+        WorkshopJob::Ranch { ready_at, .. }
+        | WorkshopJob::CropBox { ready_at, .. }
+        | WorkshopJob::Equipment { ready_at, .. }
+        | WorkshopJob::Bait { ready_at, .. }
+        | WorkshopJob::Fish { ready_at, .. } => ready_at,
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum Effect {
@@ -132,6 +180,7 @@ impl Game {
             Action::BuyPetFood { kind } => self.buy_pet_food(kind, now)?,
             Action::FeedPetFood { pet_id, kind } => self.feed_pet_food(&pet_id, kind, now)?,
             Action::ChatWithNpc { npc_id } => self.chat_with_npc(&npc_id, now)?,
+            Action::AskNpcHelp { npc_id } => self.ask_npc_help(&npc_id, now)?,
             Action::HelpNpcRequest { npc_id } => self.help_npc_request(&npc_id, now)?,
             Action::NpcStoryChoice {
                 npc_id,
@@ -4970,6 +5019,94 @@ impl Game {
         let text = format!("你给 {npc_name} 留了句话");
         self.push_log(now, text.clone());
         Ok(vec![Effect::Log { text }])
+    }
+
+    fn ask_npc_help(&mut self, npc_id: &str, now: i64) -> Result<Vec<Effect>, GameError> {
+        let pos = self.npc_pos(npc_id)?;
+        let today = self.state.daily.day.clone();
+        if self.state.npcs[pos].last_help_day == today {
+            return Err(GameError::NpcHelpDone);
+        }
+        let npc_name = self.state.npcs[pos].name.clone();
+        let text = match npc_id {
+            "ahe" => {
+                let mut count = 0;
+                for plot in &mut self.state.plots {
+                    let Some(crop) = plot.crop.as_mut() else {
+                        continue;
+                    };
+                    if crop.ready_at <= now || crop.watered {
+                        continue;
+                    }
+                    let remaining = crop.ready_at - now;
+                    crop.ready_at = now + (remaining * 90 / 100).max(1_000);
+                    crop.watered = true;
+                    count += 1;
+                }
+                if count == 0 {
+                    return Err(GameError::NpcHelpNothing);
+                }
+                format!("阿禾帮你把 {count} 块地浇了一遍，菜长得更稳了")
+            }
+            "xiaoman" => {
+                buffs::apply(&mut self.state.buffs, &XIAOMAN_HELP_BUFF, now);
+                "小满帮你把加工台收拾顺了，今天做东西会快一点".to_string()
+            }
+            "qingxing" => {
+                let mut healed = 0;
+                for pen in &mut self.state.ranch.pens {
+                    if let Some(animal) = pen.animal.as_mut() {
+                        if animal.sick {
+                            animal.sick = false;
+                            animal.health = 100;
+                            healed += 1;
+                        }
+                    }
+                }
+                if healed > 0 {
+                    format!("青杏帮你看了牲畜，{healed} 只已经缓过来了")
+                } else {
+                    buffs::apply(&mut self.state.buffs, &QINGXING_HELP_BUFF, now);
+                    "青杏帮你把畜栏看了一圈，今天牲畜状态会稳一点".to_string()
+                }
+            }
+            "laotao" => {
+                let mut count = 0;
+                for slot in 0..self.state.workshop.slots {
+                    if let Some(Some(job)) = self.state.workshop.jobs.get_mut(usize::from(slot)) {
+                        let ready_at = job_ready_at_mut(job);
+                        if *ready_at > now {
+                            let remaining = *ready_at - now;
+                            *ready_at = now + (remaining * 90 / 100).max(1_000);
+                            count += 1;
+                        }
+                    }
+                }
+                if count > 0 {
+                    format!("老陶帮你把 {count} 个加工槽调顺了，正在做的东西快了一点")
+                } else {
+                    buffs::apply(&mut self.state.buffs, &LAOTAO_HELP_BUFF, now);
+                    "老陶帮你把设备擦了一遍，今天加工会顺一点".to_string()
+                }
+            }
+            "liuyue" => {
+                let count = self.state.pond.ponds.len();
+                for pond in &mut self.state.pond.ponds {
+                    pond.clean();
+                }
+                if count > 0 {
+                    format!("六月帮你把 {count} 个鱼塘看了一遍，水稳了")
+                } else {
+                    buffs::apply(&mut self.state.buffs, &LIUYUE_HELP_BUFF, now);
+                    "六月陪你在河边坐了一会儿，今天钓鱼会顺一点".to_string()
+                }
+            }
+            _ => return Err(GameError::NpcHelpNothing),
+        };
+        self.state.npcs[pos].last_help_day = today;
+        let log = format!("{npc_name}搭了把手：{text}");
+        self.push_log(now, log.clone());
+        Ok(vec![Effect::Log { text: log }])
     }
 
     fn chat_with_npc(&mut self, npc_id: &str, now: i64) -> Result<Vec<Effect>, GameError> {
