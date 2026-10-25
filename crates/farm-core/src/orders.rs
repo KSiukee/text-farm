@@ -254,6 +254,7 @@ fn crop_offer(
 fn craft_offer(today: &str, level: u32) -> Option<FarmOrder> {
     let recipes: Vec<EquipmentRecipe> = EquipmentRecipe::ALL
         .into_iter()
+        .filter(|recipe| recipe.festival().is_none())
         .filter(|recipe| craft_item(recipe.output_key()).is_some())
         .collect();
     if recipes.is_empty() {

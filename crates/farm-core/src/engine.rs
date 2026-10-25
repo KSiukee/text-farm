@@ -3777,6 +3777,11 @@ impl Game {
         if !self.state.workshop.built {
             return Err(GameError::RanchWorkshopMissing);
         }
+        if let Some(festival) = recipe.festival() {
+            if crate::npc_story::festival_of(&self.state.daily.day) != Some(festival) {
+                return Err(GameError::FestivalRecipeUnavailable);
+            }
+        }
         let equipment = recipe.equipment();
         let installed = self
             .state

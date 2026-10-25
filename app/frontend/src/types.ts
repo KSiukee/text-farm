@@ -211,6 +211,8 @@ export interface WorkshopRecipeView {
   outputPrice: number;
   canStart: boolean;
   isMulti: boolean;
+  festival: string | null;
+  available: boolean;
   missing: string;
 }
 

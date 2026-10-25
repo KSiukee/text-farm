@@ -265,10 +265,16 @@ pub enum EquipmentRecipe {
     SunflowerOil,
     Sweater,
     EssentialOil,
+    Dumpling,
+    Tangyuan,
+    Qingtuan,
+    Zongzi,
+    Mooncake,
+    WinterStew,
 }
 
 impl EquipmentRecipe {
-    pub const ALL: [EquipmentRecipe; 18] = [
+    pub const ALL: [EquipmentRecipe; 24] = [
         EquipmentRecipe::CornStarch,
         EquipmentRecipe::CoffeePowder,
         EquipmentRecipe::GinsengSlice,
@@ -287,6 +293,12 @@ impl EquipmentRecipe {
         EquipmentRecipe::SunflowerOil,
         EquipmentRecipe::Sweater,
         EquipmentRecipe::EssentialOil,
+        EquipmentRecipe::Dumpling,
+        EquipmentRecipe::Tangyuan,
+        EquipmentRecipe::Qingtuan,
+        EquipmentRecipe::Zongzi,
+        EquipmentRecipe::Mooncake,
+        EquipmentRecipe::WinterStew,
     ];
 
     pub fn equipment(self) -> EquipmentKind {
@@ -309,6 +321,12 @@ impl EquipmentRecipe {
             EquipmentRecipe::SunflowerOil => EquipmentKind::OilPress,
             EquipmentRecipe::Sweater => EquipmentKind::Loom,
             EquipmentRecipe::EssentialOil => EquipmentKind::Still,
+            EquipmentRecipe::Dumpling
+            | EquipmentRecipe::Tangyuan
+            | EquipmentRecipe::Qingtuan
+            | EquipmentRecipe::Zongzi
+            | EquipmentRecipe::WinterStew => EquipmentKind::BoilingPot,
+            EquipmentRecipe::Mooncake => EquipmentKind::Oven,
         }
     }
 
@@ -332,6 +350,12 @@ impl EquipmentRecipe {
             EquipmentRecipe::SunflowerOil => "葵花籽油",
             EquipmentRecipe::Sweater => "毛衣",
             EquipmentRecipe::EssentialOil => "月见草精油",
+            EquipmentRecipe::Dumpling => "饺子",
+            EquipmentRecipe::Tangyuan => "汤圆",
+            EquipmentRecipe::Qingtuan => "青团",
+            EquipmentRecipe::Zongzi => "粽子",
+            EquipmentRecipe::Mooncake => "月饼",
+            EquipmentRecipe::WinterStew => "围炉汤",
         }
     }
 
@@ -366,6 +390,24 @@ impl EquipmentRecipe {
             EquipmentRecipe::SunflowerOil => &[("crop:xiangrikui", 5)],
             EquipmentRecipe::Sweater => &[("ranch:yarn", 3)],
             EquipmentRecipe::EssentialOil => &[("crop:yuejiancao", 2)],
+            EquipmentRecipe::Dumpling => &[
+                ("crop:xiaobaicai", 2),
+                ("ranch:egg", 2),
+                ("crop:yumi", 1),
+            ],
+            EquipmentRecipe::Tangyuan => &[("crop:yumi", 2), ("ranch:milk", 1)],
+            EquipmentRecipe::Qingtuan => &[("crop:xiaobaicai", 2), ("crop:yumi", 1)],
+            EquipmentRecipe::Zongzi => &[("crop:yumi", 3), ("crop:xiaobaicai", 1)],
+            EquipmentRecipe::Mooncake => &[
+                ("crop:yumi", 2),
+                ("ranch:egg", 1),
+                ("ranch:milk", 1),
+            ],
+            EquipmentRecipe::WinterStew => &[
+                ("crop:luobo", 2),
+                ("crop:xiaobaicai", 2),
+                ("ranch:egg", 1),
+            ],
         }
     }
 
@@ -388,6 +430,12 @@ impl EquipmentRecipe {
             EquipmentRecipe::Latte => 30 * 60 * 1000,
             EquipmentRecipe::Sweater => 4 * 60 * 60 * 1000,
             EquipmentRecipe::EssentialOil => 3 * 60 * 60 * 1000,
+            EquipmentRecipe::Dumpling
+            | EquipmentRecipe::Tangyuan
+            | EquipmentRecipe::Qingtuan
+            | EquipmentRecipe::Zongzi
+            | EquipmentRecipe::Mooncake
+            | EquipmentRecipe::WinterStew => 60 * 60 * 1000,
         }
     }
 
@@ -411,6 +459,25 @@ impl EquipmentRecipe {
             EquipmentRecipe::SunflowerOil => "craft:sunflower_oil",
             EquipmentRecipe::Sweater => "craft:sweater",
             EquipmentRecipe::EssentialOil => "craft:essential_oil",
+            EquipmentRecipe::Dumpling => "craft:dumpling",
+            EquipmentRecipe::Tangyuan => "craft:tangyuan",
+            EquipmentRecipe::Qingtuan => "craft:qingtuan",
+            EquipmentRecipe::Zongzi => "craft:zongzi",
+            EquipmentRecipe::Mooncake => "craft:mooncake",
+            EquipmentRecipe::WinterStew => "craft:winter_stew",
+        }
+    }
+
+    /// 节日限定配方；None 表示平时也能做。
+    pub fn festival(self) -> Option<&'static str> {
+        match self {
+            EquipmentRecipe::Dumpling => Some("春节"),
+            EquipmentRecipe::Tangyuan => Some("元宵节"),
+            EquipmentRecipe::Qingtuan => Some("清明节"),
+            EquipmentRecipe::Zongzi => Some("端午节"),
+            EquipmentRecipe::Mooncake => Some("中秋节"),
+            EquipmentRecipe::WinterStew => Some("围炉日"),
+            _ => None,
         }
     }
 }
@@ -512,6 +579,36 @@ pub const CRAFT_ITEMS: &[CraftItemDef] = &[
         key: "craft:essential_oil",
         name: "月见草精油",
         price: 1200,
+    },
+    CraftItemDef {
+        key: "craft:dumpling",
+        name: "饺子",
+        price: 222,
+    },
+    CraftItemDef {
+        key: "craft:tangyuan",
+        name: "汤圆",
+        price: 360,
+    },
+    CraftItemDef {
+        key: "craft:qingtuan",
+        name: "青团",
+        price: 132,
+    },
+    CraftItemDef {
+        key: "craft:zongzi",
+        name: "粽子",
+        price: 166,
+    },
+    CraftItemDef {
+        key: "craft:mooncake",
+        name: "月饼",
+        price: 405,
+    },
+    CraftItemDef {
+        key: "craft:winter_stew",
+        name: "围炉汤",
+        price: 173,
     },
     CraftItemDef {
         key: "craft:fish_jerky",

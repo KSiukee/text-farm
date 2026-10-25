@@ -362,6 +362,8 @@ interface WsRecipeRow {
   durationMs: number;
   canStart: boolean;
   multi?: boolean;
+  festival?: string | null;
+  available?: boolean;
   missing: string;
   start: () => void;
   auto?: () => void;
@@ -431,6 +433,8 @@ const wsRecipeGroups = computed<WsRecipeGroup[]>(() => {
     durationMs: recipe.durationMs,
     canStart: recipe.canStart,
     multi: recipe.isMulti,
+    festival: recipe.festival,
+    available: recipe.available,
     missing: recipe.missing,
     start: () => startEquipmentCraft(recipe.recipe),
     auto: recipe.isMulti ? () => autoCraftWorkshop(recipe.recipe) : undefined,
@@ -4679,7 +4683,11 @@ onUnmounted(() => {
                   <div v-if="!group.rows.length" class="muted">这个分类暂时没有能开工的配方。</div>
                   <div v-for="row in group.rows" :key="row.key" class="ranch-recipe">
                     <span class="ranch-recipe-text">
-                      {{ row.label }}：{{ row.inputText }} → {{ row.outputName }}
+                      {{ row.label }}<span
+                        v-if="row.festival"
+                        class="festival-recipe-tag"
+                        :class="{ off: row.available === false }"
+                      >{{ row.festival }}限定</span>：{{ row.inputText }} → {{ row.outputName }}
                       <span class="muted">
                         <template v-if="row.price">（{{ row.price }} 金币 · 约 {{ formatRemain(row.durationMs) }}）</template>
                         <template v-else>（约 {{ formatRemain(row.durationMs) }}）</template>

@@ -223,7 +223,7 @@ fn player_view_shows_buffs_and_food_menu() {
     use_item(&mut game, JUICE_PLANT_EXP, 0);
     let snapshot = game.snapshot(0);
     assert_eq!(snapshot.skills.buffs.len(), 1);
-    assert_eq!(snapshot.skills.buff_items.len(), 13);
+    assert_eq!(snapshot.skills.buff_items.len(), 19);
     assert!(snapshot
         .skills
         .buff_items

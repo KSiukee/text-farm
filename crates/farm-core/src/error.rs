@@ -325,6 +325,8 @@ pub enum GameError {
     WorkshopEquipmentMissing,
     #[error("这个配方不属于这台设备")]
     WorkshopEquipmentMismatch,
+    #[error("这是节日限定配方，今天不能做")]
+    FestivalRecipeUnavailable,
     #[error("这台设备已经到 5 级了")]
     WorkshopUpgradeMax,
     #[error("手工台不能升级")]
@@ -515,6 +517,7 @@ impl GameError {
             GameError::WorkshopSlotOccupied => "workshop_slot_occupied",
             GameError::WorkshopEquipmentMissing => "workshop_equipment_missing",
             GameError::WorkshopEquipmentMismatch => "workshop_equipment_mismatch",
+            GameError::FestivalRecipeUnavailable => "festival_recipe_unavailable",
             GameError::WorkshopUpgradeMax => "workshop_upgrade_max",
             GameError::WorkshopUpgradeManual => "workshop_upgrade_manual",
             GameError::NoPetMedicine => "no_pet_medicine",

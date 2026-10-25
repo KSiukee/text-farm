@@ -428,6 +428,8 @@ pub struct WorkshopRecipeView {
     pub output_price: u64,
     pub can_start: bool,
     pub is_multi: bool,
+    pub festival: Option<String>,
+    pub available: bool,
     pub missing: String,
 }
 
@@ -2345,6 +2347,10 @@ impl Game {
             .iter()
             .map(|recipe| {
                 let equipment = recipe.equipment();
+                let festival = recipe.festival();
+                let available = festival
+                    .map(|name| crate::npc_story::festival_of(&self.state.daily.day) == Some(name))
+                    .unwrap_or(true);
                 let installed = workshop_state
                     .equipment
                     .iter()
@@ -2360,6 +2366,12 @@ impl Game {
                     if have < *need {
                         missing.push(format!("缺{name}×{}", need - have));
                     }
+                }
+                if !available {
+                    missing.insert(
+                        0,
+                        format!("只有{}当天能做", festival.unwrap_or("节日")),
+                    );
                 }
                 if !installed {
                     missing.insert(0, format!("还没装{}", equipment.label()));
@@ -2377,11 +2389,17 @@ impl Game {
                     output_price: craft_item(recipe.output_key())
                         .map(|item| item.price)
                         .unwrap_or(0),
-                    can_start: workshop_state.built && installed && idle && missing.is_empty(),
+                    can_start: workshop_state.built
+                        && available
+                        && installed
+                        && idle
+                        && missing.is_empty(),
                     is_multi: recipe
                         .inputs()
                         .iter()
                         .any(|(key, _)| key.starts_with("craft:")),
+                    festival: festival.map(str::to_string),
+                    available,
                     missing: missing.join("、"),
                 }
             })

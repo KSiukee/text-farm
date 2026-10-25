@@ -60,7 +60,7 @@ pub struct BuffDef {
 const MIN: i64 = 60_000;
 
 /// 可吃喝的加成食物；只列已经存在的成品。
-pub const BUFF_ITEMS: [BuffDef; 13] = [
+pub const BUFF_ITEMS: [BuffDef; 19] = [
     BuffDef {
         item_key: "craft:strawberry_juice",
         id: "buff_plant_exp",
@@ -178,6 +178,60 @@ pub const BUFF_ITEMS: [BuffDef; 13] = [
         value: 25,
         duration_ms: 120 * MIN,
     },
+    BuffDef {
+        item_key: "craft:dumpling",
+        id: "buff_dumpling",
+        name: "饺子",
+        desc: "四专业经验 +10%，60 分钟",
+        stat: BuffStat::ExpAll,
+        value: 10,
+        duration_ms: 60 * MIN,
+    },
+    BuffDef {
+        item_key: "craft:tangyuan",
+        id: "buff_tangyuan",
+        name: "汤圆",
+        desc: "四专业经验 +10%，60 分钟",
+        stat: BuffStat::ExpAll,
+        value: 10,
+        duration_ms: 60 * MIN,
+    },
+    BuffDef {
+        item_key: "craft:qingtuan",
+        id: "buff_qingtuan",
+        name: "青团",
+        desc: "种植经验 +15%，30 分钟",
+        stat: BuffStat::ExpPlanting,
+        value: 15,
+        duration_ms: 30 * MIN,
+    },
+    BuffDef {
+        item_key: "craft:zongzi",
+        id: "buff_zongzi",
+        name: "粽子",
+        desc: "钓鱼经验 +15%，30 分钟",
+        stat: BuffStat::ExpFishing,
+        value: 15,
+        duration_ms: 30 * MIN,
+    },
+    BuffDef {
+        item_key: "craft:mooncake",
+        id: "buff_mooncake",
+        name: "月饼",
+        desc: "四专业经验 +15%，60 分钟",
+        stat: BuffStat::ExpAll,
+        value: 15,
+        duration_ms: 60 * MIN,
+    },
+    BuffDef {
+        item_key: "craft:winter_stew",
+        id: "buff_winter_stew",
+        name: "围炉汤",
+        desc: "四专业经验 +20%，90 分钟",
+        stat: BuffStat::ExpAll,
+        value: 20,
+        duration_ms: 90 * MIN,
+    },
 ];
 
 pub fn buff_item(key: &str) -> Option<&'static BuffDef> {
@@ -264,7 +318,7 @@ mod tests {
 
     #[test]
     fn food_table_is_wired_to_existing_items() {
-        assert_eq!(BUFF_ITEMS.len(), 13);
+        assert_eq!(BUFF_ITEMS.len(), 19);
         assert_eq!(buff_item("craft:strawberry_juice").unwrap().value, 20);
         assert!(buff_item("craft:not_a_food").is_none());
         for def in BUFF_ITEMS {

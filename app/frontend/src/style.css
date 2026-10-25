@@ -1777,6 +1777,19 @@ textarea {
   font-size: 12px;
 }
 
+.festival-recipe-tag {
+  display: inline-block;
+  margin: 0 3px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  color: var(--accent-text);
+  font-size: 11px;
+}
+
+.festival-recipe-tag.off {
+  color: var(--muted);
+}
+
 .handbook-panel summary {
   cursor: pointer;
 }
