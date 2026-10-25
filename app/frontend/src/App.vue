@@ -4807,198 +4807,249 @@ onUnmounted(() => {
             </div>
 
             <div v-if="pet" class="pet-layout">
-            <div class="pet-portrait">
-              <div class="pet-portrait-stage">
-                <img
-                  class="pet-portrait-img"
-                  :class="[petAnim, { 'pet-still': pet.boarded || pet.sickness }]"
-                  :src="pet.image"
-                  :alt="pet.species"
-                />
-                <span v-if="petEmote" class="pet-emote">{{ petEmote }}</span>
+              <div class="pet-portrait">
+                <div class="pet-portrait-stage">
+                  <img
+                    class="pet-portrait-img"
+                    :class="[petAnim, { 'pet-still': pet.boarded || pet.sickness }]"
+                    :src="pet.image"
+                    :alt="pet.species"
+                  />
+                  <span v-if="petEmote" class="pet-emote">{{ petEmote }}</span>
+                </div>
+                <div class="pet-name">{{ pet.speciesEmoji }} {{ pet.name }}</div>
+                <div class="pet-chips">
+                  <span class="pet-chip">{{ pet.breedLabel }}</span>
+                  <span class="pet-chip">{{ pet.temperamentLabel }}</span>
+                  <span class="pet-chip">{{ pet.stageLabel }}</span>
+                  <span class="pet-chip">Lv{{ pet.level }}</span>
+                  <span class="pet-chip">第 {{ pet.ageDays }} 天</span>
+                  <span class="pet-chip">{{ pet.moodLabel }}</span>
+                </div>
               </div>
-              <div class="pet-name">{{ pet.speciesEmoji }} {{ pet.name }}</div>
-              <div class="muted">
-                {{ pet.breedLabel }} · {{ pet.temperamentLabel }} · {{ pet.stageLabel }} · Lv{{ pet.level }} ·
-                第 {{ pet.ageDays }} 天 · {{ pet.moodLabel }}
-              </div>
-              <div class="pet-personality">
-                个性：{{ pet.personality }} · 小癖好：{{ pet.quirk }}
-                <span class="muted">{{ pet.quirkLine }}</span>
-              </div>
-              <div class="pet-skill">
-                <strong>品种技能 · {{ pet.skill }}</strong>
-                <span class="muted">{{ pet.skillDescription }}</span>
-              </div>
-              <div class="pet-activity">
-                正在：{{ pet.activityLabel }}
-                <span class="muted">{{ pet.activityLine }}</span>
-                <span v-if="pet.activityStreak >= 2" class="muted">连续 {{ pet.activityStreak }} 天</span>
-              </div>
-              <div class="pet-behavior">“{{ pet.behavior }}”</div>
-              <div v-if="pet.location === 'ranch'" class="pet-job">
-                牧场岗位 Lv{{ pet.jobLevel }}
-                <span class="muted">（{{ pet.jobExp }}/{{ pet.jobNeed }}）· 每天结算一次看护收益</span>
-              </div>
-              <div v-else-if="pet.location === 'fishing'" class="pet-job">
-                钓鱼地岗位 Lv{{ pet.fishingJobLevel }}
-                <span class="muted">（{{ pet.fishingJobExp }}/{{ pet.fishingJobNeed }}）· 每天结算一次岸边收益</span>
-              </div>
-              <div v-else class="pet-job muted">
-                牧场岗位 Lv{{ pet.jobLevel }} · 钓鱼地岗位 Lv{{ pet.fishingJobLevel }} ·
-                派去对应地点后每天有收益
+
+              <div class="pet-info">
+                <div v-if="pet.boarded" class="warn pet-note">
+                  {{ pet.name }}在宠物院子寄养中，每月自动扣 {{ pet.boardingFee }} 金币。
+                  <button
+                    class="link"
+                    type="button"
+                    :disabled="acting || activePets.length >= 3"
+                    @click="setPetBoarded(pet.id, false)"
+                  >
+                    [接回]
+                  </button>
+                </div>
+                <div v-if="pet.sickness" class="warn pet-note">
+                  {{ pet.name }}生病了：{{ pet.sickness }}
+                  <button class="link" type="button" :disabled="acting" @click="petAction('healPet')">
+                    [看兽医 500]
+                  </button>
+                  <button
+                    v-if="petCare && petCare.medicine > 0"
+                    class="link"
+                    type="button"
+                    :disabled="acting"
+                    @click="usePetMedicine"
+                  >
+                    [用药品 ×{{ petCare.medicine }}]
+                  </button>
+                </div>
+
+                <section class="pet-card">
+                  <div class="pet-card-head">
+                    <b>状态</b>
+                    <span class="muted">经验 {{ pet.exp }}/{{ pet.expNeed }}</span>
+                  </div>
+                  <div class="pet-bars">
+                    <div class="pet-bar">
+                      <span>饱食 {{ pet.satiety }}</span>
+                      <i><b :style="{ width: `${pet.satiety}%` }"></b></i>
+                    </div>
+                    <div class="pet-bar">
+                      <span>精力 {{ pet.energy }}</span>
+                      <i><b :style="{ width: `${pet.energy}%` }"></b></i>
+                    </div>
+                    <div class="pet-bar">
+                      <span>心情 {{ pet.mood }}</span>
+                      <i><b :style="{ width: `${pet.mood}%` }"></b></i>
+                    </div>
+                    <div class="pet-bar">
+                      <span>亲密 {{ pet.bond }}</span>
+                      <i><b :style="{ width: `${pet.bond}%` }"></b></i>
+                    </div>
+                    <div class="pet-bar">
+                      <span>健康 {{ pet.health }}</span>
+                      <i><b :style="{ width: `${pet.health}%` }"></b></i>
+                    </div>
+                  </div>
+                  <div class="pet-skills">
+                    <div class="pet-bar">
+                      <span>挖掘 Lv{{ pet.digSkill }}</span>
+                      <i><b :style="{ width: `${Math.min(100, (pet.digExp / Math.max(1, pet.digNeed)) * 100)}%` }"></b></i>
+                      <small>{{ pet.digExp }}/{{ pet.digNeed }}</small>
+                    </div>
+                    <div class="pet-bar">
+                      <span>守卫 Lv{{ pet.guardSkill }}</span>
+                      <i><b :style="{ width: `${Math.min(100, (pet.guardExp / Math.max(1, pet.guardNeed)) * 100)}%` }"></b></i>
+                      <small>{{ pet.guardExp }}/{{ pet.guardNeed }}</small>
+                    </div>
+                  </div>
+                </section>
+
+                <template v-if="!pet.boarded">
+                  <section class="pet-card">
+                    <div class="pet-card-head">
+                      <b>日常</b>
+                      <span class="muted">喂食 / 摸摸 / 玩耍 / 挖种子</span>
+                    </div>
+                    <div class="row pet-actions">
+                      <select v-model="feedCropId">
+                        <option v-for="item in produce" :key="item.key" :value="item.key.replace('crop:', '')">
+                          {{ item.name }} ×{{ item.qty }}
+                        </option>
+                      </select>
+                      <button class="link" type="button" :disabled="acting || !produce.length" @click="feedPet">
+                        [喂食]
+                      </button>
+                      <button
+                        class="link"
+                        type="button"
+                        :disabled="acting || !pet.canTouch"
+                        @click="petAction('petCompanion')"
+                      >
+                        [摸摸]
+                        <span v-if="!pet.canTouch" class="muted">{{ formatCooldown(pet.touchRemainingMs) }}</span>
+                      </button>
+                      <button
+                        class="link"
+                        type="button"
+                        :disabled="acting || !pet.canPlay"
+                        @click="petAction('playWithPet')"
+                      >
+                        [玩耍]
+                        <span v-if="!pet.canPlay && pet.playRemainingMs > 0" class="muted">
+                          {{ formatCooldown(pet.playRemainingMs) }}
+                        </span>
+                      </button>
+                      <button
+                        class="link"
+                        type="button"
+                        :disabled="acting || !pet.canDig"
+                        @click="petAction('digWithPet')"
+                      >
+                        [挖种子]
+                        <span v-if="!pet.canDig && pet.digRemainingMs > 0" class="muted">
+                          {{ formatCooldown(pet.digRemainingMs) }}
+                        </span>
+                      </button>
+                      <span v-if="pet.digRemainingMs === 0 && pet.location === 'farm'" class="muted">
+                        挖种子已就绪
+                      </span>
+                    </div>
+                    <div class="row pet-actions">
+                      <button
+                        class="link"
+                        type="button"
+                        :disabled="acting || !pet.canUseSkill"
+                        @click="usePetSkill"
+                      >
+                        [主动 · {{ pet.activeSkill }}]
+                        <span v-if="!pet.canUseSkill && pet.skillRemainingMs > 0" class="muted">
+                          {{ formatCooldown(pet.skillRemainingMs) }}
+                        </span>
+                      </button>
+                      <span class="muted pet-action-hint">{{ pet.activeDescription }}</span>
+                    </div>
+                  </section>
+
+                  <section class="pet-card">
+                    <div class="pet-card-head">
+                      <b>地点与岗位</b>
+                      <span class="muted">每天结算一个岗位</span>
+                    </div>
+                    <div class="row pet-actions">
+                      <button class="rate-btn" :class="{ active: pet.location === 'farm' }" type="button" :disabled="acting" @click="setPetLocation(pet.id, 'farm')">农场</button>
+                      <button class="rate-btn" :class="{ active: pet.location === 'ranch' }" type="button" :disabled="acting" @click="setPetLocation(pet.id, 'ranch')">牧场</button>
+                      <button class="rate-btn" :class="{ active: pet.location === 'fishing' }" type="button" :disabled="acting" @click="setPetLocation(pet.id, 'fishing')">钓鱼地</button>
+                      <span class="muted">鱼塘岗位以后再加</span>
+                    </div>
+                    <div class="pet-job-line">
+                      <template v-if="pet.location === 'ranch'">
+                        牧场岗位 Lv{{ pet.jobLevel }}
+                        <span class="muted">（{{ pet.jobExp }}/{{ pet.jobNeed }}）· 每天结算一次看护收益</span>
+                      </template>
+                      <template v-else-if="pet.location === 'fishing'">
+                        钓鱼地岗位 Lv{{ pet.fishingJobLevel }}
+                        <span class="muted">（{{ pet.fishingJobExp }}/{{ pet.fishingJobNeed }}）· 每天结算一次岸边收益</span>
+                      </template>
+                      <template v-else>
+                        牧场岗位 Lv{{ pet.jobLevel }} · 钓鱼地岗位 Lv{{ pet.fishingJobLevel }}
+                        <span class="muted">· 派去对应地点后每天有收益</span>
+                      </template>
+                    </div>
+                    <details class="pet-subdetails">
+                      <summary>岗位说明</summary>
+                      <p class="muted">
+                        挖到的种子直接进仓库；守卫会减少偷菜损失，狗狗有低概率把偷菜贼吓跑。
+                        钓鱼地岗位：猫有概率叼回一条已点亮图鉴的鱼，狗会找鱼饵；每天只结算一个岗位。
+                      </p>
+                    </details>
+                  </section>
+                </template>
+
+                <section class="pet-card pet-profile">
+                  <div class="pet-card-head">
+                    <b>档案</b>
+                    <span class="muted">个性 / 小癖好 / 品种技能</span>
+                  </div>
+                  <div class="pet-tags">
+                    <span class="pet-tag">个性：{{ pet.personality }}</span>
+                    <span class="pet-tag">小癖好：{{ pet.quirk }}</span>
+                    <span class="pet-tag">品种技能 · {{ pet.skill }}</span>
+                    <span class="pet-tag">正在：{{ pet.activityLabel }}</span>
+                  </div>
+                  <div class="pet-quote">“{{ pet.behavior }}”</div>
+                  <details class="pet-subdetails">
+                    <summary>详细说明</summary>
+                    <p class="muted">
+                      {{ pet.quirkLine }} · {{ pet.activityLine }}
+                      <span v-if="pet.activityStreak >= 2">· 连续 {{ pet.activityStreak }} 天</span>
+                    </p>
+                    <p class="muted">{{ pet.skillDescription }}</p>
+                  </details>
+                </section>
+
+                <details class="pet-card pet-manage pet-fold">
+                  <summary>
+                    <b>管理</b>
+                    <span class="muted">改名 / 寄养 / 放生</span>
+                  </summary>
+                  <div class="row pet-actions">
+                    <input v-model="renameName" maxlength="12" placeholder="改个名字" />
+                    <button class="link" type="button" :disabled="acting || !renameName.trim()" @click="renamePet">
+                      [改名]
+                    </button>
+                  </div>
+                  <div class="row pet-actions">
+                    <button
+                      v-if="!pet.boarded"
+                      class="link"
+                      type="button"
+                      :disabled="acting"
+                      @click="setPetBoarded(pet.id, true)"
+                    >
+                      [送去寄养 {{ pet.boardingFee }}/月]
+                    </button>
+                    <button class="link" type="button" :disabled="acting" @click="releasePet(pet.id, pet.name)">
+                      [放生]
+                    </button>
+                  </div>
+                  <p class="muted pet-manage-note">不会死亡；寄养每月自动扣费，可随时接回。</p>
+                </details>
               </div>
             </div>
-            <div class="pet-info">
-              <div v-if="pet.boarded" class="warn">
-                {{ pet.name }}在宠物院子寄养中，每月自动扣 {{ pet.boardingFee }} 金币。
-                <button class="link" type="button" :disabled="acting || activePets.length >= 3" @click="setPetBoarded(pet.id, false)">
-                  [接回]
-                </button>
-                <button class="link" type="button" :disabled="acting" @click="releasePet(pet.id, pet.name)">
-                  [放生]
-                </button>
-              </div>
-              <div v-if="pet.sickness" class="warn">
-                {{ pet.name }}生病了：{{ pet.sickness }}
-                <button class="link" type="button" :disabled="acting" @click="petAction('healPet')">
-                  [看兽医 500]
-                </button>
-                <button
-                  v-if="petCare && petCare.medicine > 0"
-                  class="link"
-                  type="button"
-                  :disabled="acting"
-                  @click="usePetMedicine"
-                >
-                  [用药品 ×{{ petCare.medicine }}]
-                </button>
-              </div>
-              <div class="pet-bars">
-                <div class="pet-bar">
-                  <span>饱食 {{ pet.satiety }}</span>
-                  <i><b :style="{ width: `${pet.satiety}%` }"></b></i>
-                </div>
-                <div class="pet-bar">
-                  <span>精力 {{ pet.energy }}</span>
-                  <i><b :style="{ width: `${pet.energy}%` }"></b></i>
-                </div>
-                <div class="pet-bar">
-                  <span>心情 {{ pet.mood }}</span>
-                  <i><b :style="{ width: `${pet.mood}%` }"></b></i>
-                </div>
-                <div class="pet-bar">
-                  <span>亲密 {{ pet.bond }}</span>
-                  <i><b :style="{ width: `${pet.bond}%` }"></b></i>
-                </div>
-                <div class="pet-bar">
-                  <span>健康 {{ pet.health }}</span>
-                  <i><b :style="{ width: `${pet.health}%` }"></b></i>
-                </div>
-              </div>
-              <div class="muted">经验 {{ pet.exp }} / {{ pet.expNeed }} · 地点 {{ pet.locationLabel }}</div>
-              <div class="pet-skills">
-                <div class="pet-bar">
-                  <span>挖掘 Lv{{ pet.digSkill }}</span>
-                  <i><b :style="{ width: `${Math.min(100, (pet.digExp / Math.max(1, pet.digNeed)) * 100)}%` }"></b></i>
-                  <small>{{ pet.digExp }}/{{ pet.digNeed }}</small>
-                </div>
-                <div class="pet-bar">
-                  <span>守卫 Lv{{ pet.guardSkill }}</span>
-                  <i><b :style="{ width: `${Math.min(100, (pet.guardExp / Math.max(1, pet.guardNeed)) * 100)}%` }"></b></i>
-                  <small>{{ pet.guardExp }}/{{ pet.guardNeed }}</small>
-                </div>
-              </div>
-
-              <div v-if="!pet.boarded" class="row">
-                <select v-model="feedCropId">
-                  <option v-for="item in produce" :key="item.key" :value="item.key.replace('crop:', '')">
-                    {{ item.name }} ×{{ item.qty }}
-                  </option>
-                </select>
-                <button class="link" type="button" :disabled="acting || !produce.length" @click="feedPet">
-                  [喂食]
-                </button>
-                <button
-                  class="link"
-                  type="button"
-                  :disabled="acting || !pet.canTouch"
-                  @click="petAction('petCompanion')"
-                >
-                  [摸摸]
-                  <span v-if="!pet.canTouch" class="muted">{{ formatCooldown(pet.touchRemainingMs) }}</span>
-                </button>
-                <button
-                  class="link"
-                  type="button"
-                  :disabled="acting || !pet.canPlay"
-                  @click="petAction('playWithPet')"
-                >
-                  [玩耍]
-                  <span v-if="!pet.canPlay && pet.playRemainingMs > 0" class="muted">
-                    {{ formatCooldown(pet.playRemainingMs) }}
-                  </span>
-                </button>
-                <button
-                  class="link"
-                  type="button"
-                  :disabled="acting || !pet.canDig"
-                  @click="petAction('digWithPet')"
-                >
-                  [挖种子]
-                  <span v-if="!pet.canDig && pet.digRemainingMs > 0" class="muted">
-                    {{ formatCooldown(pet.digRemainingMs) }}
-                  </span>
-                </button>
-                <span v-if="pet.digRemainingMs === 0 && pet.location === 'farm'" class="muted">
-                  挖种子已就绪
-                </span>
-              </div>
-              <div v-if="!pet.boarded" class="row">
-                <button
-                  class="link"
-                  type="button"
-                  :disabled="acting || !pet.canUseSkill"
-                  @click="usePetSkill"
-                >
-                  [主动 · {{ pet.activeSkill }}]
-                  <span v-if="!pet.canUseSkill && pet.skillRemainingMs > 0" class="muted">
-                    {{ formatCooldown(pet.skillRemainingMs) }}
-                  </span>
-                </button>
-                <span class="muted">{{ pet.activeDescription }}</span>
-              </div>
-
-              <div v-if="!pet.boarded" class="row">
-                <span class="muted">地点：</span>
-                <button class="rate-btn" :class="{ active: pet.location === 'farm' }" type="button" :disabled="acting" @click="setPetLocation(pet.id, 'farm')">农场</button>
-                <button class="rate-btn" :class="{ active: pet.location === 'ranch' }" type="button" :disabled="acting" @click="setPetLocation(pet.id, 'ranch')">牧场</button>
-                <button class="rate-btn" :class="{ active: pet.location === 'fishing' }" type="button" :disabled="acting" @click="setPetLocation(pet.id, 'fishing')">钓鱼地</button>
-                <button class="rate-btn" type="button" disabled>鱼塘（以后）</button>
-              </div>
-
-              <div class="row">
-                <input v-model="renameName" maxlength="12" placeholder="改个名字" />
-                <button class="link" type="button" :disabled="acting || !renameName.trim()" @click="renamePet">
-                  [改名]
-                </button>
-              </div>
-              <div v-if="!pet.boarded" class="row">
-                <button class="link" type="button" :disabled="acting" @click="setPetBoarded(pet.id, true)">
-                  [送去寄养 {{ pet.boardingFee }}/月]
-                </button>
-                <button class="link" type="button" :disabled="acting" @click="releasePet(pet.id, pet.name)">
-                  [放生]
-                </button>
-              </div>
-              <p class="muted">
-                挖到的种子直接进仓库；守卫会减少偷菜损失，狗狗有低概率把偷菜贼吓跑。
-                钓鱼地岗位：猫有概率叼回一条已点亮图鉴的鱼，狗会找鱼饵；每天只结算一个岗位。
-              </p>
-            </div>
           </div>
-          </div>
-
           <div v-if="petCare" class="pet-care">
             <div class="pet-care-title">宠物用品</div>
             <div class="pet-care-grid">
@@ -5090,73 +5141,73 @@ onUnmounted(() => {
             <p class="muted">狗窝/猫窝/玩具按物种生效；食盆全档共用，3 只宠物需要 3 个。拆家会咬坏窝/玩具，修补费为原价 40%。</p>
           </div>
 
-          <div v-if="pet && pet.trainingCenter" class="pet-training">
-            <div class="pet-care-title">
-              训练中心
-              <span class="muted">训练点 {{ pet.trainingSpent }}/{{ pet.trainingCap }}，总计上限 6，不能全点满</span>
-            </div>
-            <div class="pet-training-grid">
-              <div class="pet-care-card">
-                <strong>🛡️ 守护 Lv{{ pet.guardTrain }}/5</strong>
-                <span class="muted">每级吓跑概率 +3%</span>
-                <button
-                  class="link"
-                  type="button"
-                  :disabled="acting || pet.trainingSpent >= pet.trainingCap || pet.guardTrain >= 5"
-                  @click="trainPet('guard')"
-                >
-                  [训练]
-                </button>
+          <details v-if="pet" class="pet-training pet-fold">
+            <summary>
+              <b>训练中心</b>
+              <span v-if="pet.trainingCenter" class="muted">训练点 {{ pet.trainingSpent }}/{{ pet.trainingCap }}</span>
+              <span v-else class="muted">未建设</span>
+            </summary>
+            <template v-if="pet.trainingCenter">
+              <div class="pet-training-grid">
+                <div class="pet-care-card">
+                  <strong>🛡️ 守护 Lv{{ pet.guardTrain }}/5</strong>
+                  <span class="muted">每级吓跑概率 +3%</span>
+                  <button
+                    class="link"
+                    type="button"
+                    :disabled="acting || pet.trainingSpent >= pet.trainingCap || pet.guardTrain >= 5"
+                    @click="trainPet('guard')"
+                  >
+                    [训练]
+                  </button>
+                </div>
+                <div class="pet-care-card">
+                  <strong>👃 挖掘嗅探 Lv{{ pet.digTrain }}/5</strong>
+                  <span class="muted">每级挖种加成 +3%，更容易双倍</span>
+                  <button
+                    class="link"
+                    type="button"
+                    :disabled="acting || pet.trainingSpent >= pet.trainingCap || pet.digTrain >= 5"
+                    @click="trainPet('dig')"
+                  >
+                    [训练]
+                  </button>
+                </div>
+                <div class="pet-care-card">
+                  <strong>🧹 闯祸拆家 Lv{{ pet.mischiefTrain }}/5</strong>
+                  <span class="muted">每级拆家概率 -1%，最低 0</span>
+                  <button
+                    class="link"
+                    type="button"
+                    :disabled="acting || pet.trainingSpent >= pet.trainingCap || pet.mischiefTrain >= 5"
+                    @click="trainPet('mischief')"
+                  >
+                    [训练]
+                  </button>
+                </div>
+                <div class="pet-care-card">
+                  <strong>🤝 陪伴 Lv{{ pet.companionTrain }}/5</strong>
+                  <span class="muted">每级摸摸/玩耍心情收益 +5%</span>
+                  <button
+                    class="link"
+                    type="button"
+                    :disabled="acting || pet.trainingSpent >= pet.trainingCap || pet.companionTrain >= 5"
+                    @click="trainPet('companion')"
+                  >
+                    [训练]
+                  </button>
+                </div>
               </div>
-              <div class="pet-care-card">
-                <strong>👃 挖掘嗅探 Lv{{ pet.digTrain }}/5</strong>
-                <span class="muted">每级挖种加成 +3%，更容易双倍</span>
-                <button
-                  class="link"
-                  type="button"
-                  :disabled="acting || pet.trainingSpent >= pet.trainingCap || pet.digTrain >= 5"
-                  @click="trainPet('dig')"
-                >
-                  [训练]
-                </button>
-              </div>
-              <div class="pet-care-card">
-                <strong>🧹 闯祸拆家 Lv{{ pet.mischiefTrain }}/5</strong>
-                <span class="muted">每级拆家概率 -1%，最低 0</span>
-                <button
-                  class="link"
-                  type="button"
-                  :disabled="acting || pet.trainingSpent >= pet.trainingCap || pet.mischiefTrain >= 5"
-                  @click="trainPet('mischief')"
-                >
-                  [训练]
-                </button>
-              </div>
-              <div class="pet-care-card">
-                <strong>🤝 陪伴 Lv{{ pet.companionTrain }}/5</strong>
-                <span class="muted">每级摸摸/玩耍心情收益 +5%</span>
-                <button
-                  class="link"
-                  type="button"
-                  :disabled="acting || pet.trainingSpent >= pet.trainingCap || pet.companionTrain >= 5"
-                  @click="trainPet('companion')"
-                >
-                  [训练]
-                </button>
-              </div>
-            </div>
-            <p class="muted">训练点按宠物等级增长（每 5 级 1 点，最多 6 点）；每项最多 5 级，所以无法六边形全满。</p>
-          </div>
-          <div v-else-if="pet" class="pet-training">
-            <div class="pet-care-title">训练中心</div>
-            <p class="muted">农场 12 级可建设训练中心（20,000 金币），之后才能训练守护/挖掘/拆家/陪伴。</p>
-          </div>
+              <p class="muted">训练点按宠物等级增长（每 5 级 1 点，最多 6 点）；每项最多 5 级，所以无法六边形全满。</p>
+            </template>
+            <p v-else class="muted">农场 12 级可建设训练中心（20,000 金币），之后才能训练守护/挖掘/拆家/陪伴。</p>
+          </details>
 
-          <div v-if="pet" class="pet-training pet-talents">
-            <div class="pet-care-title">
-              天赋
-              <span class="muted">按等级解锁：Lv5 / Lv12 / Lv20；每层二选一，可随时改选</span>
-            </div>
+          <details v-if="pet" class="pet-training pet-talents pet-fold">
+            <summary>
+              <b>天赋</b>
+              <span class="muted">Lv5 / Lv12 / Lv20 · 每层二选一，可随时改选</span>
+            </summary>
             <div class="pet-talent-grid">
               <div v-for="tier in pet.talentTiers" :key="tier.tier" class="pet-talent-tier">
                 <div class="pet-talent-tier-title">
@@ -5179,7 +5230,7 @@ onUnmounted(() => {
                 </div>
               </div>
             </div>
-          </div>
+          </details>
         </section>
       </div>
 

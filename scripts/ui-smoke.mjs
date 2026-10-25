@@ -325,7 +325,7 @@ async function clickDom(selector, text) {
 
 async function openFold(text) {
   const opened = await evaluate(`(() => {
-    const fold = [...document.querySelectorAll('details.ws-fold, details.fish-fold')].find((item) =>
+    const fold = [...document.querySelectorAll('details.ws-fold, details.fish-fold, details.pet-fold')].find((item) =>
       (item.querySelector('summary')?.innerText || '').includes(${JSON.stringify(text)})
     );
     if (!fold) return false;
@@ -903,6 +903,10 @@ try {
     "宠物个性/小癖好已显示",
     personalityText.includes("个性：") && personalityText.includes("小癖好："),
   );
+  check(
+    "宠物档案已收成标签",
+    (await evaluate(`document.querySelectorAll('.pet-tag').length`)) >= 4,
+  );
   check("品种技能已显示", personalityText.includes("品种技能 ·"));
   check("主动技能按钮已显示", personalityText.includes("[主动 ·"));
   check("行为树当前活动已显示", personalityText.includes("正在："));
@@ -920,6 +924,7 @@ try {
   if (talentPet) {
     await clickText(talentPet.name);
     await new Promise((r) => setTimeout(r, 250));
+    await openFold("天赋");
     const talentText = await bodyText();
     check("天赋面板已显示", talentText.includes("天赋") && talentText.includes("Lv5 天赋"));
     const talentLabel = talentPet.species === "dog" ? "守门" : "利爪";
@@ -962,6 +967,7 @@ try {
     await clickText(saveState().pets.find((pet) => !pet.boarded).name);
     await new Promise((r) => setTimeout(r, 200));
   }
+  await openFold("训练中心");
   const layout = await evaluate(`(() => {
     const cards = [...document.querySelectorAll('.pet-care-card')];
     const training = [...document.querySelectorAll('.pet-training')];
@@ -1006,6 +1012,7 @@ try {
       .every((el) => el.disabled)`);
     check("训练点用满后四个训练按钮全部禁用", allDisabled);
 
+    await openFold("管理");
     await clickText("[送去寄养 3000/月]");
     await waitFor(async () => saveState().pets[1].boarded === true);
     check("点击送去寄养", saveState().pets[1].boarded === true);

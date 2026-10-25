@@ -697,6 +697,133 @@ textarea {
   background: var(--success);
 }
 
+.pet-card {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: var(--panel-soft);
+}
+
+.pet-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin-bottom: 4px;
+}
+
+.pet-card-head b {
+  color: var(--accent-text);
+}
+
+.pet-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.pet-chip {
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.pet-actions {
+  gap: 6px 10px;
+  align-items: center;
+}
+
+.pet-action-hint {
+  font-size: 12px;
+}
+
+.pet-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+
+.pet-tag {
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  font-size: 12px;
+}
+
+.pet-tag-note {
+  margin-top: 5px;
+  font-size: 12px;
+}
+
+.pet-quote {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.pet-subdetails {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.pet-subdetails summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.pet-job-line {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.pet-note {
+  margin: 6px 0;
+}
+
+.pet-fold > summary,
+.pet-training > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.pet-fold > summary::-webkit-details-marker,
+.pet-training > summary::-webkit-details-marker {
+  display: none;
+}
+
+.pet-fold > summary::before,
+.pet-training > summary::before {
+  content: "▸";
+  color: var(--faint);
+  font-size: 12px;
+}
+
+.pet-fold[open] > summary::before,
+.pet-training[open] > summary::before {
+  content: "▾";
+}
+
+.pet-fold > summary b,
+.pet-training > summary b {
+  color: var(--accent-text);
+}
+
+.pet-manage-note {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
 .farm-pet-strip {
   display: flex;
   align-items: center;
