@@ -92,6 +92,9 @@ pub struct NpcState {
     /// 上一次送生日礼物的年份（0 = 没送过）。
     #[serde(default)]
     pub birthday_gift_year: i32,
+    /// 最近一次随手送礼的日期；每天一次。
+    #[serde(default)]
+    pub last_gift_day: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -151,8 +154,17 @@ pub struct NpcView {
     pub request_done: bool,
     pub last_souvenir: Option<String>,
     pub birthday_gift: Option<NpcBirthdayGiftView>,
+    pub free_gift: Option<NpcFreeGiftView>,
     pub plots: Vec<NpcPlotView>,
     pub ranch: Vec<NpcRanchAnimalView>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NpcFreeGiftView {
+    pub item_name: String,
+    pub have: u32,
+    pub can_give: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -315,6 +327,7 @@ pub fn starter(now: i64, content: &ContentPack) -> Vec<NpcState> {
                 pending_event: String::new(),
                 choices: BTreeMap::new(),
                 birthday_gift_year: 0,
+                last_gift_day: String::new(),
             }
         })
         .collect()
@@ -386,6 +399,18 @@ pub fn view(
             NpcBirthdayGiftView {
                 item_name: gift.item_name.to_string(),
                 qty: gift.qty,
+                have,
+                can_give: have >= gift.qty,
+            }
+        })
+    } else {
+        None
+    };
+    let free_gift = if birthday_gift.is_none() && npc.last_gift_day != today {
+        crate::npc_story::free_gift(&npc.id).map(|gift| {
+            let have = *inventory.get(gift.item_key).unwrap_or(&0);
+            NpcFreeGiftView {
+                item_name: gift.item_name.to_string(),
                 have,
                 can_give: have >= gift.qty,
             }
@@ -489,6 +514,7 @@ pub fn view(
         request_done,
         last_souvenir: npc.souvenirs.last().cloned(),
         birthday_gift,
+        free_gift,
         plots,
         ranch,
     }

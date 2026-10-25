@@ -1111,6 +1111,14 @@ pub struct DecorShopView {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct NpcFestivalView {
+    pub name: String,
+    pub reward: u64,
+    pub claimed: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NpcRoomView {
     pub npc_id: String,
     pub name: String,
@@ -1221,6 +1229,8 @@ pub struct Snapshot {
     pub exp_rate: u32,
     pub npcs: Vec<NpcView>,
     pub npc_messages: Vec<NpcMessageView>,
+    pub village_events: Vec<String>,
+    pub festival: Option<NpcFestivalView>,
     pub steals_left: u32,
     pub helps_left: u32,
     pub ranch_steals_left: u32,
@@ -1744,6 +1754,21 @@ impl Game {
         } else {
             1
         };
+        let village_events = (0..3)
+            .map(|offset| {
+                crate::npc_story::village_event(now / 86_400_000 - offset)
+                    .text
+                    .to_string()
+            })
+            .collect();
+        let festival = crate::npc_story::festival_of(&self.state.daily.day).map(|name| {
+            let year = crate::npc_story::year_of(&self.state.daily.day);
+            NpcFestivalView {
+                name: name.to_string(),
+                reward: crate::npc_story::festival_reward(),
+                claimed: self.state.festival_claims.get(name) == Some(&year),
+            }
+        });
         let npcs: Vec<NpcView> = self
             .state
             .npcs
@@ -3068,6 +3093,8 @@ impl Game {
             exp_rate: self.state.settings.exp_rate,
             npcs,
             npc_messages,
+            village_events,
+            festival,
             steals_left: npc::steal_left(&self.state.daily),
             helps_left: npc::help_left(&self.state.daily),
             ranch_steals_left: npc::ranch_steal_left(&self.state.daily),

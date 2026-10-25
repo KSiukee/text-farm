@@ -167,6 +167,56 @@ fn birthday_gift_can_only_be_given_once_a_year() {
 }
 
 #[test]
+fn free_gift_is_once_per_day() {
+    let mut game = Game::new(0);
+    game.state_mut().daily.day = "2026-10-25".into();
+    game.state_mut().inventory.insert("crop:xiaobaicai".into(), 1);
+    game.dispatch(
+        Action::GiveNpcGift {
+            npc_id: "ahe".into(),
+        },
+        0,
+    )
+    .unwrap();
+    assert_eq!(game.state().npcs[0].friendship, 12);
+    assert_eq!(game.state().npcs[0].last_gift_day, "2026-10-25");
+    assert!(!game.state().inventory.contains_key("crop:xiaobaicai"));
+    assert!(matches!(
+        game.dispatch(
+            Action::GiveNpcGift {
+                npc_id: "ahe".into(),
+            },
+            0
+        ),
+        Err(farm_core::GameError::NpcGiftUnavailable)
+    ));
+}
+
+#[test]
+fn festival_can_be_celebrated_once_a_year() {
+    let mut game = Game::new(0);
+    game.state_mut().daily.day = "2026-09-23".into();
+    let before = game.state().coins;
+    game.dispatch(Action::CelebrateFestival, 0).unwrap();
+    assert_eq!(game.state().coins, before + 300);
+    assert_eq!(
+        game.state().festival_claims.get("丰收节").copied(),
+        Some(2026)
+    );
+    assert!(matches!(
+        game.dispatch(Action::CelebrateFestival, 0),
+        Err(farm_core::GameError::FestivalUnavailable)
+    ));
+
+    game.state_mut().daily.day = "2027-09-23".into();
+    game.dispatch(Action::CelebrateFestival, 0).unwrap();
+    assert_eq!(
+        game.state().festival_claims.get("丰收节").copied(),
+        Some(2027)
+    );
+}
+
+#[test]
 fn weekly_request_consumes_items_and_leaves_souvenir() {
     let mut game = Game::new(0);
     game.state_mut().inventory.insert("crop:xiaobaicai".into(), 5);

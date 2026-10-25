@@ -567,6 +567,10 @@ try {
       neighborText.includes("慢热") &&
       neighborText.includes("下一段故事：30 好感 · 老锄头"),
   );
+  check(
+    "村中近事已显示",
+    (await evaluate(`document.querySelectorAll('.village-event').length`)) === 3,
+  );
   const neighborCoins = saveState().coins;
   await clickText("[聊聊]");
   await waitFor(async () => (await evaluate(`!!document.querySelector('.npc-scene-card')`)) === true);
@@ -595,6 +599,13 @@ try {
   check("NPC 人物志记住选择", journalText.includes("你选了「帮他扶稳」"));
   await clickText("[合上]");
   await waitFor(async () => (await evaluate(`!!document.querySelector('.npc-memory')`)) === false);
+  await clickText("[人物志总览]");
+  await waitFor(async () => (await evaluate(`document.querySelectorAll('.npc-journal-person').length`)) === 5);
+  const villageJournalText = await bodyText();
+  check("人物志总览已打开", villageJournalText.includes("村里的人 · 人物志"));
+  check("人物志总览包含故事", villageJournalText.includes("老锄头"));
+  await clickText("[合上]");
+  await waitFor(async () => (await evaluate(`!!document.querySelector('.npc-village-journal')`)) === false);
   const requestCoins = saveState().coins;
   const requestCabbage = saveState().inventory["crop:xiaobaicai"] || 0;
   await clickText("[帮这个忙]");
@@ -606,6 +617,14 @@ try {
     saveState().npcs[0].souvenirs.includes("一把扎好的小青菜") &&
       (await bodyText()).includes("本周已帮过 · 回礼：一把扎好的小青菜"),
   );
+  const giftCabbage = saveState().inventory["crop:xiaobaicai"] || 0;
+  const giftFriendship = saveState().npcs[0].friendship;
+  await clickText("[送给他]");
+  await waitFor(async () => saveState().npcs[0].lastGiftDay !== "");
+  check("NPC 自由送礼已生效", (saveState().inventory["crop:xiaobaicai"] || 0) === giftCabbage - 1);
+  check("NPC 自由送礼加好感", saveState().npcs[0].friendship === giftFriendship + 2);
+  await clickText("[收下]");
+  await waitFor(async () => (await evaluate(`!!document.querySelector('.npc-scene-card')`)) === false);
   await screenshot("docs/npc-people-v0100.png");
   await clickText("图鉴");
   await waitFor(async () => (await evaluate(`!!document.querySelector('#farm-codex')?.open`)) === true);

@@ -360,6 +360,13 @@ pub enum Action {
         #[serde(rename = "npcId")]
         npc_id: String,
     },
+    /// 平时送一件 NPC 喜欢的小东西，每天一次。
+    GiveNpcGift {
+        #[serde(rename = "npcId")]
+        npc_id: String,
+    },
+    /// 参加今天的节日，领一份小回礼（每年一次）。
+    CelebrateFestival,
     ClaimSignIn,
     UpdateProfile {
         #[serde(rename = "ownerName")]

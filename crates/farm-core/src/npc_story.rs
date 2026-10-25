@@ -633,6 +633,54 @@ pub fn birthday_gift(id: &str) -> Option<NpcBirthdayGift> {
     }
 }
 
+/// 平时随手送的小礼物：一件喜欢的东西，+2 好感，不给金币。
+pub fn free_gift(id: &str) -> Option<NpcBirthdayGift> {
+    birthday_gift(id).map(|gift| NpcBirthdayGift {
+        qty: 1,
+        reward: 0,
+        favor: 2,
+        reply: match id {
+            "ahe" => "阿禾接过去：「放灶边吧，晚上炒。」",
+            "xiaoman" => "小满拿在手里看了看：「这个我收下了。」",
+            "qingxing" => "青杏点点头：「正好用得上。」",
+            "laotao" => "老陶嘴上说不用，手已经接过去了。",
+            "liuyue" => "六月把东西收好，轻声说了句「谢谢」。",
+            _ => "对方收下了。",
+        },
+        ..gift
+    })
+}
+
+pub fn festival_reward() -> u64 {
+    300
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct VillageEvent {
+    pub text: &'static str,
+}
+
+/// 每天一条村中近事，按日期循环。
+pub fn village_event(day: i64) -> VillageEvent {
+    const EVENTS: &[&str] = &[
+        "阿禾给小满送了两棵新摘的青菜。",
+        "小满端着一罐果酱去了青杏家。",
+        "青杏拎着药箱去老陶家看了咳嗽。",
+        "老陶给六月削了一个新桨柄。",
+        "六月给阿禾带了两条鲫鱼。",
+        "阿禾帮老陶修了院门。",
+        "小满在村口摆了半天果酱摊。",
+        "青杏晒了一院子药草。",
+        "老陶把旧椅子搬到门口晒太阳。",
+        "六月天没亮就在河边补网。",
+        "阿禾和小满换了一篮菜。",
+        "青杏给老陶送了一包药。",
+    ];
+    VillageEvent {
+        text: EVENTS[day.rem_euclid(EVENTS.len() as i64) as usize],
+    }
+}
+
 pub fn festival_of(day: &str) -> Option<&'static str> {
     let md = month_day(day);
     FESTIVALS

@@ -15,7 +15,7 @@ use crate::room::RoomState;
 use crate::skills::PlayerSkills;
 use crate::workshop::WorkshopState;
 
-pub const SAVE_SCHEMA: u32 = 47;
+pub const SAVE_SCHEMA: u32 = 48;
 pub const MAX_LEVEL: u32 = 30;
 pub const PLOT_COUNT: usize = 8;
 pub const PLOT_MAX_TIER: u8 = 3;
@@ -385,6 +385,9 @@ pub struct GameState {
     pub specimen_milestones_claimed: BTreeSet<u32>,
     #[serde(default)]
     pub npcs: Vec<NpcState>,
+    /// 节日名 -> 已领取的年份。
+    #[serde(default)]
+    pub festival_claims: BTreeMap<String, i32>,
     #[serde(default)]
     pub npc_messages: Vec<NpcMessage>,
     #[serde(default)]
@@ -486,6 +489,7 @@ impl Game {
             specimen_collection: BTreeMap::new(),
             specimen_milestones_claimed: BTreeSet::new(),
             npcs,
+            festival_claims: BTreeMap::new(),
             npc_messages: Vec::new(),
             last_npc_tick_at: now,
             season: Season::Spring,

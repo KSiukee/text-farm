@@ -141,6 +141,8 @@ impl Game {
             Action::GiveNpcBirthdayGift { npc_id } => {
                 self.give_npc_birthday_gift(&npc_id, now)?
             }
+            Action::GiveNpcGift { npc_id } => self.give_npc_gift(&npc_id, now)?,
+            Action::CelebrateFestival => self.celebrate_festival(now)?,
             Action::PetCompanion { pet_id } => self.touch_pet(&pet_id, now)?,
             Action::PlayWithPet { pet_id } => self.play_pet(&pet_id, now)?,
             Action::HealPet { pet_id } => self.heal_pet(&pet_id, now)?,
@@ -5140,6 +5142,59 @@ impl Game {
             event_id: String::new(),
             choices: Vec::new(),
         }])
+    }
+
+    fn give_npc_gift(&mut self, npc_id: &str, now: i64) -> Result<Vec<Effect>, GameError> {
+        let pos = self.npc_pos(npc_id)?;
+        let today = self.state.daily.day.clone();
+        if crate::npc_story::is_birthday(npc_id, &today)
+            || self.state.npcs[pos].last_gift_day == today
+        {
+            return Err(GameError::NpcGiftUnavailable);
+        }
+        let gift = crate::npc_story::free_gift(npc_id).ok_or(GameError::NpcGiftUnavailable)?;
+        let have = *self.state.inventory.get(gift.item_key).unwrap_or(&0);
+        if have < gift.qty {
+            return Err(GameError::NotEnoughItems);
+        }
+        if have == gift.qty {
+            self.state.inventory.remove(gift.item_key);
+        } else {
+            self.state
+                .inventory
+                .insert(gift.item_key.into(), have - gift.qty);
+        }
+        let npc = &mut self.state.npcs[pos];
+        npc.last_gift_day = today;
+        npc.friendship = (npc.friendship + gift.favor).min(100);
+        let npc_name = npc.name.clone();
+        self.push_log(now, format!("你送了{npc_name}一份小礼物"));
+        Ok(vec![Effect::NpcTalk {
+            npc_id: npc_id.into(),
+            npc_name,
+            title: "小礼物".to_string(),
+            text: gift.reply.to_string(),
+            reward: String::new(),
+            favor: gift.favor,
+            tag: "礼物".to_string(),
+            event_id: String::new(),
+            choices: Vec::new(),
+        }])
+    }
+
+    fn celebrate_festival(&mut self, now: i64) -> Result<Vec<Effect>, GameError> {
+        let today = self.state.daily.day.clone();
+        let name = crate::npc_story::festival_of(&today).ok_or(GameError::FestivalUnavailable)?;
+        let year = crate::npc_story::year_of(&today);
+        if self.state.festival_claims.get(name) == Some(&year) {
+            return Err(GameError::FestivalUnavailable);
+        }
+        let reward = crate::npc_story::festival_reward();
+        self.state.coins = self.state.coins.saturating_add(reward);
+        self.state.festival_claims.insert(name.to_string(), year);
+        let text = format!("你参加了{name}，收到 {reward} 金币的小回礼");
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
     }
 
     fn help_npc_request(&mut self, npc_id: &str, now: i64) -> Result<Vec<Effect>, GameError> {

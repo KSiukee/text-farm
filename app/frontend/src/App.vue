@@ -675,6 +675,7 @@ const specimenMilestones = computed(() => snapshot.value?.specimenMilestones ?? 
 const specimenResult = ref<Extract<Effect, { kind: "specimen" }> | null>(null);
 const npcTalk = ref<NpcTalkEffect | null>(null);
 const npcJournal = ref<NpcView | null>(null);
+const villageJournal = ref(false);
 const specimenResultCrop = computed(
   () => specimens.value.find((item) => item.cropId === specimenResult.value?.cropId) ?? null,
 );
@@ -1086,6 +1087,14 @@ function helpNpcRequest(npc: NpcView) {
 
 function giveBirthdayGift(npc: NpcView) {
   void act({ type: "giveNpcBirthdayGift", npcId: npc.id });
+}
+
+function giveNpcGift(npc: NpcView) {
+  void act({ type: "giveNpcGift", npcId: npc.id });
+}
+
+function celebrateFestival() {
+  void act({ type: "celebrateFestival" });
 }
 
 function cropById(id: string): CropDef | undefined {
@@ -3554,6 +3563,24 @@ onUnmounted(() => {
           <div class="panel-title">
             邻居农场
             <span class="muted">今日可偷 {{ snapshot?.stealsLeft ?? 0 }}/5 · 可帮忙 {{ snapshot?.helpsLeft ?? 0 }}/10</span>
+            <button class="link" type="button" @click="villageJournal = true">[人物志总览]</button>
+          </div>
+          <div v-if="snapshot?.festival" class="festival-banner">
+            <span>今日 {{ snapshot.festival.name }} · 参加可得 {{ snapshot.festival.reward }} 金币</span>
+            <button
+              class="link"
+              type="button"
+              :disabled="acting || snapshot.festival.claimed"
+              @click="celebrateFestival"
+            >
+              {{ snapshot.festival.claimed ? "[今年已过]" : "[参加]" }}
+            </button>
+          </div>
+          <div v-if="snapshot?.villageEvents?.length" class="village-events">
+            <span class="muted">村中近事</span>
+            <div v-for="(event, index) in snapshot.villageEvents" :key="index" class="village-event">
+              · {{ event }}
+            </div>
           </div>
           <div v-for="npc in npcs" :key="npc.id" class="npc-card">
             <div class="npc-head">
@@ -3611,6 +3638,18 @@ onUnmounted(() => {
                 @click="giveBirthdayGift(npc)"
               >
                 [送生日礼物]
+              </button>
+            </div>
+            <div v-if="npc.freeGift" class="npc-gift-line">
+              <span>送点心意：{{ npc.freeGift.itemName }} ×1</span>
+              <span class="muted">仓库 {{ npc.freeGift.have }}</span>
+              <button
+                class="link"
+                type="button"
+                :disabled="acting || !npc.freeGift.canGive"
+                @click="giveNpcGift(npc)"
+              >
+                [送给他]
               </button>
             </div>
             <div v-for="plot in npc.plots" :key="plot.index" class="npc-plot">
@@ -5556,6 +5595,26 @@ onUnmounted(() => {
             <span v-if="memory.choice" class="muted">· 你选了「{{ memory.choice }}」</span>
           </div>
           <button class="link" type="button" @click="npcJournal = null">[合上]</button>
+        </div>
+      </div>
+
+      <div v-if="villageJournal" class="npc-scene-overlay" @click.self="villageJournal = false">
+        <div class="npc-scene-card npc-village-journal">
+          <div class="npc-scene-title">村里的人 · 人物志</div>
+          <div v-for="npc in npcs" :key="npc.id" class="npc-journal-person">
+            <div class="npc-journal-head">
+              <strong>{{ npc.emoji }} {{ npc.name }}</strong>
+              <span class="muted">{{ npc.relation }} · 称呼 {{ npc.address }}</span>
+            </div>
+            <div v-if="!npc.memories.length" class="muted">还没有故事。</div>
+            <div v-for="memory in npc.memories" :key="memory.title" class="npc-memory">
+              <span class="npc-tag">{{ memory.season }}</span>
+              <strong>{{ memory.title }}</strong>
+              <span class="muted">{{ memory.summary }}</span>
+              <span v-if="memory.choice" class="muted">· 你选了「{{ memory.choice }}」</span>
+            </div>
+          </div>
+          <button class="link" type="button" @click="villageJournal = false">[合上]</button>
         </div>
       </div>
     </main>

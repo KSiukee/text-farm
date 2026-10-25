@@ -2048,6 +2048,59 @@ textarea {
   font-size: 12px;
 }
 
+.npc-gift-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 4px 0;
+  font-size: 12px;
+}
+
+.panel-title .link {
+  margin-left: 8px;
+}
+
+.festival-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 8px 0;
+  padding: 6px 10px;
+  border: 1px solid var(--accent-text);
+  background: var(--accent-soft);
+}
+
+.village-events {
+  margin: 8px 0;
+  padding: 6px 10px;
+  border: 1px dashed var(--line);
+  font-size: 12px;
+}
+
+.village-event {
+  margin-top: 2px;
+}
+
+.npc-village-journal {
+  max-height: 80vh;
+  overflow: auto;
+}
+
+.npc-journal-person {
+  margin: 10px 0;
+  padding-bottom: 6px;
+  border-bottom: 1px dotted var(--line);
+}
+
+.npc-journal-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
 .npc-room-souvenirs {
   margin: 4px 0 6px;
   font-size: 12px;

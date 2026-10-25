@@ -783,8 +783,15 @@ export interface NpcView {
   requestDone: boolean;
   lastSouvenir: string | null;
   birthdayGift: NpcBirthdayGiftView | null;
+  freeGift: NpcFreeGiftView | null;
   plots: NpcPlotView[];
   ranch: NpcRanchAnimalView[];
+}
+
+export interface NpcFreeGiftView {
+  itemName: string;
+  have: number;
+  canGive: boolean;
 }
 
 export interface NpcBirthdayGiftView {
@@ -839,6 +846,12 @@ export interface NpcMessageView {
   npcName: string;
   text: string;
   fromPlayer: boolean;
+}
+
+export interface NpcFestivalView {
+  name: string;
+  reward: number;
+  claimed: boolean;
 }
 
 export interface SpecimenView {
@@ -1338,6 +1351,8 @@ export interface Snapshot {
   expRate: number;
   npcs: NpcView[];
   npcMessages: NpcMessageView[];
+  villageEvents: string[];
+  festival: NpcFestivalView | null;
   stealsLeft: number;
   helpsLeft: number;
   ranchStealsLeft: number;
@@ -1478,6 +1493,8 @@ export type Action =
   | { type: "helpNpcRequest"; npcId: string }
   | { type: "npcStoryChoice"; npcId: string; eventId: string; choiceId: string }
   | { type: "giveNpcBirthdayGift"; npcId: string }
+  | { type: "giveNpcGift"; npcId: string }
+  | { type: "celebrateFestival" }
   | { type: "claimSignIn" }
   | { type: "updateProfile"; ownerName: string }
   | { type: "claimDaily"; id: number }
