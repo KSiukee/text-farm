@@ -83,8 +83,8 @@ fn anniversary_chat_uses_special_line() {
     let Effect::NpcTalk { text, tag, .. } = outcome.effects[0].clone() else {
         panic!("expected npc talk effect");
     };
-    assert_eq!(tag, "来农场第 30 天");
-    assert!(text.contains("第 30 天"));
+    assert_eq!(tag, "来农场一个月");
+    assert!(text.contains("一个月"));
 }
 
 #[test]

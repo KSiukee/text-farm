@@ -442,14 +442,35 @@ fn festival_line(id: &str, festival: &str) -> &'static str {
     }
 }
 
-fn anniversary_line(id: &str, days: u32) -> String {
+fn anniversary_line(id: &str, label: &str) -> String {
     match id {
-        "ahe" => format!("你来农场第 {days} 天了。地里的菜，也算认识你了。"),
-        "xiaoman" => format!("你来农场第 {days} 天了。我给你留了罐果酱。"),
-        "qingxing" => format!("你来农场第 {days} 天了。气色比刚来的时候好。"),
-        "laotao" => format!("你来农场第 {days} 天了。时间过得比刨花还快。"),
-        "liuyue" => format!("你来农场第 {days} 天了。河还是那条河，你倒像常客了。"),
-        _ => format!("你来农场第 {days} 天了。"),
+        "ahe" => format!("你来农场{label}了。地里的菜，也算认识你了。"),
+        "xiaoman" => format!("你来农场{label}了。我给你留了罐果酱。"),
+        "qingxing" => format!("你来农场{label}了。气色比刚来的时候好。"),
+        "laotao" => format!("你来农场{label}了。时间过得比刨花还快。"),
+        "liuyue" => format!("你来农场{label}了。河还是那条河，你倒像常客了。"),
+        _ => format!("你来农场{label}了。"),
+    }
+}
+
+fn anniversary_label(days: u32) -> Option<&'static str> {
+    match days {
+        30 => Some("一个月"),
+        60 => Some("两个月"),
+        90 => Some("三个月"),
+        100 => Some("三个多月"),
+        120 => Some("四个月"),
+        150 => Some("五个月"),
+        180 => Some("半年"),
+        210 => Some("七个月"),
+        240 => Some("八个月"),
+        270 => Some("九个月"),
+        300 => Some("十个月"),
+        330 => Some("十一个月"),
+        365 => Some("一年"),
+        730 => Some("两年"),
+        1095 => Some("三年"),
+        _ => None,
     }
 }
 
@@ -491,10 +512,6 @@ fn cross_line(id: &str, day: i64) -> (&'static str, &'static str) {
     }
 }
 
-fn is_anniversary(days: u32) -> bool {
-    days == 30 || days == 100 || (days >= 365 && days % 365 == 0)
-}
-
 /// 今天对这个 NPC 有没有特别意义：自己生日 > 节日 > 农场纪念日 > 别人生日。
 pub fn special_note(id: &str, day: &str, farm_days: u32) -> Option<(String, String)> {
     let profile = profile(id)?;
@@ -508,10 +525,10 @@ pub fn special_note(id: &str, day: &str, farm_days: u32) -> Option<(String, Stri
             festival_line(id, festival).to_string(),
         ));
     }
-    if is_anniversary(farm_days) {
+    if let Some(label) = anniversary_label(farm_days) {
         return Some((
-            format!("来农场第 {farm_days} 天"),
-            anniversary_line(id, farm_days),
+            format!("来农场{label}"),
+            anniversary_line(id, label),
         ));
     }
     if let Some(other) = PROFILES
@@ -601,8 +618,14 @@ mod tests {
         assert_eq!(tag, "丰收节");
 
         let (tag, line) = special_note("ahe", "2026-10-25", 30).unwrap();
-        assert_eq!(tag, "来农场第 30 天");
-        assert!(line.contains("第 30 天"));
+        assert_eq!(tag, "来农场一个月");
+        assert!(line.contains("一个月"));
+
+        let (tag, _) = special_note("ahe", "2026-10-25", 100).unwrap();
+        assert_eq!(tag, "来农场三个多月");
+
+        let (tag, _) = special_note("ahe", "2026-10-25", 365).unwrap();
+        assert_eq!(tag, "来农场一年");
 
         let (tag, _) = special_note("ahe", "2026-06-05", 1).unwrap();
         assert_eq!(tag, "今天是小满生日");
