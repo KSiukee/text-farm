@@ -482,6 +482,7 @@ try {
   const helpText = await bodyText();
   check("游戏内玩法说明已打开", helpText.includes("先学会过日子"));
   check("玩法说明包含第一天", helpText.includes("第一天：先把四块地种上"));
+  await screenshot("docs/help-card-v0111.png");
   await clickText("[知道了]");
   await waitFor(async () => (await evaluate(`!!document.querySelector('.help-card')`)) === false);
   await waitFor(async () => (saveState().orders?.offers.length ?? 0) >= 1);

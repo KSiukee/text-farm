@@ -4544,6 +4544,14 @@ footer {
   max-height: 84vh;
   overflow: auto;
   text-align: left;
+  color: var(--ink);
+  background: rgb(var(--panel-rgb));
+  border-color: var(--line);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+}
+
+.help-overlay {
+  background: rgba(0, 0, 0, 0.78);
 }
 
 .help-lead {
