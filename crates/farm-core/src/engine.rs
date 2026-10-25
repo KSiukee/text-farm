@@ -107,6 +107,8 @@ impl Game {
             Action::RepairWindmills => self.repair_windmills(now)?,
             Action::AdoptPet { name, breed, board } => self.adopt_pet(name, breed, board, now)?,
             Action::FeedPet { pet_id, fish_id } => self.feed_pet(&pet_id, &fish_id, now)?,
+            Action::BuyPetFood { kind } => self.buy_pet_food(kind, now)?,
+            Action::FeedPetFood { pet_id, kind } => self.feed_pet_food(&pet_id, kind, now)?,
             Action::PetCompanion { pet_id } => self.touch_pet(&pet_id, now)?,
             Action::PlayWithPet { pet_id } => self.play_pet(&pet_id, now)?,
             Action::HealPet { pet_id } => self.heal_pet(&pet_id, now)?,
@@ -1991,6 +1993,9 @@ impl Game {
         if self.state.pets[pos].boarded {
             return Err(GameError::PetBoarded);
         }
+        if self.state.pets[pos].species != PetSpecies::Cat {
+            return Err(GameError::PetFoodWrongSpecies);
+        }
         let def = crate::fishing::fish(fish_id).ok_or(GameError::UnknownFish)?;
         let key = format!("fish:{}", def.id);
         let have = *self.state.inventory.get(&key).unwrap_or(&0);
@@ -2027,6 +2032,72 @@ impl Game {
             format!("{}们为食盆打了一架，{}没吃好", pet.name, pet.name)
         } else {
             format!("你喂了{}一条{}，它吃得很香", pet.name, def.name)
+        };
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn buy_pet_food(
+        &mut self,
+        kind: crate::pet::PetFoodKind,
+        now: i64,
+    ) -> Result<Vec<Effect>, GameError> {
+        let cost = kind.cost();
+        if self.state.coins < cost {
+            return Err(GameError::NotEnoughCoins { need: cost });
+        }
+        self.state.coins -= cost;
+        self.state.pet_care.add_food(kind, 1);
+        let text = format!("你买了 1 份{}，花 {cost} 金币", kind.label());
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn feed_pet_food(
+        &mut self,
+        pet_id: &str,
+        kind: crate::pet::PetFoodKind,
+        now: i64,
+    ) -> Result<Vec<Effect>, GameError> {
+        let pos = self.pet_pos(pet_id)?;
+        if self.state.pets[pos].boarded {
+            return Err(GameError::PetBoarded);
+        }
+        if self.state.pets[pos].species != kind.species() {
+            return Err(GameError::PetFoodWrongSpecies);
+        }
+        if !self.state.pet_care.take_food(kind) {
+            return Err(GameError::NotEnoughItems);
+        }
+        let active = self.active_pet_count();
+        let bowls = self.state.pet_care.bowls;
+        let action_seed = self.state.rev;
+        let bowl_ok = bowls >= active as u8;
+        let pet = &mut self.state.pets[pos];
+        let mut fought = false;
+        if !bowl_ok && active > 1 {
+            let missing = active.saturating_sub(usize::from(bowls));
+            let chance = (20 + missing * 20).min(60);
+            let roll = roll_pest((now / 60_000) as u64 ^ action_seed, pos as u8, "bowl");
+            if roll % 100 < chance as u64 {
+                pet.mood = pet.mood.saturating_sub(5);
+                pet.bond = pet.bond.saturating_sub(1);
+                fought = true;
+            }
+        }
+        let exp = if kind.is_staple() {
+            pet.feed(now, true, bowl_ok)
+        } else {
+            let (satiety, mood, bond) = kind.snack_gain();
+            pet.snack(satiety, mood, bond)
+        };
+        pet.add_exp(exp);
+        let text = if fought {
+            format!("{}们为食盆打了一架，{}没吃好", pet.name, pet.name)
+        } else if kind.is_staple() {
+            format!("你喂了{}一份{}，它吃得很香", pet.name, kind.label())
+        } else {
+            format!("你给了{}一份{}，它开心地收下了", pet.name, kind.label())
         };
         self.push_log(now, text.clone());
         Ok(vec![Effect::Log { text }])

@@ -91,8 +91,9 @@ pub use npc::{
     NPC_VISIT_CAP, STEAL_DAILY_LIMIT,
 };
 pub use pet::{
-    guard_result, guard_result_full, PetActivity, PetBreed, PetCare, PetLocation, PetPersonality,
-    PetQuirk, PetSickness, PetSicknessKind, PetSpecies, PetStage, PetState, PetSupplyKind,
+    guard_result, guard_result_full, PetActivity, PetBreed, PetCare, PetFoodKind, PetLocation,
+    PetPersonality, PetQuirk, PetSickness, PetSicknessKind, PetSpecies, PetStage, PetState,
+    PetSupplyKind,
     PetTalent, PetTalents, PetTraining, PetTrainingKind, PetTrait, PET_ACTIVE_LIMIT,
     PET_BOARD_FEE_PER_MONTH, PET_DIG_COOLDOWN_MS, PET_MAX_LEVEL, PET_PLAY_COOLDOWN_MS,
     PET_TOUCH_COOLDOWN_MS,

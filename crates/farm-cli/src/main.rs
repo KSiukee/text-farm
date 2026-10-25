@@ -4,9 +4,9 @@ use std::fs;
 use clap::{Parser, Subcommand, ValueEnum};
 use farm_core::{
     plot_unlock_cost, plot_unlock_level, review_batch, Action, BaitQuality, DisciplineKind,
-    FacilityKind, Game, ItemKind, PetBreed, PetLocation, PetSpecies, PetTrainingKind, PlotStatus,
-    RanchAnimalKind, Snapshot, FISHING_BAIT_PRICE, HELP_DAILY_LIMIT, PROFESSION_EXP_BASE,
-    PROFESSION_EXP_SLOPE, STEAL_DAILY_LIMIT,
+    FacilityKind, Game, ItemKind, PetBreed, PetFoodKind, PetLocation, PetSpecies, PetTrainingKind,
+    PlotStatus, RanchAnimalKind, Snapshot, FISHING_BAIT_PRICE, HELP_DAILY_LIMIT,
+    PROFESSION_EXP_BASE, PROFESSION_EXP_SLOPE, STEAL_DAILY_LIMIT,
 };
 use serde_json::json;
 
@@ -821,23 +821,29 @@ fn pet_actions(game: &mut Game, now: i64, errors: &mut u64) {
             continue;
         }
         if pet.satiety < 65 {
-            if let Some(item) = snap
-                .inventory
-                .iter()
-                .find(|item| item.kind == ItemKind::Fish && item.qty > 0)
-            {
-                if let Some(fish_id) = item.key.strip_prefix("fish:") {
-                    run(
-                        game,
-                        Action::FeedPet {
-                            pet_id: pet.id.clone(),
-                            fish_id: fish_id.to_string(),
-                        },
-                        now,
-                        errors,
-                    );
-                }
+            let kind = if pet.species == PetSpecies::Cat {
+                PetFoodKind::CatFood
+            } else {
+                PetFoodKind::DogFood
+            };
+            let count = match kind {
+                PetFoodKind::CatFood => snap.pet_care.cat_food,
+                PetFoodKind::DogFood => snap.pet_care.dog_food,
+                PetFoodKind::DogBone => snap.pet_care.dog_bone,
+                PetFoodKind::CatCan => snap.pet_care.cat_can,
+            };
+            if count == 0 && snap.coins >= kind.cost() {
+                run(game, Action::BuyPetFood { kind }, now, errors);
             }
+            run(
+                game,
+                Action::FeedPetFood {
+                    pet_id: pet.id.clone(),
+                    kind,
+                },
+                now,
+                errors,
+            );
         }
         if pet.can_touch && pet.mood < 88 {
             let _ = run(

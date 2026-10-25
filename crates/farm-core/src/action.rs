@@ -67,9 +67,19 @@ pub enum Action {
     FeedPet {
         #[serde(rename = "petId")]
         pet_id: String,
-        /// 喂一条鱼（`fish:<id>` 的 id）。
+        /// 喂一条鱼（`fish:<id>` 的 id）；只有猫吃生鱼。
         #[serde(rename = "fishId")]
         fish_id: String,
+    },
+    /// 买一份宠物食品（猫粮/狗粮/狗骨头/猫罐头）。
+    BuyPetFood {
+        kind: crate::pet::PetFoodKind,
+    },
+    /// 喂宠物吃买来的食品。
+    FeedPetFood {
+        #[serde(rename = "petId")]
+        pet_id: String,
+        kind: crate::pet::PetFoodKind,
     },
     PetCompanion {
         #[serde(rename = "petId")]

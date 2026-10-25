@@ -190,6 +190,8 @@ pub enum GameError {
     PetNotFound,
     #[error("这只宠物在寄养中，先接回来")]
     PetBoarded,
+    #[error("这个食品不是它吃的；生鱼只给猫")]
+    PetFoodWrongSpecies,
     #[error("这个用品已经买了")]
     PetSupplyOwned,
     #[error("这个用品没有损坏")]
@@ -401,6 +403,7 @@ impl GameError {
             GameError::PetLimit => "pet_limit",
             GameError::PetNotFound => "pet_not_found",
             GameError::PetBoarded => "pet_boarded",
+            GameError::PetFoodWrongSpecies => "pet_food_wrong_species",
             GameError::PetSupplyOwned => "pet_supply_owned",
             GameError::PetSupplyNotBroken => "pet_supply_not_broken",
             GameError::NoBoardingDebt => "no_boarding_debt",

@@ -179,6 +179,10 @@ function seedSave() {
     dogToyBroken: false,
     catToyBroken: true,
     medicine: 3,
+    catFood: 50,
+    dogFood: 50,
+    dogBone: 50,
+    catCan: 50,
   };
   state.boardingDebt = 0;
   state.lastBoardingMonth = "2026-09";
@@ -370,6 +374,20 @@ async function clickEnabled(text) {
   if (!found) throw new Error(`找不到可点的「${text}」`);
   await send("Input.dispatchMouseEvent", { type: "mousePressed", x: found.x, y: found.y, button: "left", clickCount: 1 });
   await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: found.x, y: found.y, button: "left", clickCount: 1 });
+  await new Promise((r) => setTimeout(r, 260));
+}
+
+async function feedSelectedPet() {
+  const clicked = await evaluate(`(() => {
+    const btn = [...document.querySelectorAll('button')].find((el) => {
+      const text = (el.innerText || '').trim();
+      return (text === '[喂猫粮]' || text === '[喂狗粮]') && !el.disabled;
+    });
+    if (!btn) return false;
+    btn.click();
+    return true;
+  })()`);
+  if (!clicked) throw new Error("找不到可用的猫粮/狗粮按钮");
   await new Promise((r) => setTimeout(r, 260));
 }
 
@@ -650,7 +668,7 @@ try {
         : idleState.name.includes("pet-idle-bob")),
     JSON.stringify(idleState),
   );
-  await clickText("[喂鱼]", false);
+  await feedSelectedPet();
   await new Promise((r) => setTimeout(r, 120));
   const petEmote = await evaluate(`document.querySelector('.pet-emote')?.textContent || ''`);
   check("互动触发宠物动画和表情", petEmote.includes("🍖"), petEmote);
@@ -909,6 +927,12 @@ try {
     (await evaluate(`document.querySelectorAll('.pet-tag').length`)) >= 4,
   );
   check("品种技能已显示", personalityText.includes("品种技能 ·"));
+  check(
+    "宠物食品已显示",
+    ["猫粮", "狗粮", "狗骨头", "猫罐头"].every((label) =>
+      personalityText.includes(label),
+    ),
+  );
   check("主动技能按钮已显示", personalityText.includes("[主动 ·"));
   check("行为树当前活动已显示", personalityText.includes("正在："));
   check("牧场岗位已显示", personalityText.includes("牧场岗位"));
@@ -1033,9 +1057,9 @@ try {
   check("点击购买药品", saveState().petCare.medicine === 4);
 
   const inventoryBefore = JSON.stringify(saveState().inventory);
-  await clickText("[喂鱼]");
+  await feedSelectedPet();
   await new Promise((r) => setTimeout(r, 400));
-  check("点击喂鱼不报错（库存/饱食度变化）", JSON.stringify(saveState().inventory) !== inventoryBefore || saveState().pets.some((p) => p.satiety !== 80));
+  check("点击喂宠物食品不报错（库存/饱食度变化）", JSON.stringify(saveState().inventory) !== inventoryBefore || saveState().pets.some((p) => p.satiety !== 80));
 
   await screenshot();
   check("用品截图已保存", existsSync(screenshotPath), screenshotPath);
@@ -1051,7 +1075,7 @@ try {
     await advanceTimeControl("+1 小时");
     await new Promise((r) => setTimeout(r, 500));
     await clickText("宠物");
-    await clickText("[喂鱼]");
+    await feedSelectedPet();
     await new Promise((r) => setTimeout(r, 150));
     fightSeen = saveState().log.some(
       (entry) => entry.text.includes("抢食") || entry.text.includes("打了一架"),
@@ -1071,8 +1095,8 @@ try {
         await clickEnabled("[看兽医 500]");
       } catch {}
     }
-    await clickEnabled("[喂鱼]");
-    await clickEnabled("[喂鱼]");
+    await feedSelectedPet();
+    await feedSelectedPet();
     mischiefSeen = saveState().log.some(
       (entry) =>
         entry.text.includes("拆了一角") ||

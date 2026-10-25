@@ -10,6 +10,7 @@ export type Season = "spring" | "summer" | "autumn" | "winter";
 export type Region = "north" | "south";
 export type RegionAffinity = "all" | "north" | "south";
 export type PetSpecies = "dog" | "cat";
+export type PetFoodKind = "cat_food" | "dog_food" | "dog_bone" | "cat_can";
 export type PetBreed =
   | "corgi"
   | "german_shepherd"
@@ -433,6 +434,14 @@ export interface PetCareView {
   dogToyBroken: boolean;
   catToyBroken: boolean;
   medicine: number;
+  catFood: number;
+  dogFood: number;
+  dogBone: number;
+  catCan: number;
+  catFoodCost: number;
+  dogFoodCost: number;
+  dogBoneCost: number;
+  catCanCost: number;
   dogBedCost: number;
   catBedCost: number;
   bowlCost: number;
@@ -1325,6 +1334,8 @@ export type Action =
   | { type: "repairWindmills" }
   | { type: "adoptPet"; name: string; breed: PetBreed; board: boolean }
   | { type: "feedPet"; petId: string; fishId: string }
+  | { type: "buyPetFood"; kind: PetFoodKind }
+  | { type: "feedPetFood"; petId: string; kind: PetFoodKind }
   | { type: "petCompanion"; petId: string }
   | { type: "playWithPet"; petId: string }
   | { type: "healPet"; petId: string }

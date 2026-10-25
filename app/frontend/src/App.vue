@@ -42,6 +42,7 @@ import type {
   ItemStack,
   NpcView,
   PetBreed,
+  PetFoodKind,
   PetLocation,
   PetTalent,
   PlotView,
@@ -560,6 +561,16 @@ const selectedPet = computed(
 );
 const pet = computed(() => selectedPet.value ?? snapshot.value?.pet ?? null);
 const petCare = computed(() => snapshot.value?.petCare ?? null);
+const petFoods = computed(() => {
+  const care = petCare.value;
+  if (!care) return [];
+  return [
+    { kind: "cat_food" as PetFoodKind, label: "猫粮", count: care.catFood, cost: care.catFoodCost },
+    { kind: "dog_food" as PetFoodKind, label: "狗粮", count: care.dogFood, cost: care.dogFoodCost },
+    { kind: "dog_bone" as PetFoodKind, label: "狗骨头", count: care.dogBone, cost: care.dogBoneCost },
+    { kind: "cat_can" as PetFoodKind, label: "猫罐头", count: care.catCan, cost: care.catCanCost },
+  ];
+});
 const petAnim = ref<"" | "happy" | "play" | "eat">("");
 const petEmote = ref("");
 let petAnimTimer: number | undefined;
@@ -947,6 +958,17 @@ function feedPet() {
     petId: target.id,
     fishId: fish.key.replace("fish:", ""),
   });
+}
+
+function buyPetFood(kind: PetFoodKind) {
+  void act({ type: "buyPetFood", kind });
+}
+
+function feedPetFood(kind: PetFoodKind) {
+  const target = selectedPet.value;
+  if (!target) return;
+  playPetAnim("eat", kind === "dog_bone" ? "🦴" : "🍖");
+  void act({ type: "feedPetFood", petId: target.id, kind });
 }
 
 function petAction(action: "petCompanion" | "playWithPet" | "healPet" | "digWithPet") {
@@ -4914,15 +4936,58 @@ onUnmounted(() => {
                       <b>日常</b>
                     </div>
                     <div class="row pet-actions">
-                      <button
-                        class="link"
-                        type="button"
-                        :disabled="acting || !fishItems.length"
-                        @click="feedPet"
-                      >
-                        [喂鱼]
-                      </button>
-                      <span class="muted">鱼篓 {{ fishItems.length }} 种</span>
+                      <template v-if="pet.species === 'cat'">
+                        <button
+                          class="link"
+                          type="button"
+                          :disabled="acting || !petCare || petCare.catFood === 0"
+                          @click="feedPetFood('cat_food')"
+                        >
+                          [喂猫粮]
+                        </button>
+                        <span class="muted">×{{ petCare?.catFood ?? 0 }}</span>
+                        <button
+                          class="link"
+                          type="button"
+                          :disabled="acting || !petCare || petCare.catCan === 0"
+                          @click="feedPetFood('cat_can')"
+                        >
+                          [喂猫罐头]
+                        </button>
+                        <span class="muted">×{{ petCare?.catCan ?? 0 }}</span>
+                        <button
+                          class="link"
+                          type="button"
+                          :disabled="acting || !fishItems.length"
+                          @click="feedPet"
+                        >
+                          [喂生鱼]
+                        </button>
+                        <span class="muted">×{{ fishItems.length }}</span>
+                      </template>
+                      <template v-else>
+                        <button
+                          class="link"
+                          type="button"
+                          :disabled="acting || !petCare || petCare.dogFood === 0"
+                          @click="feedPetFood('dog_food')"
+                        >
+                          [喂狗粮]
+                        </button>
+                        <span class="muted">×{{ petCare?.dogFood ?? 0 }}</span>
+                        <button
+                          class="link"
+                          type="button"
+                          :disabled="acting || !petCare || petCare.dogBone === 0"
+                          @click="feedPetFood('dog_bone')"
+                        >
+                          [喂狗骨头]
+                        </button>
+                        <span class="muted">×{{ petCare?.dogBone ?? 0 }}</span>
+                        <span class="muted">狗不吃生鱼</span>
+                      </template>
+                    </div>
+                    <div class="row pet-actions">
                       <button
                         class="link"
                         type="button"
@@ -5063,6 +5128,25 @@ onUnmounted(() => {
           </div>
           <div v-if="petCare" class="pet-care">
             <div class="pet-care-title">宠物用品</div>
+            <div class="pet-food">
+              <div class="pet-care-title">
+                宠物食品
+                <span class="muted">买来放家里，喂的时候不花钱</span>
+              </div>
+              <div class="pet-food-grid">
+                <span v-for="food in petFoods" :key="food.kind" class="pet-food-item">
+                  {{ food.label }} ×{{ food.count }}
+                  <button
+                    class="link"
+                    type="button"
+                    :disabled="acting"
+                    @click="buyPetFood(food.kind)"
+                  >
+                    [买 {{ food.cost }}]
+                  </button>
+                </span>
+              </div>
+            </div>
             <div class="pet-care-grid">
               <div class="pet-care-card">
                 <strong>🛏️ 狗窝</strong>

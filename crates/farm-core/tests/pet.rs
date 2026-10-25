@@ -1,6 +1,7 @@
 use farm_core::{
     guard_result, guard_result_full, Action, ContentPack, FishCodexEntry, Game, GameError,
-    PetBreed, PetLocation, PetSickness, PetSicknessKind, PetSpecies, PetState, PetTalent,
+    PetBreed, PetFoodKind, PetLocation, PetSickness, PetSicknessKind, PetSpecies, PetState,
+    PetTalent,
 };
 
 fn bait_total(game: &Game) -> u32 {
@@ -346,7 +347,7 @@ fn breed_sets_species_and_image() {
 
 #[test]
 fn feeding_consumes_fish_and_raises_satiety() {
-    let mut game = game_with_pet(PetSpecies::Dog);
+    let mut game = game_with_pet(PetSpecies::Cat);
     game.state_mut().inventory.insert("fish:crucian".into(), 1);
     let before = game.snapshot(0).pet.unwrap().satiety;
     game.dispatch(
@@ -361,6 +362,58 @@ fn feeding_consumes_fish_and_raises_satiety() {
     assert!(pet.satiety > before);
     assert!(pet.bond > 10);
     assert!(!game.state().inventory.contains_key("fish:crucian"));
+}
+
+#[test]
+fn dogs_refuse_raw_fish() {
+    let mut game = game_with_pet(PetSpecies::Dog);
+    game.state_mut().inventory.insert("fish:crucian".into(), 1);
+    assert!(matches!(
+        game.dispatch(
+            Action::FeedPet {
+                pet_id: "pet_1".into(),
+                fish_id: "crucian".into(),
+            },
+            0
+        ),
+        Err(GameError::PetFoodWrongSpecies)
+    ));
+}
+
+#[test]
+fn buy_and_feed_pet_food() {
+    let mut game = game_with_pet(PetSpecies::Cat);
+    game.state_mut().coins = 100;
+    game.dispatch(
+        Action::BuyPetFood {
+            kind: PetFoodKind::CatFood,
+        },
+        0,
+    )
+    .unwrap();
+    assert_eq!(game.state().pet_care.cat_food, 1);
+    assert_eq!(game.state().coins, 70);
+    let before = game.snapshot(0).pet.unwrap().satiety;
+    game.dispatch(
+        Action::FeedPetFood {
+            pet_id: "pet_1".into(),
+            kind: PetFoodKind::CatFood,
+        },
+        0,
+    )
+    .unwrap();
+    assert_eq!(game.state().pet_care.cat_food, 0);
+    assert!(game.snapshot(0).pet.unwrap().satiety > before);
+    assert!(matches!(
+        game.dispatch(
+            Action::FeedPetFood {
+                pet_id: "pet_1".into(),
+                kind: PetFoodKind::DogFood,
+            },
+            0
+        ),
+        Err(GameError::PetFoodWrongSpecies)
+    ));
 }
 
 #[test]

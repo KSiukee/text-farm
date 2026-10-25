@@ -13,7 +13,8 @@ use crate::model::{
 };
 use crate::npc::{self, NpcMessageView, NpcView};
 use crate::pet::{
-    PetBreed, PetJob, PetLocation, PetSpecies, PetStage, PetState, PetSupplyKind, PetTalent,
+    PetBreed, PetFoodKind, PetJob, PetLocation, PetSpecies, PetStage, PetState, PetSupplyKind,
+    PetTalent,
     PET_BOARD_FEE_PER_MONTH, PET_PLAY_COOLDOWN_MS, PET_TOUCH_COOLDOWN_MS,
 };
 use crate::error::GameError;
@@ -650,6 +651,14 @@ pub struct PetCareView {
     pub dog_toy_broken: bool,
     pub cat_toy_broken: bool,
     pub medicine: u32,
+    pub cat_food: u32,
+    pub dog_food: u32,
+    pub dog_bone: u32,
+    pub cat_can: u32,
+    pub cat_food_cost: u64,
+    pub dog_food_cost: u64,
+    pub dog_bone_cost: u64,
+    pub cat_can_cost: u64,
     pub dog_bed_cost: u64,
     pub cat_bed_cost: u64,
     pub bowl_cost: u64,
@@ -2845,6 +2854,14 @@ impl Game {
             dog_toy_broken: self.state.pet_care.dog_toy_broken,
             cat_toy_broken: self.state.pet_care.cat_toy_broken,
             medicine: self.state.pet_care.medicine,
+            cat_food: self.state.pet_care.cat_food,
+            dog_food: self.state.pet_care.dog_food,
+            dog_bone: self.state.pet_care.dog_bone,
+            cat_can: self.state.pet_care.cat_can,
+            cat_food_cost: PetFoodKind::CatFood.cost(),
+            dog_food_cost: PetFoodKind::DogFood.cost(),
+            dog_bone_cost: PetFoodKind::DogBone.cost(),
+            cat_can_cost: PetFoodKind::CatCan.cost(),
             dog_bed_cost: PetSupplyKind::DogBed.cost(),
             cat_bed_cost: PetSupplyKind::CatBed.cost(),
             bowl_cost: PetSupplyKind::Bowl.cost(),

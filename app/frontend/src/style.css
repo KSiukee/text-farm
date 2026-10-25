@@ -382,6 +382,25 @@ textarea {
   margin-bottom: 6px;
 }
 
+.pet-food {
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px dotted var(--line);
+}
+
+.pet-food-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 13px;
+}
+
+.pet-food-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
 .pet-care-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));

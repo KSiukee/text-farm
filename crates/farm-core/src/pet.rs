@@ -22,6 +22,102 @@ pub struct PetCare {
     pub dog_toy_broken: bool,
     pub cat_toy_broken: bool,
     pub medicine: u32,
+    /// 猫粮/狗粮/狗骨头/猫罐头，买来存在家里。
+    pub cat_food: u32,
+    pub dog_food: u32,
+    pub dog_bone: u32,
+    pub cat_can: u32,
+}
+
+impl PetCare {
+    pub fn food_count(&self, kind: PetFoodKind) -> u32 {
+        match kind {
+            PetFoodKind::CatFood => self.cat_food,
+            PetFoodKind::DogFood => self.dog_food,
+            PetFoodKind::DogBone => self.dog_bone,
+            PetFoodKind::CatCan => self.cat_can,
+        }
+    }
+
+    pub fn add_food(&mut self, kind: PetFoodKind, amount: u32) {
+        let slot = match kind {
+            PetFoodKind::CatFood => &mut self.cat_food,
+            PetFoodKind::DogFood => &mut self.dog_food,
+            PetFoodKind::DogBone => &mut self.dog_bone,
+            PetFoodKind::CatCan => &mut self.cat_can,
+        };
+        *slot = slot.saturating_add(amount);
+    }
+
+    pub fn take_food(&mut self, kind: PetFoodKind) -> bool {
+        let slot = match kind {
+            PetFoodKind::CatFood => &mut self.cat_food,
+            PetFoodKind::DogFood => &mut self.dog_food,
+            PetFoodKind::DogBone => &mut self.dog_bone,
+            PetFoodKind::CatCan => &mut self.cat_can,
+        };
+        if *slot == 0 {
+            return false;
+        }
+        *slot -= 1;
+        true
+    }
+}
+
+/// 宠物食品：猫粮/狗粮是主食，狗骨头/猫罐头是零食。
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum PetFoodKind {
+    CatFood,
+    DogFood,
+    DogBone,
+    CatCan,
+}
+
+impl PetFoodKind {
+    pub const ALL: [PetFoodKind; 4] = [
+        PetFoodKind::CatFood,
+        PetFoodKind::DogFood,
+        PetFoodKind::DogBone,
+        PetFoodKind::CatCan,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            PetFoodKind::CatFood => "猫粮",
+            PetFoodKind::DogFood => "狗粮",
+            PetFoodKind::DogBone => "狗骨头",
+            PetFoodKind::CatCan => "猫罐头",
+        }
+    }
+
+    pub fn cost(self) -> u64 {
+        match self {
+            PetFoodKind::CatFood => 30,
+            PetFoodKind::DogFood => 30,
+            PetFoodKind::DogBone => 15,
+            PetFoodKind::CatCan => 20,
+        }
+    }
+
+    pub fn species(self) -> PetSpecies {
+        match self {
+            PetFoodKind::CatFood | PetFoodKind::CatCan => PetSpecies::Cat,
+            PetFoodKind::DogFood | PetFoodKind::DogBone => PetSpecies::Dog,
+        }
+    }
+
+    pub fn is_staple(self) -> bool {
+        matches!(self, PetFoodKind::CatFood | PetFoodKind::DogFood)
+    }
+
+    pub fn snack_gain(self) -> (u32, u32, u32) {
+        match self {
+            PetFoodKind::DogBone => (6, 14, 3),
+            PetFoodKind::CatCan => (8, 16, 3),
+            _ => (0, 0, 0),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
@@ -1840,6 +1936,14 @@ impl PetState {
         self.mood = (self.mood + if preferred { 10 } else { 5 }).min(100);
         self.bond = (self.bond + if preferred { 3 } else { 2 }).min(100);
         8
+    }
+
+    /// 零食：不顶饱，主要涨心情。
+    pub fn snack(&mut self, satiety: u32, mood: u32, bond: u32) -> u64 {
+        self.satiety = (self.satiety + satiety).min(100);
+        self.mood = (self.mood + mood).min(100);
+        self.bond = (self.bond + bond).min(100);
+        5
     }
 
     pub fn touch(&mut self, now: i64) -> u64 {
