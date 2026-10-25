@@ -799,6 +799,30 @@ fn lunar_festival_of(day: &str) -> Option<&'static str> {
     }
 }
 
+/// 某一年全部节日（日期升序）；给日历和“下一个节日”用。
+pub fn festival_dates_for_year(year: i32) -> Vec<(&'static str, String)> {
+    let mut dates = Vec::new();
+    if let Some((_, spring, summer, autumn, winter)) =
+        SOLAR_FESTIVALS.iter().find(|(value, ..)| *value == year)
+    {
+        dates.push(("播种节", (*spring).to_string()));
+        dates.push(("凉夏宴", (*summer).to_string()));
+        dates.push(("丰收节", (*autumn).to_string()));
+        dates.push(("围炉日", (*winter).to_string()));
+    } else {
+        for (md, name) in SOLAR_FALLBACK {
+            dates.push((name, format!("{year:04}-{md}")));
+        }
+    }
+    dates.push(("国庆节", format!("{year:04}-10-01")));
+    if let Some((_, new_year)) = LUNAR_NEW_YEARS.iter().find(|(value, _)| *value == year) {
+        dates.push(("春节", (*new_year).to_string()));
+        dates.push(("元宵节", crate::orders::add_days(new_year, 14)));
+    }
+    dates.sort_by(|a, b| a.1.cmp(&b.1));
+    dates
+}
+
 fn birthday_line(id: &str) -> &'static str {
     match id {
         "ahe" => "今天是我生日。没什么讲究，你能来坐坐就好。",

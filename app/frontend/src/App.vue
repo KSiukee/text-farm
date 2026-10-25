@@ -3139,6 +3139,43 @@ onUnmounted(() => {
         </div>
       </section>
 
+      <details v-if="snapshot?.festivalCalendar" class="panel festival-calendar-panel" open>
+        <summary class="panel-title">
+          节日日历
+          <span class="muted">{{ snapshot.festivalCalendar.year }}</span>
+        </summary>
+        <div class="festival-calendar-summary">
+          {{ snapshot.festivalCalendar.summary }}
+        </div>
+        <div
+          v-if="snapshot.festivalCalendar.next"
+          class="festival-calendar-next"
+        >
+          下一个：<b>{{ snapshot.festivalCalendar.next.name }}</b>
+          · {{ snapshot.festivalCalendar.next.date }}
+          · 还有 {{ snapshot.festivalCalendar.next.daysUntil }} 天
+        </div>
+        <div class="festival-calendar-list">
+          <div
+            v-for="day in snapshot.festivalCalendar.festivals"
+            :key="day.date"
+            class="festival-calendar-row"
+            :class="{ today: day.isToday, passed: day.passed }"
+          >
+            <span class="festival-calendar-date">{{ day.date.slice(5) }}</span>
+            <b>{{ day.name }}</b>
+            <span v-if="day.isToday" class="ok">今天</span>
+            <span v-else-if="day.passed" class="muted">已过</span>
+            <span v-else class="muted">还有 {{ day.daysUntil }} 天</span>
+            <span class="festival-calendar-badges">
+              <span v-if="day.claimed">回礼</span>
+              <span v-if="day.marketSeen">赶集</span>
+              <span v-if="day.storyDone">剧情</span>
+            </span>
+          </div>
+        </div>
+      </details>
+
       <section v-if="snapshot?.festivalMarket" class="panel festival-market">
         <div class="panel-title">
           {{ snapshot.festivalMarket.name }} · {{ snapshot.festivalMarket.major ? "大集" : "集市" }}

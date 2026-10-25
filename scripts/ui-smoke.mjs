@@ -490,6 +490,9 @@ try {
     "第一周手册有八个目标",
     (await evaluate(`document.querySelectorAll('.handbook-goal').length`)) === 8,
   );
+  const festivalText = await bodyText();
+  check("节日日历已显示", festivalText.includes("节日日历"));
+  check("节日日历标出下一个节日", festivalText.includes("下一个："));
   await waitFor(async () => (saveState().orders?.offers.length ?? 0) >= 1);
   check("村庄订单已生成", (saveState().orders?.offers.length ?? 0) >= 1);
   check("村庄订单面板已显示", (await bodyText()).includes("村庄订单"));

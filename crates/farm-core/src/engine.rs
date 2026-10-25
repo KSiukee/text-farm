@@ -5504,6 +5504,7 @@ impl Game {
             .festival_market
             .supplied
             .insert(request.id.clone());
+        self.note_festival_market(request.contribution);
         let text = format!(
             "你给{}的集市备货交了 {}×{}，集市贡献+{}",
             request.npc_name, request.item_name, request.qty, request.contribution
@@ -5538,6 +5539,7 @@ impl Game {
         self.state.coins -= offer.price;
         *self.state.inventory.entry(offer.item_key.clone()).or_insert(0) += 1;
         self.state.festival_market.bought.insert(offer.id.clone());
+        self.note_festival_market(0);
         let text = format!(
             "集市开张，你用 {} 金币买下 {}",
             offer.price, offer.item_name
@@ -5564,6 +5566,7 @@ impl Game {
         let bonus = gained.saturating_mul(30) / 100;
         self.state.coins = self.state.coins.saturating_add(bonus);
         self.state.festival_market.sold += 1;
+        self.note_festival_market(0);
         let text = format!("集市寄卖：原价 {}，节日多卖 {} 金币", gained, bonus);
         self.push_log(now, text.clone());
         effects.push(Effect::Log { text });
@@ -5599,12 +5602,24 @@ impl Game {
             .insert(gift.threshold);
         self.state.coins = self.state.coins.saturating_add(gift.coins);
         *self.state.inventory.entry(gift.item_key.clone()).or_insert(0) += gift.qty;
+        self.note_festival_market(0);
         let text = format!(
             "集市回礼：{}，收到 {}×{} 和 {} 金币",
             gift.label, gift.item_name, gift.qty, gift.coins
         );
         self.push_log(now, text.clone());
         Ok(vec![Effect::Log { text }])
+    }
+
+    fn note_festival_market(&mut self, contribution: u32) {
+        let today = self.state.daily.day.clone();
+        let Some(festival) = crate::npc_story::festival_of(&today) else {
+            return;
+        };
+        let year = crate::npc_story::year_of(&today);
+        let stat = self.state.festival_years.entry(year).or_default();
+        stat.market_festivals.insert(festival.to_string());
+        stat.contribution = stat.contribution.saturating_add(contribution);
     }
 
     fn choose_festival_story(
@@ -5643,6 +5658,7 @@ impl Game {
                 .festival_market
                 .contribution
                 .saturating_add(choice.contribution);
+            self.note_festival_market(choice.contribution);
         }
         self.state
             .festival_stories

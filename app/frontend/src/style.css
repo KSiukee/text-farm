@@ -1650,6 +1650,66 @@ textarea {
   color: var(--accent-text);
 }
 
+.festival-calendar-panel summary {
+  cursor: pointer;
+}
+
+.festival-calendar-summary {
+  margin: 6px 0;
+  font-size: 13px;
+}
+
+.festival-calendar-next {
+  margin-bottom: 8px;
+  padding: 5px 8px;
+  border-left: 2px solid var(--accent-text);
+  background: var(--panel-soft);
+  font-size: 13px;
+}
+
+.festival-calendar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.festival-calendar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 9px;
+  padding: 4px 0;
+  border-bottom: 1px dotted var(--line);
+  font-size: 13px;
+}
+
+.festival-calendar-row.passed {
+  opacity: 0.62;
+}
+
+.festival-calendar-row.today {
+  background: var(--panel-soft);
+}
+
+.festival-calendar-date {
+  width: 44px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.festival-calendar-badges {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.festival-calendar-badges span {
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  color: var(--accent-text);
+  font-size: 11px;
+}
+
 .festival-story-entry {
   display: inline-block;
   margin: 0 0 8px;

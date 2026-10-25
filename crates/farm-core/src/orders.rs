@@ -323,6 +323,17 @@ pub fn add_days(day: &str, days: u32) -> String {
     format!("{year:04}-{month:02}-{date:02}")
 }
 
+/// 两个 YYYY-MM-DD 之间相差的天数（to - from）；坏日期返回 0。
+pub fn days_between(from: &str, to: &str) -> i64 {
+    let Some((fy, fm, fd)) = parse_day(from) else {
+        return 0;
+    };
+    let Some((ty, tm, td)) = parse_day(to) else {
+        return 0;
+    };
+    days_from_civil(ty, tm, td) - days_from_civil(fy, fm, fd)
+}
+
 fn parse_day(day: &str) -> Option<(i64, u32, u32)> {
     let mut parts = day.split('-');
     let year = parts.next()?.parse().ok()?;

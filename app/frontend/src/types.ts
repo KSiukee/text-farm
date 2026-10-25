@@ -773,6 +773,28 @@ export interface FestivalMemoryView {
   text: string;
 }
 
+export interface FestivalDayView {
+  name: string;
+  date: string;
+  passed: boolean;
+  isToday: boolean;
+  daysUntil: number | null;
+  claimed: boolean;
+  storyDone: boolean;
+  marketSeen: boolean;
+}
+
+export interface FestivalCalendarView {
+  year: number;
+  today: string;
+  next: FestivalDayView | null;
+  festivals: FestivalDayView[];
+  attended: number;
+  marketVisits: number;
+  memories: number;
+  summary: string;
+}
+
 export interface FarmOrderView {
   id: string;
   npcName: string;
@@ -1474,6 +1496,7 @@ export interface Snapshot {
   daily: DailyView;
   handbook: HandbookView;
   festivalMarket: FestivalMarketView | null;
+  festivalCalendar: FestivalCalendarView;
   festivalStory: FestivalStoryView | null;
   festivalHistory: FestivalMemoryView[];
   orders: FarmOrdersView;

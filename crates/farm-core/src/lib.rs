@@ -11,6 +11,7 @@ mod daily;
 mod engine;
 mod error;
 mod fishing;
+mod festival_calendar;
 mod festival_market;
 mod festival_story;
 mod handbook;
@@ -49,6 +50,7 @@ pub use content::{
 };
 pub use daily::{DailyTaskView, DailyView, DAILY_TASKS};
 pub use engine::{Effect, Outcome};
+pub use festival_calendar::{FestivalCalendarView, FestivalDayView};
 pub use npc_story::{festival_of, festival_reward_for, is_major_festival};
 pub use festival_market::{
     FestivalMarketState, FestivalMarketView, MarketGiftView, MarketOfferView, MarketRequestView,

@@ -16,7 +16,7 @@ use crate::room::RoomState;
 use crate::skills::PlayerSkills;
 use crate::workshop::WorkshopState;
 
-pub const SAVE_SCHEMA: u32 = 54;
+pub const SAVE_SCHEMA: u32 = 55;
 pub const MAX_LEVEL: u32 = 30;
 pub const PLOT_COUNT: usize = 8;
 pub const PLOT_MAX_TIER: u8 = 3;
@@ -360,6 +360,14 @@ pub struct CropQualityMark {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
+pub struct FestivalYearStat {
+    /// 今年真正赶过的节日（交过货/买过/卖过/领过回礼）。
+    pub market_festivals: BTreeSet<String>,
+    pub contribution: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
 pub struct FestivalMemory {
     pub year: i32,
     pub festival: String,
@@ -423,6 +431,9 @@ pub struct GameState {
     /// 节日回忆，按发生顺序追加。
     #[serde(default)]
     pub festival_memories: Vec<FestivalMemory>,
+    /// 按年份记的赶集统计。
+    #[serde(default)]
+    pub festival_years: BTreeMap<i32, FestivalYearStat>,
     #[serde(default)]
     pub npc_messages: Vec<NpcMessage>,
     #[serde(default)]
@@ -531,6 +542,7 @@ impl Game {
             festival_market: FestivalMarketState::default(),
             festival_stories: BTreeMap::new(),
             festival_memories: Vec::new(),
+            festival_years: BTreeMap::new(),
             npc_messages: Vec::new(),
             last_npc_tick_at: now,
             season: Season::Spring,
