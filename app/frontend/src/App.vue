@@ -1069,6 +1069,10 @@ function openNpcJournal(npc: NpcView) {
   npcJournal.value = npc;
 }
 
+function helpNpcRequest(npc: NpcView) {
+  void act({ type: "helpNpcRequest", npcId: npc.id });
+}
+
 function cropById(id: string): CropDef | undefined {
   return content.value?.crops.find((crop) => crop.id === id);
 }
@@ -3434,6 +3438,9 @@ onUnmounted(() => {
               <span class="muted">只读参观 · 不能装修</span>
               <button class="link" type="button" @click="selectedNpcRoomId = ''">[返回]</button>
             </div>
+            <div v-if="selectedNpcRoom.souvenirs.length" class="muted npc-room-souvenirs">
+              屋里多了：{{ selectedNpcRoom.souvenirs.join("、") }}
+            </div>
             <RoomScene
               :room="selectedNpcRoom.room"
               :active="true"
@@ -3553,6 +3560,22 @@ onUnmounted(() => {
             <div class="npc-meta">
               <span class="muted">{{ npc.routine }}</span>
               <span v-if="npc.nextEvent" class="muted">· 下一段故事：{{ npc.nextEvent }}</span>
+            </div>
+            <div v-if="npc.request" class="npc-request">
+              <span>本周心愿：{{ npc.request.itemName }} ×{{ npc.request.qty }}</span>
+              <span class="muted">{{ npc.request.reason }}</span>
+              <span class="muted">仓库 {{ npc.request.have }}/{{ npc.request.qty }}</span>
+              <button
+                class="link"
+                type="button"
+                :disabled="acting || !npc.request.canHelp"
+                @click="helpNpcRequest(npc)"
+              >
+                [帮这个忙]
+              </button>
+            </div>
+            <div v-else-if="npc.requestDone" class="muted npc-request-done">
+              本周已帮过 · 回礼：{{ npc.lastSouvenir || "一份小心意" }}
             </div>
             <div v-for="plot in npc.plots" :key="plot.index" class="npc-plot">
               <span>{{ plot.label }}[普通]:{{ plot.cropName }}</span>

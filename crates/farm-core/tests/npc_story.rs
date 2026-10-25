@@ -66,6 +66,47 @@ fn second_story_unlocks_at_sixty_and_never_repeats() {
 }
 
 #[test]
+fn weekly_request_consumes_items_and_leaves_souvenir() {
+    let mut game = Game::new(0);
+    game.state_mut().inventory.insert("crop:xiaobaicai".into(), 5);
+    let before = game.state().coins;
+    let outcome = game
+        .dispatch(
+            Action::HelpNpcRequest {
+                npc_id: "ahe".into(),
+            },
+            0,
+        )
+        .unwrap();
+    assert!(matches!(outcome.effects[0], Effect::Log { .. }));
+    assert_eq!(game.state().coins, before + 200);
+    assert!(!game.state().inventory.contains_key("crop:xiaobaicai"));
+    assert_eq!(game.state().npcs[0].friendship, 13);
+    assert!(game.state().npcs[0]
+        .souvenirs
+        .contains(&"一把扎好的小青菜".to_string()));
+    assert!(matches!(
+        game.dispatch(
+            Action::HelpNpcRequest {
+                npc_id: "ahe".into(),
+            },
+            0
+        ),
+        Err(farm_core::GameError::NpcRequestDone)
+    ));
+
+    game.state_mut().inventory.insert("crop:xiaobaicai".into(), 5);
+    game.dispatch(
+        Action::HelpNpcRequest {
+            npc_id: "ahe".into(),
+        },
+        7 * 86_400_000,
+    )
+    .unwrap();
+    assert_eq!(game.state().npcs[0].souvenirs.len(), 2);
+}
+
+#[test]
 fn old_memory_is_recalled_with_tag_once_per_cooldown() {
     let mut game = setup();
     game.state_mut().npcs[0].friendship = 35;

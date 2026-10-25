@@ -119,6 +119,7 @@ impl Game {
             Action::BuyPetFood { kind } => self.buy_pet_food(kind, now)?,
             Action::FeedPetFood { pet_id, kind } => self.feed_pet_food(&pet_id, kind, now)?,
             Action::ChatWithNpc { npc_id } => self.chat_with_npc(&npc_id, now)?,
+            Action::HelpNpcRequest { npc_id } => self.help_npc_request(&npc_id, now)?,
             Action::PetCompanion { pet_id } => self.touch_pet(&pet_id, now)?,
             Action::PlayWithPet { pet_id } => self.play_pet(&pet_id, now)?,
             Action::HealPet { pet_id } => self.heal_pet(&pet_id, now)?,
@@ -4995,6 +4996,46 @@ impl Game {
             favor,
             tag,
         }])
+    }
+
+    fn help_npc_request(&mut self, npc_id: &str, now: i64) -> Result<Vec<Effect>, GameError> {
+        let pos = self.npc_pos(npc_id)?;
+        let week = now / 86_400_000 / 7;
+        let (title, item_key, qty, reward, souvenir) = {
+            let npc = &self.state.npcs[pos];
+            if npc.request_week == week {
+                return Err(GameError::NpcRequestDone);
+            }
+            let request = crate::npc_story::request(&npc.id).ok_or(GameError::UnknownNpc)?;
+            (
+                request.title,
+                request.item_key,
+                request.qty,
+                request.reward,
+                request.souvenir,
+            )
+        };
+        let have = *self.state.inventory.get(item_key).unwrap_or(&0);
+        if have < qty {
+            return Err(GameError::NotEnoughItems);
+        }
+        if have == qty {
+            self.state.inventory.remove(item_key);
+        } else {
+            self.state.inventory.insert(item_key.into(), have - qty);
+        }
+        self.state.coins = self.state.coins.saturating_add(reward);
+        let npc = &mut self.state.npcs[pos];
+        npc.request_week = week;
+        npc.request_done = true;
+        npc.friendship = (npc.friendship + 3).min(100);
+        npc.souvenirs.push(souvenir.to_string());
+        let text = format!(
+            "你帮{npc_name}完成了「{title}」，收到 {reward} 金币和{souvenir}",
+            npc_name = npc.name
+        );
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
     }
 
     fn advance_npcs(&mut self, now: i64) -> bool {

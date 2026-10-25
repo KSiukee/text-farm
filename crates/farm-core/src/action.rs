@@ -341,6 +341,11 @@ pub enum Action {
         #[serde(rename = "npcId")]
         npc_id: String,
     },
+    /// 帮村民完成本周的小请求。
+    HelpNpcRequest {
+        #[serde(rename = "npcId")]
+        npc_id: String,
+    },
     ClaimSignIn,
     UpdateProfile {
         #[serde(rename = "ownerName")]

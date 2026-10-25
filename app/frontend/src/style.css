@@ -2026,6 +2026,28 @@ textarea {
   font-size: 12px;
 }
 
+.npc-request {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 4px 0;
+  padding: 4px 8px;
+  border-left: 2px solid var(--accent-text);
+  background: var(--accent-soft);
+  font-size: 13px;
+}
+
+.npc-request-done {
+  margin: 4px 0;
+  font-size: 12px;
+}
+
+.npc-room-souvenirs {
+  margin: 4px 0 6px;
+  font-size: 12px;
+}
+
 .npc-scene-overlay {
   position: fixed;
   inset: 0;

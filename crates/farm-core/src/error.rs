@@ -192,6 +192,8 @@ pub enum GameError {
     PetBoarded,
     #[error("这个食品不是它吃的；生鱼只给猫")]
     PetFoodWrongSpecies,
+    #[error("本周已经帮过这位村民了，下周再来")]
+    NpcRequestDone,
     #[error("这个用品已经买了")]
     PetSupplyOwned,
     #[error("这个用品没有损坏")]
@@ -404,6 +406,7 @@ impl GameError {
             GameError::PetNotFound => "pet_not_found",
             GameError::PetBoarded => "pet_boarded",
             GameError::PetFoodWrongSpecies => "pet_food_wrong_species",
+            GameError::NpcRequestDone => "npc_request_done",
             GameError::PetSupplyOwned => "pet_supply_owned",
             GameError::PetSupplyNotBroken => "pet_supply_not_broken",
             GameError::NoBoardingDebt => "no_boarding_debt",

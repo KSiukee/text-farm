@@ -1118,6 +1118,7 @@ pub struct NpcRoomView {
     pub friendship: i32,
     pub threshold: i32,
     pub unlocked: bool,
+    pub souvenirs: Vec<String>,
     pub room: RoomView,
 }
 
@@ -1741,7 +1742,7 @@ impl Game {
             .state
             .npcs
             .iter()
-            .map(|npc| npc::view(npc, &self.content, now))
+            .map(|npc| npc::view(npc, &self.content, &self.state.inventory, now))
             .collect();
         let npc_messages: Vec<NpcMessageView> = self
             .state
@@ -3028,6 +3029,7 @@ impl Game {
                     friendship: entry.friendship,
                     threshold,
                     unlocked: entry.friendship >= threshold,
+                    souvenirs: entry.souvenirs.clone(),
                     room: room_view_data(
                         &format!("npc_{}", entry.id),
                         &format!("{}的小屋", entry.name),

@@ -73,6 +73,14 @@ pub struct NpcState {
     /// 已发生的故事记忆，用于主动想起和人物志。
     #[serde(default)]
     pub memories: Vec<NpcMemory>,
+    /// 上一次小请求所属的周（`now / 7 天`）；-1 表示还没帮过。
+    #[serde(default)]
+    pub request_week: i64,
+    #[serde(default)]
+    pub request_done: bool,
+    /// 小请求完成后留下的小屋纪念物。
+    #[serde(default)]
+    pub souvenirs: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -126,8 +134,24 @@ pub struct NpcView {
     pub today_line: String,
     pub next_event: Option<String>,
     pub memories: Vec<NpcMemoryView>,
+    pub request: Option<NpcRequestView>,
+    pub request_done: bool,
+    pub last_souvenir: Option<String>,
     pub plots: Vec<NpcPlotView>,
     pub ranch: Vec<NpcRanchAnimalView>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NpcRequestView {
+    pub title: String,
+    pub item_name: String,
+    pub qty: u32,
+    pub have: u32,
+    pub can_help: bool,
+    pub reason: String,
+    pub reward: u64,
+    pub souvenir: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -236,6 +260,9 @@ pub fn starter(now: i64, content: &ContentPack) -> Vec<NpcState> {
                 seen_events: Vec::new(),
                 last_chat_day: String::new(),
                 memories: Vec::new(),
+                request_week: -1,
+                request_done: false,
+                souvenirs: Vec::new(),
             }
         })
         .collect()
@@ -260,11 +287,35 @@ pub fn starter_ranch(now: i64) -> Vec<NpcRanchAnimal> {
         .collect()
 }
 
-pub fn view(npc: &NpcState, content: &ContentPack, now: i64) -> NpcView {
+pub fn view(
+    npc: &NpcState,
+    content: &ContentPack,
+    inventory: &std::collections::BTreeMap<String, u32>,
+    now: i64,
+) -> NpcView {
     let profile = crate::npc_story::profile(&npc.id);
     let today_line = crate::npc_story::daily_line(&npc.id, npc.friendship, now / 86_400_000);
     let next_event = crate::npc_story::upcoming_event(&npc.id, &npc.seen_events)
         .map(|event| format!("{} 好感 · {}", event.threshold, event.title));
+    let week = now / 86_400_000 / 7;
+    let request_done = npc.request_week == week;
+    let request = if request_done {
+        None
+    } else {
+        crate::npc_story::request(&npc.id).map(|request| {
+            let have = *inventory.get(request.item_key).unwrap_or(&0);
+            NpcRequestView {
+                title: request.title.to_string(),
+                item_name: request.item_name.to_string(),
+                qty: request.qty,
+                have,
+                can_help: have >= request.qty,
+                reason: request.reason.to_string(),
+                reward: request.reward,
+                souvenir: request.souvenir.to_string(),
+            }
+        })
+    };
     let memories = npc
         .memories
         .iter()
@@ -348,6 +399,9 @@ pub fn view(npc: &NpcState, content: &ContentPack, now: i64) -> NpcView {
         today_line: today_line.to_string(),
         next_event,
         memories,
+        request,
+        request_done,
+        last_souvenir: npc.souvenirs.last().cloned(),
         plots,
         ranch,
     }

@@ -317,6 +317,69 @@ pub fn season_of(day: &str) -> &'static str {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct NpcRequest {
+    pub title: &'static str,
+    pub item_key: &'static str,
+    pub item_name: &'static str,
+    pub qty: u32,
+    pub reason: &'static str,
+    pub reward: u64,
+    pub souvenir: &'static str,
+}
+
+/// 每周一个小请求：要的东西和理由都跟这个人当前的心事有关。
+pub fn request(id: &str) -> Option<NpcRequest> {
+    match id {
+        "ahe" => Some(NpcRequest {
+            title: "给青杏带点新鲜菜",
+            item_key: "crop:xiaobaicai",
+            item_name: "小青菜",
+            qty: 5,
+            reason: "青杏说最近村里咳嗽的人多，他想送点新鲜菜过去。",
+            reward: 200,
+            souvenir: "一把扎好的小青菜",
+        }),
+        "xiaoman" => Some(NpcRequest {
+            title: "熬一锅新果酱",
+            item_key: "crop:caomei",
+            item_name: "草莓",
+            qty: 5,
+            reason: "她想试一锅不加糖的果酱，缺一篮熟透的草莓。",
+            reward: 200,
+            souvenir: "一小罐草莓酱",
+        }),
+        "qingxing" => Some(NpcRequest {
+            title: "给老陶熬润肺的汤",
+            item_key: "crop:luobo",
+            item_name: "萝卜",
+            qty: 4,
+            reason: "老陶咳了半个月，她想用萝卜和蜂蜜试个方子。",
+            reward: 250,
+            souvenir: "一只晒药筛",
+        }),
+        "laotao" => Some(NpcRequest {
+            title: "给椅子做个垫子",
+            item_key: "ranch:wool",
+            item_name: "羊毛",
+            qty: 2,
+            reason: "那把没人坐的小椅子，他想垫软一点。",
+            reward: 300,
+            souvenir: "一小块打磨过的木料",
+        }),
+        "liuyue" => Some(NpcRequest {
+            title: "修船前喝碗鱼汤",
+            item_key: "fish:crucian",
+            item_name: "鲫鱼",
+            qty: 2,
+            reason: "船板换好了，她想先喝碗热汤再下水。",
+            reward: 250,
+            souvenir: "一枚旧船钉",
+        }),
+        _ => None,
+    }
+}
+
 pub fn next_event(
     id: &str,
     friendship: i32,

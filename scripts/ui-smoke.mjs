@@ -584,6 +584,17 @@ try {
   check("NPC 人物志已打开", journalText.includes("老锄头") && journalText.includes("你帮他修好了父亲留下的旧锄头"));
   await clickText("[合上]");
   await waitFor(async () => (await evaluate(`!!document.querySelector('.npc-memory')`)) === false);
+  const requestCoins = saveState().coins;
+  const requestCabbage = saveState().inventory["crop:xiaobaicai"] || 0;
+  await clickText("[帮这个忙]");
+  await waitFor(async () => saveState().npcs[0].requestWeek >= 0);
+  check("NPC 小请求已交付", (saveState().inventory["crop:xiaobaicai"] || 0) === requestCabbage - 5);
+  check("NPC 小请求给回礼", saveState().coins === requestCoins + 200);
+  check(
+    "NPC 小请求留下小屋小物",
+    saveState().npcs[0].souvenirs.includes("一把扎好的小青菜") &&
+      (await bodyText()).includes("本周已帮过 · 回礼：一把扎好的小青菜"),
+  );
   await screenshot("docs/npc-people-v0100.png");
   await clickText("图鉴");
   await waitFor(async () => (await evaluate(`!!document.querySelector('#farm-codex')?.open`)) === true);

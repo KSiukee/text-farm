@@ -777,8 +777,22 @@ export interface NpcView {
   todayLine: string;
   nextEvent: string | null;
   memories: NpcMemoryView[];
+  request: NpcRequestView | null;
+  requestDone: boolean;
+  lastSouvenir: string | null;
   plots: NpcPlotView[];
   ranch: NpcRanchAnimalView[];
+}
+
+export interface NpcRequestView {
+  title: string;
+  itemName: string;
+  qty: number;
+  have: number;
+  canHelp: boolean;
+  reason: string;
+  reward: number;
+  souvenir: string;
 }
 
 export interface NpcMemoryView {
@@ -794,6 +808,7 @@ export interface NpcRoomView {
   friendship: number;
   threshold: number;
   unlocked: boolean;
+  souvenirs: string[];
   room: RoomView;
 }
 
@@ -1435,6 +1450,7 @@ export type Action =
   | { type: "stealNpcRanch"; npcId: string; index: number }
   | { type: "npcGreeting"; npcId: string }
   | { type: "chatWithNpc"; npcId: string }
+  | { type: "helpNpcRequest"; npcId: string }
   | { type: "claimSignIn" }
   | { type: "updateProfile"; ownerName: string }
   | { type: "claimDaily"; id: number }
