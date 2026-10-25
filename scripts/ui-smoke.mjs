@@ -108,6 +108,9 @@ function seedSave() {
   // 真机档里邻居牧场可能今天已经帮过/偷过；测试档统一重置，否则帮忙按钮全是灰的。
   state.npcs = (state.npcs || []).map((npc) => ({
     ...npc,
+    friendship: npc.id === "ahe" ? 30 : npc.friendship,
+    seenEvents: [],
+    lastChatDay: "",
     ranch: (npc.ranch || []).map((animal) => ({
       ...animal,
       helped: false,
@@ -552,6 +555,30 @@ try {
     tabNames.join(",") === "我的农场,牧村,邻居农场,宠物,鱼塘,标本室,图鉴",
     tabNames.join(","),
   );  check("矿场图标已隐藏", !(await bodyText()).includes("矿场"));
+  await clickText("邻居农场");
+  await waitFor(async () => (await evaluate(`document.querySelectorAll('.npc-card').length`)) === 5);
+  check("邻居人物卡 5 个", (await evaluate(`document.querySelectorAll('.npc-card').length`)) === 5);
+  const neighborText = await bodyText();
+  check(
+    "邻居人物档案已显示",
+    neighborText.includes("村东的菜农") &&
+      neighborText.includes("慢热") &&
+      neighborText.includes("下一段故事：30 好感 · 老锄头"),
+  );
+  const neighborCoins = saveState().coins;
+  await clickText("[聊聊]");
+  await waitFor(async () => (await evaluate(`!!document.querySelector('.npc-scene-card')`)) === true);
+  const sceneText = await bodyText();
+  check("NPC 好感故事已打开", sceneText.includes("老锄头") && sceneText.includes("我爹留下的"));
+  check("NPC 好感故事给奖励", saveState().coins === neighborCoins + 300);
+  check("NPC 好感已增加", saveState().npcs[0].friendship === 35);
+  await clickText("[收下]");
+  await waitFor(async () => (await evaluate(`!!document.querySelector('.npc-scene-card')`)) === false);
+  check(
+    "NPC 下一段故事已提示",
+    (await bodyText()).includes("下一段故事：60 好感 · 田埂上的话"),
+  );
+  await screenshot("docs/npc-people-v0100.png");
   await clickText("图鉴");
   await waitFor(async () => (await evaluate(`!!document.querySelector('#farm-codex')?.open`)) === true);
   check("图鉴 tab 打开农场图鉴", true);

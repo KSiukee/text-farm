@@ -768,6 +768,14 @@ export interface NpcView {
   level: number;
   friendship: number;
   relation: string;
+  emoji: string;
+  role: string;
+  tags: string[];
+  likes: string;
+  dislikes: string;
+  routine: string;
+  todayLine: string;
+  nextEvent: string | null;
   plots: NpcPlotView[];
   ranch: NpcRanchAnimalView[];
 }
@@ -1305,10 +1313,20 @@ export interface SpecimenResultEffect {
   featured: boolean;
 }
 
+export interface NpcTalkEffect {
+  kind: "npcTalk";
+  npcName: string;
+  title: string;
+  text: string;
+  reward: string;
+  favor: number;
+}
+
 export type Effect =
   | { kind: "log"; text: string }
   | { kind: "levelUp"; level: number }
   | { kind: "achievement"; id: string; name: string }
+  | NpcTalkEffect
   | SpecimenResultEffect;
 
 export interface DispatchReply {
@@ -1408,6 +1426,7 @@ export type Action =
   | { type: "helpNpcRanch"; npcId: string; index: number }
   | { type: "stealNpcRanch"; npcId: string; index: number }
   | { type: "npcGreeting"; npcId: string }
+  | { type: "chatWithNpc"; npcId: string }
   | { type: "claimSignIn" }
   | { type: "updateProfile"; ownerName: string }
   | { type: "claimDaily"; id: number }

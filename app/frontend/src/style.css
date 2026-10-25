@@ -1995,6 +1995,77 @@ textarea {
   margin-bottom: 4px;
 }
 
+.npc-profile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin: 4px 0;
+}
+
+.npc-tag {
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-soft);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.npc-today {
+  margin: 4px 0;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.npc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.npc-scene-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.npc-scene-card {
+  width: min(520px, 100%);
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+.npc-scene-title {
+  margin-bottom: 8px;
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+.npc-scene-text {
+  margin: 0 0 10px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+.npc-scene-reward {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-bottom: 8px;
+  color: var(--success);
+  font-size: 13px;
+}
+
 .npc-plot {
   padding: 2px 0;
   font-family: var(--font-ui);

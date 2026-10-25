@@ -1048,6 +1048,23 @@ pub fn migrate_save(mut value: Value) -> Result<Value, SaveError> {
         value["schema"] = json!(42);
     }
 
+    if schema < 43 {
+        let state = value
+            .get_mut("state")
+            .and_then(Value::as_object_mut)
+            .ok_or(SaveError::Unknown(schema))?;
+        if let Some(npcs) = state.get_mut("npcs").and_then(Value::as_array_mut) {
+            for npc in npcs {
+                if let Some(npc) = npc.as_object_mut() {
+                    npc.entry("seenEvents").or_insert_with(|| json!([]));
+                    npc.entry("lastChatDay").or_insert_with(|| json!(""));
+                }
+            }
+        }
+        state.insert("schema".into(), json!(43));
+        value["schema"] = json!(43);
+    }
+
     Ok(value)
 }
 

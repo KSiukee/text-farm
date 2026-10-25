@@ -64,6 +64,12 @@ pub struct NpcState {
     #[serde(default)]
     pub ranch: Vec<NpcRanchAnimal>,
     pub last_greeting_at: i64,
+    /// 已看过的好感小故事 id。
+    #[serde(default)]
+    pub seen_events: Vec<String>,
+    /// 最近一次聊天的日期（`daily.day`），同一天只加一次好感。
+    #[serde(default)]
+    pub last_chat_day: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -98,6 +104,14 @@ pub struct NpcView {
     pub level: u32,
     pub friendship: i32,
     pub relation: String,
+    pub emoji: String,
+    pub role: String,
+    pub tags: Vec<String>,
+    pub likes: String,
+    pub dislikes: String,
+    pub routine: String,
+    pub today_line: String,
+    pub next_event: Option<String>,
     pub plots: Vec<NpcPlotView>,
     pub ranch: Vec<NpcRanchAnimalView>,
 }
@@ -197,6 +211,8 @@ pub fn starter(now: i64, content: &ContentPack) -> Vec<NpcState> {
                 plots,
                 ranch: starter_ranch(now),
                 last_greeting_at: 0,
+                seen_events: Vec::new(),
+                last_chat_day: String::new(),
             }
         })
         .collect()
@@ -222,6 +238,10 @@ pub fn starter_ranch(now: i64) -> Vec<NpcRanchAnimal> {
 }
 
 pub fn view(npc: &NpcState, content: &ContentPack, now: i64) -> NpcView {
+    let profile = crate::npc_story::profile(&npc.id);
+    let today_line = crate::npc_story::daily_line(&npc.id, npc.friendship, now / 86_400_000);
+    let next_event = crate::npc_story::upcoming_event(&npc.id, &npc.seen_events)
+        .map(|event| format!("{} 好感 · {}", event.threshold, event.title));
     let plots = npc
         .plots
         .iter()
@@ -276,10 +296,22 @@ pub fn view(npc: &NpcState, content: &ContentPack, now: i64) -> NpcView {
 
     NpcView {
         id: npc.id.clone(),
-        name: npc.name.clone(),
+        name: profile
+            .map(|profile| profile.name.to_string())
+            .unwrap_or_else(|| npc.name.clone()),
         level: npc.level,
         friendship: npc.friendship,
         relation: relation(npc.friendship).into(),
+        emoji: profile.map(|profile| profile.emoji.to_string()).unwrap_or_default(),
+        role: profile.map(|profile| profile.role.to_string()).unwrap_or_default(),
+        tags: profile
+            .map(|profile| profile.tags.iter().map(|tag| tag.to_string()).collect())
+            .unwrap_or_default(),
+        likes: profile.map(|profile| profile.likes.to_string()).unwrap_or_default(),
+        dislikes: profile.map(|profile| profile.dislikes.to_string()).unwrap_or_default(),
+        routine: profile.map(|profile| profile.routine.to_string()).unwrap_or_default(),
+        today_line: today_line.to_string(),
+        next_event,
         plots,
         ranch,
     }

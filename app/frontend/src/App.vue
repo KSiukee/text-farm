@@ -40,6 +40,7 @@ import type {
   FishRecipe,
   FishingSpot,
   ItemStack,
+  NpcTalkEffect,
   NpcView,
   PetBreed,
   PetFoodKind,
@@ -671,6 +672,7 @@ const specimenFeatured = computed(
 );
 const specimenMilestones = computed(() => snapshot.value?.specimenMilestones ?? []);
 const specimenResult = ref<Extract<Effect, { kind: "specimen" }> | null>(null);
+const npcTalk = ref<NpcTalkEffect | null>(null);
 const specimenResultCrop = computed(
   () => specimens.value.find((item) => item.cropId === specimenResult.value?.cropId) ?? null,
 );
@@ -1058,6 +1060,10 @@ function greetNpc(npc: NpcView) {
   void act({ type: "npcGreeting", npcId: npc.id });
 }
 
+function chatWithNpc(npc: NpcView) {
+  void act({ type: "chatWithNpc", npcId: npc.id });
+}
+
 function cropById(id: string): CropDef | undefined {
   return content.value?.crops.find((crop) => crop.id === id);
 }
@@ -1155,6 +1161,10 @@ async function act(action: Action): Promise<boolean> {
     const specimen = reply.effects.find((effect) => effect.kind === "specimen");
     if (specimen && specimen.kind === "specimen") {
       specimenResult.value = specimen;
+    }
+    const talk = reply.effects.find((effect) => effect.kind === "npcTalk");
+    if (talk && talk.kind === "npcTalk") {
+      npcTalk.value = talk;
     }
     if (reply.saveError) {
       saveMessage.value = `已生效，但保存失败：${reply.saveError}`;
@@ -3513,11 +3523,23 @@ onUnmounted(() => {
           </div>
           <div v-for="npc in npcs" :key="npc.id" class="npc-card">
             <div class="npc-head">
-              <strong>{{ npc.name }}</strong>
-              <span class="muted">{{ npc.level }}级 · {{ npc.relation }}（{{ npc.friendship }}）</span>
+              <strong>{{ npc.emoji }} {{ npc.name }}</strong>
+              <span class="muted">{{ npc.role }} · {{ npc.level }}级 · {{ npc.relation }}（{{ npc.friendship }}）</span>
+              <button class="link" type="button" :disabled="acting" @click="chatWithNpc(npc)">
+                [聊聊]
+              </button>
               <button class="link" type="button" :disabled="acting" @click="greetNpc(npc)">
                 [留句话]
               </button>
+            </div>
+            <div class="npc-profile">
+              <span v-for="tag in npc.tags" :key="tag" class="npc-tag">{{ tag }}</span>
+              <span class="muted">喜欢 {{ npc.likes }} · 不喜 {{ npc.dislikes }}</span>
+            </div>
+            <p class="npc-today">“{{ npc.todayLine }}”</p>
+            <div class="npc-meta">
+              <span class="muted">{{ npc.routine }}</span>
+              <span v-if="npc.nextEvent" class="muted">· 下一段故事：{{ npc.nextEvent }}</span>
             </div>
             <div v-for="plot in npc.plots" :key="plot.index" class="npc-plot">
               <span>{{ plot.label }}[普通]:{{ plot.cropName }}</span>
@@ -5423,6 +5445,18 @@ onUnmounted(() => {
           ({{ entry.stamp }}) {{ entry.text }}
         </div>
         <div v-if="!logLines.length" class="muted">还没有广播。</div>
+      </div>
+
+      <div v-if="npcTalk" class="npc-scene-overlay" @click.self="npcTalk = null">
+        <div class="npc-scene-card">
+          <div class="npc-scene-title">{{ npcTalk.npcName }} · {{ npcTalk.title }}</div>
+          <p class="npc-scene-text">{{ npcTalk.text }}</p>
+          <div v-if="npcTalk.reward || npcTalk.favor" class="npc-scene-reward">
+            <span v-if="npcTalk.reward">收下：{{ npcTalk.reward }}</span>
+            <span v-if="npcTalk.favor">好感 +{{ npcTalk.favor }}</span>
+          </div>
+          <button class="link" type="button" @click="npcTalk = null">[收下]</button>
+        </div>
       </div>
     </main>
 

@@ -74,8 +74,7 @@ pub enum Action {
     /// 买一份宠物食品（猫粮/狗粮/狗骨头/猫罐头）。
     BuyPetFood {
         kind: crate::pet::PetFoodKind,
-    },
-    /// 喂宠物吃买来的食品。
+    },    /// 喂宠物吃买来的食品。
     FeedPetFood {
         #[serde(rename = "petId")]
         pet_id: String,
@@ -334,6 +333,11 @@ pub enum Action {
         index: u8,
     },
     NpcGreeting {
+        #[serde(rename = "npcId")]
+        npc_id: String,
+    },
+    /// 和村民聊几句：每天一次好感，好感够了触发一段小故事。
+    ChatWithNpc {
         #[serde(rename = "npcId")]
         npc_id: String,
     },

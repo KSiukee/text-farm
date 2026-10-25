@@ -15,6 +15,7 @@ mod level_reward;
 mod model;
 mod mystery;
 mod npc;
+mod npc_story;
 mod orders;
 mod pet;
 mod planting;

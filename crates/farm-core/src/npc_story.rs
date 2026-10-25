@@ -1,0 +1,309 @@
+//! NPC 的人物档案、每日一句话与好感小故事。
+//!
+//! 只放静态文案与选择规则，不碰存档；状态在 `NpcState` 里。
+
+#[derive(Debug, Clone)]
+pub struct NpcProfile {
+    pub id: &'static str,
+    pub name: &'static str,
+    pub emoji: &'static str,
+    pub role: &'static str,
+    pub tags: &'static [&'static str],
+    pub likes: &'static str,
+    pub dislikes: &'static str,
+    pub routine: &'static str,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct NpcEvent {
+    pub id: &'static str,
+    pub threshold: i32,
+    pub title: &'static str,
+    pub text: &'static str,
+    pub reward: u64,
+    pub favor: i32,
+}
+
+const PROFILES: &[NpcProfile] = &[
+    NpcProfile {
+        id: "ahe",
+        name: "阿禾",
+        emoji: "🌾",
+        role: "村东的菜农",
+        tags: &["慢热", "手巧", "嘴硬心软"],
+        likes: "小青菜、清晨的露水",
+        dislikes: "空口客套",
+        routine: "天不亮下地，午后在田埂上修农具",
+    },
+    NpcProfile {
+        id: "xiaoman",
+        name: "小满",
+        emoji: "🍓",
+        role: "做果酱的姑娘",
+        tags: &["爱笑", "急性子", "记性好"],
+        likes: "草莓、蜂蜜、热闹",
+        dislikes: "糟蹋食物",
+        routine: "上午熬果酱，下午去看蜂箱",
+    },
+    NpcProfile {
+        id: "qingxing",
+        name: "青杏",
+        emoji: "🌿",
+        role: "村里的赤脚医生",
+        tags: &["温和", "较真", "夜猫子"],
+        likes: "药草、安静的夜",
+        dislikes: "逞强不吃药",
+        routine: "白天晒药，夜里整理药柜",
+    },
+    NpcProfile {
+        id: "laotao",
+        name: "老陶",
+        emoji: "🪚",
+        role: "老木匠",
+        tags: &["嘴碎", "手稳", "念旧"],
+        likes: "好木料、浓茶",
+        dislikes: "毛躁的年轻人",
+        routine: "在院里刨木头，傍晚坐在门口",
+    },
+    NpcProfile {
+        id: "liuyue",
+        name: "六月",
+        emoji: "🌙",
+        role: "看天吃饭的渔人",
+        tags: &["寡言", "心细", "认路"],
+        likes: "河风、月亮、鲫鱼",
+        dislikes: "浪费鱼获",
+        routine: "清晨收网，下午补网",
+    },
+];
+
+const AHE_LOW: &[&str] = &[
+    "早啊。田里露水重，你鞋别湿了。",
+    "这批菜苗长得慢，不过根扎得稳。",
+    "锄头又松了……等会儿我自己紧一紧。",
+];
+const AHE_HIGH: &[&str] = &[
+    "你来得正好，帮我看看这垄是不是该间苗了。",
+    "我留了两棵最好的小青菜，等会儿给你带走。",
+    "以前我爹说，地不会骗人。你信吗？",
+];
+const XIAOMAN_LOW: &[&str] = &[
+    "来得巧，果酱刚出锅，尝一勺？",
+    "今天蜂箱那边有点吵，大概要分群了。",
+    "你别看我笑，我熬糊过三锅。",
+];
+const XIAOMAN_HIGH: &[&str] = &[
+    "我给你留了一小罐，别告诉别人啊。",
+    "你说，草莓是不是天生就该做果酱？",
+    "等忙完这阵，我想把摊子摆到村口去。",
+];
+const QINGXING_LOW: &[&str] = &[
+    "先坐，手伸出来我看看。",
+    "夜里凉，回去把窗关上。",
+    "药得按时吃，别嫌苦。",
+];
+const QINGXING_HIGH: &[&str] = &[
+    "你今天气色好多了，别逞强。",
+    "老陶的咳嗽总不好，我还在试方子。",
+    "有空的话，帮我晒一筛子药草。",
+];
+const LAOTAO_LOW: &[&str] = &[
+    "木头有脾气，你得顺着它。",
+    "这刨子跟我三十年了，比人听话。",
+    "年轻人，别急着下锯。",
+];
+const LAOTAO_HIGH: &[&str] = &[
+    "坐，喝茶。别嫌浓。",
+    "我年轻时也想过出去，后来还是留下了。",
+    "你手稳，要不要试试刨这块板？",
+];
+const LIUYUE_LOW: &[&str] = &[
+    "风向不对，今天鱼口浅。",
+    "网补好了，明早能下。",
+    "河上雾大，走路看着点。",
+];
+const LIUYUE_HIGH: &[&str] = &[
+    "月亮好的时候，鱼会浮上来。",
+    "这条鲫鱼给你，拿回去炖汤。",
+    "船老了，划起来倒还顺手。",
+];
+
+const AHE_EVENTS: &[NpcEvent] = &[
+    NpcEvent {
+        id: "ahe_hoe",
+        threshold: 30,
+        title: "老锄头",
+        text: "阿禾把那把旧锄头递给你，木柄被磨得发亮。「我爹留下的，柄松了。你帮我扶一下，我紧一紧。」修好后他试了试，嘴角松下来。",
+        reward: 300,
+        favor: 4,
+    },
+    NpcEvent {
+        id: "ahe_field",
+        threshold: 60,
+        title: "田埂上的话",
+        text: "收工后阿禾坐在田埂上，忽然说：「以前我总觉得，种地是没本事的人才留下的。后来我爹走了，地还在。你来了以后，我才觉得这块地有点意思。」",
+        reward: 600,
+        favor: 5,
+    },
+];
+const XIAOMAN_EVENTS: &[NpcEvent] = &[
+    NpcEvent {
+        id: "xiaoman_jam",
+        threshold: 30,
+        title: "第一锅果酱",
+        text: "小满从柜子最里面摸出一罐颜色发暗的果酱。「第一锅，糊了。我一直没扔，提醒自己别再糟蹋东西。」她挖了一勺递给你，「这次不糊，你尝。」",
+        reward: 300,
+        favor: 4,
+    },
+    NpcEvent {
+        id: "xiaoman_bees",
+        threshold: 60,
+        title: "蜂箱",
+        text: "小满戴着手套，让你听蜂箱里的声音。「听见没？它们在商量搬家。」她笑了一下，「我以前怕蜂，现在觉得它们跟我挺像，忙忙碌碌，就想把日子过甜一点。」",
+        reward: 600,
+        favor: 5,
+    },
+];
+const QINGXING_EVENTS: &[NpcEvent] = &[
+    NpcEvent {
+        id: "qingxing_lamp",
+        threshold: 30,
+        title: "夜里的灯",
+        text: "青杏把一盏小灯推到你面前。「夜里出诊，路不好走。这灯借你，下次来还我。」她顿了顿，「别嫌我啰嗦，你们这些人，总把身体当别人的。」",
+        reward: 300,
+        favor: 4,
+    },
+    NpcEvent {
+        id: "qingxing_cabinet",
+        threshold: 60,
+        title: "药柜",
+        text: "青杏打开药柜，里面每一格都贴着细小的字。「老陶的咳嗽，我配了七版。」她轻轻合上柜门，「当医生最怕的不是治不好，是人家不把自己的命当回事。你替我盯着他点。」",
+        reward: 600,
+        favor: 5,
+    },
+];
+const LAOTAO_EVENTS: &[NpcEvent] = &[
+    NpcEvent {
+        id: "laotao_chair",
+        threshold: 30,
+        title: "没送出的椅子",
+        text: "老陶指着墙角一把小椅子。「给我闺女做的，她嫁到外村，一直没来拿。」他用袖子擦了擦椅背，「你要是不嫌弃，先拿去坐。木头放着也是放着。」",
+        reward: 300,
+        favor: 4,
+    },
+    NpcEvent {
+        id: "laotao_apprentice",
+        threshold: 60,
+        title: "徒弟",
+        text: "老陶把刨子塞到你手里。「我收过两个徒弟，都走了。手艺这东西，留不住人。」他看着你推出一层薄薄的木花，「你手稳。要是愿意，以后常来。」",
+        reward: 600,
+        favor: 5,
+    },
+];
+const LIUYUE_EVENTS: &[NpcEvent] = &[
+    NpcEvent {
+        id: "liuyue_boat",
+        threshold: 30,
+        title: "漏水的船",
+        text: "六月蹲在船边，拿一块旧布堵住裂缝。「补了三次，还是漏。」她抬头看你，「你帮我扶着，我把这块板换上。」船修好后，她把一条鲫鱼塞给你。",
+        reward: 300,
+        favor: 4,
+    },
+    NpcEvent {
+        id: "liuyue_moon",
+        threshold: 60,
+        title: "月亮",
+        text: "月亮升起来的时候，六月把船停在河心。「我爹说，看月亮能知道明天有没有鱼。」她沉默了一会儿，「他走后，我还是每晚都看。」",
+        reward: 600,
+        favor: 5,
+    },
+];
+
+pub fn profile(id: &str) -> Option<&'static NpcProfile> {
+    PROFILES.iter().find(|profile| profile.id == id)
+}
+
+fn lines_for(id: &str, high: bool) -> &'static [&'static str] {
+    match (id, high) {
+        ("ahe", true) => AHE_HIGH,
+        ("ahe", false) => AHE_LOW,
+        ("xiaoman", true) => XIAOMAN_HIGH,
+        ("xiaoman", false) => XIAOMAN_LOW,
+        ("qingxing", true) => QINGXING_HIGH,
+        ("qingxing", false) => QINGXING_LOW,
+        ("laotao", true) => LAOTAO_HIGH,
+        ("laotao", false) => LAOTAO_LOW,
+        ("liuyue", true) => LIUYUE_HIGH,
+        ("liuyue", false) => LIUYUE_LOW,
+        _ => &[],
+    }
+}
+
+/// 每日一句话：同一天同一人固定，好感高了换一套更亲近的说法。
+pub fn daily_line(id: &str, friendship: i32, day: i64) -> &'static str {
+    let lines = lines_for(id, friendship >= 40);
+    if lines.is_empty() {
+        return "今天也在忙。";
+    }
+    let index = day.rem_euclid(lines.len() as i64) as usize;
+    lines[index]
+}
+
+pub fn events(id: &str) -> &'static [NpcEvent] {
+    match id {
+        "ahe" => AHE_EVENTS,
+        "xiaoman" => XIAOMAN_EVENTS,
+        "qingxing" => QINGXING_EVENTS,
+        "laotao" => LAOTAO_EVENTS,
+        "liuyue" => LIUYUE_EVENTS,
+        _ => &[],
+    }
+}
+
+pub fn next_event(
+    id: &str,
+    friendship: i32,
+    seen: &[String],
+) -> Option<&'static NpcEvent> {
+    events(id)
+        .iter()
+        .find(|event| friendship >= event.threshold && !seen.iter().any(|seen| seen == event.id))
+}
+
+/// 还没看过的下一段故事（不管好感够不够），用于界面提示。
+pub fn upcoming_event(id: &str, seen: &[String]) -> Option<&'static NpcEvent> {
+    events(id)
+        .iter()
+        .find(|event| !seen.iter().any(|seen| seen == event.id))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn daily_line_is_stable_for_same_day() {
+        assert_eq!(daily_line("ahe", 10, 42), daily_line("ahe", 10, 42));
+        assert_ne!(daily_line("ahe", 10, 42), daily_line("ahe", 10, 43));
+    }
+
+    #[test]
+    fn high_friendship_uses_different_pool() {
+        let low = (0..30)
+            .map(|day| daily_line("xiaoman", 10, day))
+            .collect::<Vec<_>>();
+        let high = (0..30)
+            .map(|day| daily_line("xiaoman", 60, day))
+            .collect::<Vec<_>>();
+        assert!(low.iter().all(|line| !high.contains(line)));
+    }
+
+    #[test]
+    fn next_event_respects_threshold_and_seen() {
+        let seen = vec!["ahe_hoe".to_string()];
+        let next = next_event("ahe", 60, &seen).unwrap();
+        assert_eq!(next.id, "ahe_field");
+        assert!(next_event("ahe", 29, &[]).is_none());
+        assert!(next_event("ahe", 60, &seen[..]).is_some());
+    }
+}

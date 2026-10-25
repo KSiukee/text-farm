@@ -60,6 +60,14 @@ pub enum Effect {
         coins: u64,
         featured: bool,
     },
+    #[serde(rename_all = "camelCase")]
+    NpcTalk {
+        npc_name: String,
+        title: String,
+        text: String,
+        reward: String,
+        favor: i32,
+    },
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -109,6 +117,7 @@ impl Game {
             Action::FeedPet { pet_id, fish_id } => self.feed_pet(&pet_id, &fish_id, now)?,
             Action::BuyPetFood { kind } => self.buy_pet_food(kind, now)?,
             Action::FeedPetFood { pet_id, kind } => self.feed_pet_food(&pet_id, kind, now)?,
+            Action::ChatWithNpc { npc_id } => self.chat_with_npc(&npc_id, now)?,
             Action::PetCompanion { pet_id } => self.touch_pet(&pet_id, now)?,
             Action::PlayWithPet { pet_id } => self.play_pet(&pet_id, now)?,
             Action::HealPet { pet_id } => self.heal_pet(&pet_id, now)?,
@@ -4874,6 +4883,73 @@ impl Game {
         let text = format!("你给 {npc_name} 留了句话");
         self.push_log(now, text.clone());
         Ok(vec![Effect::Log { text }])
+    }
+
+    fn chat_with_npc(&mut self, npc_id: &str, now: i64) -> Result<Vec<Effect>, GameError> {
+        let pos = self.npc_pos(npc_id)?;
+        let today = {
+            let day = &self.state.daily.day;
+            if day.is_empty() {
+                (now / 86_400_000).to_string()
+            } else {
+                day.clone()
+            }
+        };
+        let day_index = now / 86_400_000;
+        let npc_name = self.state.npcs[pos].name.clone();
+        let mut coins_reward = 0;
+        let (title, text, favor) = {
+            let npc = &mut self.state.npcs[pos];
+            if npc.last_chat_day == today {
+                (
+                    "闲聊".to_string(),
+                    crate::npc_story::daily_line(&npc.id, npc.friendship, day_index).to_string(),
+                    0,
+                )
+            } else {
+                npc.last_chat_day = today;
+                npc.friendship = (npc.friendship + 1).min(100);
+                if let Some(event) =
+                    crate::npc_story::next_event(&npc.id, npc.friendship, &npc.seen_events)
+                {
+                    npc.seen_events.push(event.id.to_string());
+                    npc.friendship = (npc.friendship + event.favor).min(100);
+                    coins_reward = event.reward;
+                    (
+                        event.title.to_string(),
+                        event.text.to_string(),
+                        event.favor,
+                    )
+                } else {
+                    (
+                        "闲聊".to_string(),
+                        crate::npc_story::daily_line(&npc.id, npc.friendship, day_index).to_string(),
+                        1,
+                    )
+                }
+            }
+        };
+        if coins_reward > 0 {
+            self.state.coins = self.state.coins.saturating_add(coins_reward);
+        }
+        let reward = if coins_reward > 0 {
+            format!("{coins_reward} 金币")
+        } else {
+            String::new()
+        };
+        let log = if title == "闲聊" {
+            format!("你和{npc_name}聊了几句")
+        } else {
+            format!("{npc_name}跟你讲了「{title}」")
+        };
+        self.push_log(now, log);
+        Ok(vec![Effect::NpcTalk {
+            npc_name,
+            title,
+            text,
+            reward,
+            favor,
+        }])
     }
 
     fn advance_npcs(&mut self, now: i64) -> bool {
