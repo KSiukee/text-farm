@@ -1083,6 +1083,15 @@ try {
     "钓鱼委托与比赛已显示",
     (await bodyText()).includes("NPC 委托") && (await bodyText()).includes("今日最重一条"),
   );
+  const spotTags = await evaluate(
+    `[...document.querySelectorAll('.fishing-spot-tag')].map((el) => (el.innerText || '').trim())`,
+  );
+  check(
+    "委托显示水域标签",
+    spotTags.length >= 1 &&
+      spotTags.every((tag) => ["小溪", "河流", "江面", "大海"].includes(tag)),
+    spotTags.join(","),
+  );
   await clickText("[接委托]");
   await waitFor(async () => (saveState().fishing.quests?.active?.length ?? 0) === 1);
   check("接取钓鱼委托", (saveState().fishing.quests?.active?.length ?? 0) === 1);

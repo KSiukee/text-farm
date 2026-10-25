@@ -2639,6 +2639,16 @@ footer {
   display: none;
 }
 
+.fishing-spot-tag {
+  padding: 0 6px;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .ws-subgroup {
   margin-top: 6px;
 }

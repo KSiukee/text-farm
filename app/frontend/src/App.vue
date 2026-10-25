@@ -1508,6 +1508,10 @@ function acceptFishingCommission(id: string) {
   void act({ type: "acceptFishingCommission", id });
 }
 
+function showSpotTag(commission: { spotLabel: string; title: string }): boolean {
+  return Boolean(commission.spotLabel) && !commission.title.includes(commission.spotLabel);
+}
+
 function claimFishingCommission(id: string) {
   void act({ type: "claimFishingCommission", id });
 }
@@ -4341,6 +4345,7 @@ onUnmounted(() => {
                 <span v-else class="muted">今天已换过</span>
               </div>
               <div v-for="offer in fishing.quests.offers" :key="offer.id" class="fishing-quest">
+                <span v-if="showSpotTag(offer)" class="fishing-spot-tag">{{ offer.spotLabel }}</span>
                 <span>{{ offer.title }}</span>
                 <span class="muted">
                   奖励 {{ offer.rewardCoins }} 金币 · 鱼饵×{{ offer.rewardBait }} · 经验 {{ offer.rewardExp }}
@@ -4362,6 +4367,7 @@ onUnmounted(() => {
                 <span class="muted">{{ fishing.quests.active.length }}/2</span>
               </div>
               <div v-for="commission in fishing.quests.active" :key="commission.id" class="fishing-quest">
+                <span v-if="showSpotTag(commission)" class="fishing-spot-tag">{{ commission.spotLabel }}</span>
                 <span>{{ commission.title }}</span>
                 <span class="muted">进度 {{ commission.progress }}/{{ commission.qty }}</span>
                 <button
