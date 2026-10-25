@@ -371,6 +371,10 @@ pub enum Action {
         #[serde(rename = "npcId")]
         npc_id: String,
     },
+    /// 领取第一周手册目标奖励。
+    ClaimHandbookGoal {
+        id: String,
+    },
     /// 参加今天的节日，领一份小回礼（每年一次）。
     CelebrateFestival,
     ClaimSignIn,

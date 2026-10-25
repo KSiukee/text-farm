@@ -1151,6 +1151,18 @@ pub fn migrate_save(mut value: Value) -> Result<Value, SaveError> {
         value["schema"] = json!(48);
     }
 
+    if schema < 49 {
+        let state = value
+            .get_mut("state")
+            .and_then(Value::as_object_mut)
+            .ok_or(SaveError::Unknown(schema))?;
+        state
+            .entry("handbookClaimed")
+            .or_insert_with(|| json!([]));
+        state.insert("schema".into(), json!(49));
+        value["schema"] = json!(49);
+    }
+
     Ok(value)
 }
 

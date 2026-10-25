@@ -1228,6 +1228,26 @@ pub struct MysteryShopView {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct HandbookGoalView {
+    pub id: String,
+    pub title: String,
+    pub hint: String,
+    pub reward_text: String,
+    pub done: bool,
+    pub claimed: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HandbookView {
+    pub goals: Vec<HandbookGoalView>,
+    pub done: usize,
+    pub claimed: usize,
+    pub all_done: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Snapshot {
     pub rev: u64,
     pub now: i64,
@@ -1248,6 +1268,7 @@ pub struct Snapshot {
     pub facilities: Vec<FacilityView>,
     pub onboarded: bool,
     pub daily: DailyView,
+    pub handbook: HandbookView,
     pub orders: FarmOrdersView,
     pub mystery: MysteryShopView,
     pub level_rewards: Vec<LevelRewardView>,
@@ -3259,6 +3280,26 @@ impl Game {
                 .any(|offer| offer.rarity == crate::mystery::MysteryRarity::Legendary),
         };
 
+        let handbook_goals: Vec<HandbookGoalView> = crate::handbook::GOALS
+            .iter()
+            .map(|goal| HandbookGoalView {
+                id: goal.id.into(),
+                title: goal.title.into(),
+                hint: goal.hint.into(),
+                reward_text: goal.reward_text.into(),
+                done: crate::handbook::is_done(goal, &self.state),
+                claimed: self.state.handbook_claimed.contains(goal.id),
+            })
+            .collect();
+        let handbook_done = handbook_goals.iter().filter(|goal| goal.done).count();
+        let handbook_claimed = handbook_goals.iter().filter(|goal| goal.claimed).count();
+        let handbook = HandbookView {
+            all_done: handbook_done == handbook_goals.len(),
+            goals: handbook_goals,
+            done: handbook_done,
+            claimed: handbook_claimed,
+        };
+
         Snapshot {
             rev: self.state.rev,
             now,
@@ -3279,6 +3320,7 @@ impl Game {
             facilities,
             onboarded: self.state.settings.onboarded,
             daily: daily::view(&self.state.daily, self.state.ranch.has_animal()),
+            handbook,
             orders,
             mystery,
             level_rewards: level_reward::views(&self.state, &self.content),

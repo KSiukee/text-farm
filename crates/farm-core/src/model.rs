@@ -15,7 +15,7 @@ use crate::room::RoomState;
 use crate::skills::PlayerSkills;
 use crate::workshop::WorkshopState;
 
-pub const SAVE_SCHEMA: u32 = 48;
+pub const SAVE_SCHEMA: u32 = 49;
 pub const MAX_LEVEL: u32 = 30;
 pub const PLOT_COUNT: usize = 8;
 pub const PLOT_MAX_TIER: u8 = 3;
@@ -314,6 +314,7 @@ pub struct Stats {
     pub disasters_mitigated: u64,
     pub specimens_crafted: u64,
     pub rare_seeds_gained: u64,
+    pub orders_delivered: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -378,6 +379,9 @@ pub struct GameState {
     pub codex: BTreeMap<String, CodexEntry>,
     #[serde(default)]
     pub achievements: BTreeMap<String, bool>,
+    /// 第一周手册已领奖的目标。
+    #[serde(default)]
+    pub handbook_claimed: BTreeSet<String>,
     /// 每种作物做过多少份标本；键是 crop id。
     #[serde(default)]
     pub specimen_collection: BTreeMap<String, u32>,
@@ -486,6 +490,7 @@ impl Game {
             daily: DailyState::default(),
             codex: BTreeMap::new(),
             achievements: BTreeMap::new(),
+            handbook_claimed: BTreeSet::new(),
             specimen_collection: BTreeMap::new(),
             specimen_milestones_claimed: BTreeSet::new(),
             npcs,

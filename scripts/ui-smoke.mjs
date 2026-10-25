@@ -485,6 +485,11 @@ try {
   await screenshot("docs/help-card-v0111.png");
   await clickText("[知道了]");
   await waitFor(async () => (await evaluate(`!!document.querySelector('.help-card')`)) === false);
+  check("第一周手册已显示", (await bodyText()).includes("农场手册 · 第一周"));
+  check(
+    "第一周手册有八个目标",
+    (await evaluate(`document.querySelectorAll('.handbook-goal').length`)) === 8,
+  );
   await waitFor(async () => (saveState().orders?.offers.length ?? 0) >= 1);
   check("村庄订单已生成", (saveState().orders?.offers.length ?? 0) >= 1);
   check("村庄订单面板已显示", (await bodyText()).includes("村庄订单"));

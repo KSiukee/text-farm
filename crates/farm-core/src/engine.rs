@@ -143,6 +143,7 @@ impl Game {
             }
             Action::GiveNpcGift { npc_id } => self.give_npc_gift(&npc_id, now)?,
             Action::CelebrateFestival => self.celebrate_festival(now)?,
+            Action::ClaimHandbookGoal { id } => self.claim_handbook_goal(&id, now)?,
             Action::PetCompanion { pet_id } => self.touch_pet(&pet_id, now)?,
             Action::PlayWithPet { pet_id } => self.play_pet(&pet_id, now)?,
             Action::HealPet { pet_id } => self.heal_pet(&pet_id, now)?,
@@ -5258,6 +5259,27 @@ impl Game {
         Ok(vec![Effect::Log { text }])
     }
 
+    fn claim_handbook_goal(
+        &mut self,
+        id: &str,
+        now: i64,
+    ) -> Result<Vec<Effect>, GameError> {
+        let goal = crate::handbook::goal(id).ok_or(GameError::HandbookGoalUnavailable)?;
+        if !crate::handbook::is_done(goal, &self.state)
+            || self.state.handbook_claimed.contains(goal.id)
+        {
+            return Err(GameError::HandbookGoalUnavailable);
+        }
+        self.state.handbook_claimed.insert(goal.id.to_string());
+        self.state.coins = self.state.coins.saturating_add(goal.coins);
+        for (key, qty) in goal.seeds {
+            *self.state.inventory.entry((*key).to_string()).or_insert(0) += *qty;
+        }
+        let text = format!("农场手册：{}，收下 {}", goal.title, goal.reward_text);
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
     fn help_npc_request(&mut self, npc_id: &str, now: i64) -> Result<Vec<Effect>, GameError> {
         let pos = self.npc_pos(npc_id)?;
         let week = now / 86_400_000 / 7;
@@ -5521,6 +5543,7 @@ impl Game {
         }
         self.state.coins = self.state.coins.saturating_add(order.reward_coins);
         self.state.daily.orders = self.state.daily.orders.saturating_add(1);
+        self.state.stats.orders_delivered = self.state.stats.orders_delivered.saturating_add(1);
         if let Some(npc) = self
             .state
             .npcs

@@ -1178,6 +1178,10 @@ function claimDaily(id: number) {
   void act({ type: "claimDaily", id });
 }
 
+function claimHandbook(id: string) {
+  void act({ type: "claimHandbookGoal", id });
+}
+
 function acceptFarmOrder(id: string) {
   void act({ type: "acceptFarmOrder", id });
 }
@@ -3084,6 +3088,47 @@ onUnmounted(() => {
           <span class="muted">金币+{{ task.rewardCoins }} · 经验+{{ task.rewardExp }}</span>
         </div>
       </section>
+
+      <details v-if="snapshot?.handbook" class="panel handbook-panel" open>
+        <summary class="panel-title">
+          农场手册 · 第一周
+          <span class="handbook-progress">
+            {{ snapshot.handbook.done }}/{{ snapshot.handbook.goals.length }} 完成
+          </span>
+        </summary>
+        <div class="muted handbook-lead">
+          不用按天赶。做到哪件，就领哪件的奖励；没做完也不会催你。
+        </div>
+        <div class="handbook-goals">
+          <div
+            v-for="goal in snapshot.handbook.goals"
+            :key="goal.id"
+            class="handbook-goal"
+            :class="{ done: goal.done }"
+          >
+            <span class="handbook-check">{{ goal.done ? "✓" : "○" }}</span>
+            <span class="handbook-main">
+              <b>{{ goal.title }}</b>
+              <span class="muted">{{ goal.hint }}</span>
+            </span>
+            <span class="handbook-reward">{{ goal.rewardText }}</span>
+            <button
+              v-if="goal.done && !goal.claimed"
+              class="link"
+              type="button"
+              :disabled="acting"
+              @click="claimHandbook(goal.id)"
+            >
+              [领奖]
+            </button>
+            <span v-else-if="goal.claimed" class="ok">已领</span>
+            <span v-else class="muted">未完成</span>
+          </div>
+        </div>
+        <div v-if="snapshot.handbook.allDone" class="handbook-end">
+          第一周过完了。后面的日子，就按你喜欢的节奏来吧。
+        </div>
+      </details>
 
       <details v-if="levelRewards.length" class="panel">
         <summary class="panel-title">

@@ -1565,6 +1565,76 @@ textarea {
   opacity: 1;
 }
 
+.handbook-panel summary {
+  cursor: pointer;
+}
+
+.handbook-progress {
+  margin-left: 8px;
+  color: var(--accent-text);
+  font-size: 12px;
+}
+
+.handbook-lead {
+  margin: 6px 0 10px;
+  font-size: 12px;
+}
+
+.handbook-goals {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.handbook-goal {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px dotted var(--line);
+  font-size: 13px;
+}
+
+.handbook-goal.done {
+  background: color-mix(in srgb, var(--accent-soft) 45%, transparent);
+}
+
+.handbook-check {
+  width: 16px;
+  color: var(--muted);
+}
+
+.handbook-goal.done .handbook-check {
+  color: var(--success);
+}
+
+.handbook-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 180px;
+}
+
+.handbook-main .muted {
+  font-size: 12px;
+}
+
+.handbook-reward {
+  color: var(--accent-text);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.handbook-end {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: var(--panel-soft);
+  color: var(--accent-text);
+  font-size: 13px;
+}
+
 .farm-orders-hint {
   margin-top: 8px;
   font-size: 12px;

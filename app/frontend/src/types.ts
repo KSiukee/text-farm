@@ -683,6 +683,22 @@ export interface DailyView {
   tasks: DailyTaskView[];
 }
 
+export interface HandbookGoalView {
+  id: string;
+  title: string;
+  hint: string;
+  rewardText: string;
+  done: boolean;
+  claimed: boolean;
+}
+
+export interface HandbookView {
+  goals: HandbookGoalView[];
+  done: number;
+  claimed: number;
+  allDone: boolean;
+}
+
 export interface FarmOrderView {
   id: string;
   npcName: string;
@@ -1362,6 +1378,7 @@ export interface Snapshot {
   facilities: FacilityView[];
   onboarded: boolean;
   daily: DailyView;
+  handbook: HandbookView;
   orders: FarmOrdersView;
   mystery: MysteryShopView;
   levelRewards: LevelRewardView[];
@@ -1543,6 +1560,7 @@ export type Action =
   | { type: "autoCraftOrder"; id: string }
   | { type: "autoCraftWorkshop"; recipe: EquipmentRecipe }
   | { type: "cancelWorkshopAuto" }
+  | { type: "claimHandbookGoal"; id: string }
   | { type: "buyMysteryOffer"; id: string }
   | { type: "buyFurniture"; def: string }
   | { type: "buyDecor"; id: string }

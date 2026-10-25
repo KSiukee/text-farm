@@ -11,6 +11,7 @@ mod daily;
 mod engine;
 mod error;
 mod fishing;
+mod handbook;
 mod level_reward;
 mod model;
 mod mystery;
