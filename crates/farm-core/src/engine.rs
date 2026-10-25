@@ -4409,7 +4409,7 @@ impl Game {
             let roll = job_roll(day_seed(today) as i64 ^ 0x504F_4E44, &name);
             match pet.species {
                 PetSpecies::Cat => {
-                    let chance = 40 + (job_level - 1) * 6;
+                    let chance = 40 + (job_level - 1) * 6 + pet.talent_pond_chance();
                     if has_fish && roll % 100 < u64::from(chance) {
                         let text = format!("{name}蹲在塘边赶了一天鸟，鱼苗多活下来一条");
                         rewards.push((text, Some(PondJobReward::Fry)));

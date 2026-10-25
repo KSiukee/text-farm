@@ -241,6 +241,7 @@ pub enum PetTalent {
     Herding,
     IronWall,
     Leader,
+    OldPartner,
     // 猫
     SharpClaw,
     Clingy,
@@ -248,25 +249,28 @@ pub enum PetTalent {
     FishingEye,
     TreasureNose,
     KeenEye,
+    Moonlight,
 }
 
 impl PetTalent {
-    pub const ALL: [PetTalent; 12] = [
+    pub const ALL: [PetTalent; 14] = [
         PetTalent::Gatekeeper,
         PetTalent::Fetch,
         PetTalent::NightWatch,
         PetTalent::Herding,
         PetTalent::IronWall,
         PetTalent::Leader,
+        PetTalent::OldPartner,
         PetTalent::SharpClaw,
         PetTalent::Clingy,
         PetTalent::Sly,
         PetTalent::FishingEye,
         PetTalent::TreasureNose,
         PetTalent::KeenEye,
+        PetTalent::Moonlight,
     ];
-    /// 三层的解锁等级。
-    pub const TIER_LEVELS: [u32; 3] = [5, 12, 20];
+    /// 四层的解锁等级。
+    pub const TIER_LEVELS: [u32; 4] = [5, 12, 20, 26];
 
     pub fn species(self) -> PetSpecies {
         match self {
@@ -275,13 +279,15 @@ impl PetTalent {
             | PetTalent::NightWatch
             | PetTalent::Herding
             | PetTalent::IronWall
-            | PetTalent::Leader => PetSpecies::Dog,
+            | PetTalent::Leader
+            | PetTalent::OldPartner => PetSpecies::Dog,
             PetTalent::SharpClaw
             | PetTalent::Clingy
             | PetTalent::Sly
             | PetTalent::FishingEye
             | PetTalent::TreasureNose
-            | PetTalent::KeenEye => PetSpecies::Cat,
+            | PetTalent::KeenEye
+            | PetTalent::Moonlight => PetSpecies::Cat,
         }
     }
 
@@ -299,6 +305,7 @@ impl PetTalent {
             | PetTalent::Leader
             | PetTalent::TreasureNose
             | PetTalent::KeenEye => 3,
+            PetTalent::OldPartner | PetTalent::Moonlight => 4,
         }
     }
 
@@ -314,12 +321,14 @@ impl PetTalent {
             PetTalent::Herding => "牧群",
             PetTalent::IronWall => "铁壁",
             PetTalent::Leader => "领头",
+            PetTalent::OldPartner => "老伙计",
             PetTalent::SharpClaw => "利爪",
             PetTalent::Clingy => "黏人",
             PetTalent::Sly => "潜行",
             PetTalent::FishingEye => "鱼鹰",
             PetTalent::TreasureNose => "寻宝",
             PetTalent::KeenEye => "慧眼",
+            PetTalent::Moonlight => "月影",
         }
     }
 
@@ -331,12 +340,14 @@ impl PetTalent {
             PetTalent::Herding => "牧场岗位产出概率 +8%",
             PetTalent::IronWall => "守卫失败时再多减 1 点损失",
             PetTalent::Leader => "牧场/钓鱼地岗位经验 +50%",
+            PetTalent::OldPartner => "所有岗位经验 +75%",
             PetTalent::SharpClaw => "挖种子双倍概率 +5%",
             PetTalent::Clingy => "摸摸心情 +15%",
             PetTalent::Sly => "挖种子冷却 -45 分钟",
             PetTalent::FishingEye => "钓鱼地叼鱼概率 +10%",
             PetTalent::TreasureNose => "挖种子双倍概率再 +10%",
             PetTalent::KeenEye => "钓鱼地可叼单价 ≤120 的鱼",
+            PetTalent::Moonlight => "鱼塘/钓鱼地岗位成功率 +10%",
         }
     }
 }
@@ -347,6 +358,7 @@ pub struct PetTalents {
     pub tier1: Option<PetTalent>,
     pub tier2: Option<PetTalent>,
     pub tier3: Option<PetTalent>,
+    pub tier4: Option<PetTalent>,
 }
 
 impl PetTalents {
@@ -355,6 +367,7 @@ impl PetTalents {
             1 => self.tier1,
             2 => self.tier2,
             3 => self.tier3,
+            4 => self.tier4,
             _ => None,
         }
     }
@@ -368,7 +381,8 @@ impl PetTalents {
         let slot = match talent.tier() {
             1 => &mut self.tier1,
             2 => &mut self.tier2,
-            _ => &mut self.tier3,
+            3 => &mut self.tier3,
+            _ => &mut self.tier4,
         };
         if *slot == Some(talent) {
             return false;
@@ -1645,7 +1659,9 @@ impl PetState {
     }
 
     pub fn talent_job_exp(&self) -> u64 {
-        if self.talents.has(PetTalent::Leader) {
+        if self.talents.has(PetTalent::OldPartner) {
+            14
+        } else if self.talents.has(PetTalent::Leader) {
             12
         } else {
             8
@@ -1661,7 +1677,18 @@ impl PetState {
     }
 
     pub fn talent_fishing_chance(&self) -> u32 {
+        let mut chance = 0;
         if self.talents.has(PetTalent::FishingEye) {
+            chance += 10;
+        }
+        if self.talents.has(PetTalent::Moonlight) {
+            chance += 10;
+        }
+        chance
+    }
+
+    pub fn talent_pond_chance(&self) -> u32 {
+        if self.talents.has(PetTalent::Moonlight) {
             10
         } else {
             0

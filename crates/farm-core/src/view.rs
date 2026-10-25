@@ -3685,7 +3685,7 @@ fn pet_view(pet: &PetState, now: i64) -> PetView {
     let dig_remaining = (pet.dig_cooldown_ms() - (now - pet.last_dig_at)).max(0);
     let remaining = pet.skill_remaining_ms(now);
     let activity = pet.activity(now);
-    let talent_tiers: Vec<PetTalentTierView> = (1..=3u8)
+    let talent_tiers: Vec<PetTalentTierView> = (1..=4u8)
         .map(|tier| {
             let threshold = PetTalent::TIER_LEVELS[(tier - 1) as usize];
             let options = PetTalent::ALL

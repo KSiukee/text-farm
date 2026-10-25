@@ -6034,7 +6034,7 @@ onUnmounted(() => {
           <details v-if="pet" class="pet-training pet-talents pet-fold">
             <summary>
               <b>天赋</b>
-              <span class="muted">Lv5 / Lv12 / Lv20 · 每层二选一，可随时改选</span>
+              <span class="muted">Lv5 / Lv12 / Lv20 每层二选一 · Lv26 终极天赋，可随时改选</span>
             </summary>
             <div class="pet-talent-grid">
               <div v-for="tier in pet.talentTiers" :key="tier.tier" class="pet-talent-tier">

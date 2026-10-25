@@ -796,18 +796,41 @@ fn pet_talents_unlock_by_level_and_species() {
     .unwrap();
     assert_eq!(game.state().pets[0].talents.tier1, Some(PetTalent::Fetch));
 
-    // 视角里三层各两个选项，20 级全解锁。
+    // 视角里四层各两个选项；20 级前三层解锁，Lv26 才开终极层。
     let view = game.snapshot(0).pet.unwrap();
-    assert_eq!(view.talent_tiers.len(), 3);
-    assert!(view.talent_tiers.iter().all(|tier| tier.unlocked));
-    assert!(view
-        .talent_tiers
+    assert_eq!(view.talent_tiers.len(), 4);
+    assert!(view.talent_tiers[..3].iter().all(|tier| tier.unlocked));
+    assert!(!view.talent_tiers[3].unlocked);
+    assert!(view.talent_tiers[..3]
         .iter()
         .all(|tier| tier.options.len() == 2));
+    assert_eq!(view.talent_tiers[3].options.len(), 1);
     assert!(view.talent_tiers[0]
         .options
         .iter()
         .any(|option| option.id == PetTalent::Fetch && option.selected));
+
+    game.state_mut().pets[0].level = 26;
+    game.dispatch(
+        Action::ChoosePetTalent {
+            pet_id: "pet_1".into(),
+            talent: PetTalent::OldPartner,
+        },
+        0,
+    )
+    .unwrap();
+    assert_eq!(
+        game.state().pets[0].talents.tier4,
+        Some(PetTalent::OldPartner)
+    );
+    assert_eq!(game.state().pets[0].talent_job_exp(), 14);
+    assert!(game
+        .snapshot(0)
+        .pet
+        .unwrap()
+        .talent_tiers
+        .iter()
+        .all(|tier| tier.unlocked));
 }
 
 #[test]
@@ -847,6 +870,11 @@ fn pet_talent_effects_apply() {
     cat.talents.pick(PetTalent::KeenEye);
     assert_eq!(cat.talent_fish_price_cap(), 120);
     assert_eq!(plain_cat.talent_fish_price_cap(), 70);
+
+    cat.level = 26;
+    cat.talents.pick(PetTalent::Moonlight);
+    assert_eq!(cat.talent_fishing_chance(), 20);
+    assert_eq!(cat.talent_pond_chance(), 10);
 
     // 铁壁：守卫失败时再减 1 点损失。
     let (scared, loss) = guard_result_full(PetSpecies::Dog, 10, 80, false, 4, 999, 0, 1);

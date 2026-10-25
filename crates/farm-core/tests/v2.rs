@@ -588,7 +588,7 @@ fn v33_save_migrates_to_v34_with_pet_talents() {
     assert_eq!(migrated["schema"], json!(SAVE_SCHEMA));
     assert_eq!(
         migrated["state"]["pets"][0]["talents"],
-        json!({"tier1": null, "tier2": null, "tier3": null})
+        json!({"tier1": null, "tier2": null, "tier3": null, "tier4": null})
     );
     let save: SaveFile = serde_json::from_value(migrated).unwrap();
     let restored = Game::from_save(save).unwrap();
