@@ -12,6 +12,7 @@ mod engine;
 mod error;
 mod fishing;
 mod festival_market;
+mod festival_story;
 mod handbook;
 mod level_reward;
 mod model;
@@ -52,6 +53,7 @@ pub use npc_story::{festival_of, festival_reward_for, is_major_festival};
 pub use festival_market::{
     FestivalMarketState, FestivalMarketView, MarketGiftView, MarketOfferView, MarketRequestView,
 };
+pub use festival_story::{FestivalChoiceView, FestivalStoryView};
 pub use error::{GameError, SaveError};
 pub use room::{
     default_extra_layout, default_layout, floor_styles, furniture_def, room_size, validate_layout,

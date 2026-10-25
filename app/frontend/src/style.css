@@ -1650,6 +1650,73 @@ textarea {
   color: var(--accent-text);
 }
 
+.festival-story-entry {
+  display: inline-block;
+  margin: 0 0 8px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  background: var(--panel-soft);
+  font-size: 13px;
+}
+
+.festival-story-card {
+  width: min(620px, 92vw);
+}
+
+.festival-story-text {
+  margin: 10px 0 14px;
+  line-height: 1.85;
+  white-space: pre-line;
+}
+
+.festival-story-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.festival-story-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  background: var(--panel-soft);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.festival-story-choice:hover {
+  border-color: var(--accent-text);
+}
+
+.festival-story-choice b {
+  color: var(--accent-text);
+  font-size: 14px;
+}
+
+.festival-story-choice span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.festival-memory {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 0;
+  border-bottom: 1px dotted var(--line);
+  font-size: 13px;
+}
+
+.festival-memory .muted {
+  font-size: 12px;
+}
+
 .handbook-panel summary {
   cursor: pointer;
 }

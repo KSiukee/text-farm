@@ -382,6 +382,11 @@ pub enum Action {
     },
     /// 参加今天的节日，领一份小回礼（每年一次）。
     CelebrateFestival,
+    /// 选一段节日小剧情的选项。
+    ChooseFestivalStory {
+        #[serde(rename = "choiceId")]
+        choice_id: String,
+    },
     /// 给节日集市交一份备货。
     SupplyFestivalMarket {
         #[serde(rename = "requestId")]

@@ -239,6 +239,7 @@ const catchResult = ref<FishCatchView | null>(null);
 const selectedFish = ref<FishCodexView | null>(null);
 const autoReportVisible = ref(false);
 const helpVisible = ref(false);
+const festivalStoryVisible = ref(false);
 const autoReportShownAt = ref(
   Number(window.localStorage.getItem("farm.autoReportShownAt") || 0),
 );
@@ -1209,6 +1210,15 @@ function sellFestivalGoods() {
 
 function claimFestivalGift(threshold: number) {
   void act({ type: "claimFestivalGift", threshold });
+}
+
+function openFestivalStory() {
+  festivalStoryVisible.value = true;
+}
+
+function chooseFestivalStory(choiceId: string) {
+  festivalStoryVisible.value = false;
+  void act({ type: "chooseFestivalStory", choiceId });
 }
 
 function acceptFarmOrder(id: string) {
@@ -3140,6 +3150,14 @@ onUnmounted(() => {
         <div class="muted market-lead">
           村里在准备集市。备货交不交都行，不会扣你别的。
         </div>
+        <button
+          v-if="snapshot.festivalStory"
+          class="link festival-story-entry"
+          type="button"
+          @click="openFestivalStory"
+        >
+          [去过节：{{ snapshot.festivalStory.title }}]
+        </button>
         <div class="market-contribution">
           集市贡献 <b>{{ snapshot.festivalMarket.contribution }}</b> /
           {{ snapshot.festivalMarket.major ? 15 : 9 }}
@@ -3300,6 +3318,18 @@ onUnmounted(() => {
         </div>
         <div v-if="snapshot.handbook.allDone" class="handbook-end">
           第一周过完了。后面的日子，就按你喜欢的节奏来吧。
+        </div>
+      </details>
+
+      <details v-if="snapshot?.festivalHistory?.length" class="panel festival-history-panel">
+        <summary class="panel-title">节日回忆</summary>
+        <div
+          v-for="(memory, index) in snapshot.festivalHistory"
+          :key="index"
+          class="festival-memory"
+        >
+          <b>{{ memory.year }} · {{ memory.festival }} · {{ memory.title }}</b>
+          <span class="muted">{{ memory.text }}</span>
         </div>
       </details>
 
@@ -6138,6 +6168,33 @@ onUnmounted(() => {
           </div>
         </div>
         <button class="link" type="button" @click="dismissAutoReport">[知道了]</button>
+      </div>
+    </div>
+
+    <div
+      v-if="festivalStoryVisible && snapshot?.festivalStory"
+      class="npc-scene-overlay story-overlay"
+      @click.self="festivalStoryVisible = false"
+    >
+      <div class="npc-scene-card festival-story-card">
+        <div class="npc-scene-title">{{ snapshot.festivalStory.title }}</div>
+        <p class="festival-story-text">{{ snapshot.festivalStory.text }}</p>
+        <div class="festival-story-choices">
+          <button
+            v-for="choice in snapshot.festivalStory.choices"
+            :key="choice.id"
+            class="festival-story-choice"
+            type="button"
+            :disabled="acting"
+            @click="chooseFestivalStory(choice.id)"
+          >
+            <b>{{ choice.label }}</b>
+            <span>{{ choice.hint }}</span>
+          </button>
+        </div>
+        <button class="link" type="button" @click="festivalStoryVisible = false">
+          [再等等]
+        </button>
       </div>
     </div>
 

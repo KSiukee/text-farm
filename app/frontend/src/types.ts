@@ -753,6 +753,26 @@ export interface FestivalMarketView {
   maxSells: number;
 }
 
+export interface FestivalChoiceView {
+  id: string;
+  label: string;
+  hint: string;
+}
+
+export interface FestivalStoryView {
+  festival: string;
+  title: string;
+  text: string;
+  choices: FestivalChoiceView[];
+}
+
+export interface FestivalMemoryView {
+  year: number;
+  festival: string;
+  title: string;
+  text: string;
+}
+
 export interface FarmOrderView {
   id: string;
   npcName: string;
@@ -1454,6 +1474,8 @@ export interface Snapshot {
   daily: DailyView;
   handbook: HandbookView;
   festivalMarket: FestivalMarketView | null;
+  festivalStory: FestivalStoryView | null;
+  festivalHistory: FestivalMemoryView[];
   orders: FarmOrdersView;
   mystery: MysteryShopView;
   levelRewards: LevelRewardView[];
@@ -1641,6 +1663,7 @@ export type Action =
   | { type: "buyFestivalOffer"; offerId: string }
   | { type: "sellFestivalGoods"; key: string }
   | { type: "claimFestivalGift"; threshold: number }
+  | { type: "chooseFestivalStory"; choiceId: string }
   | { type: "buyMysteryOffer"; id: string }
   | { type: "buyFurniture"; def: string }
   | { type: "buyDecor"; id: string }

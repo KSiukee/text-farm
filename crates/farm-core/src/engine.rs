@@ -192,6 +192,9 @@ impl Game {
             }
             Action::GiveNpcGift { npc_id } => self.give_npc_gift(&npc_id, now)?,
             Action::CelebrateFestival => self.celebrate_festival(now)?,
+            Action::ChooseFestivalStory { choice_id } => {
+                self.choose_festival_story(&choice_id, now)?
+            }
             Action::SupplyFestivalMarket { request_id } => {
                 self.supply_festival_market(&request_id, now)?
             }
@@ -5600,6 +5603,57 @@ impl Game {
             "集市回礼：{}，收到 {}×{} 和 {} 金币",
             gift.label, gift.item_name, gift.qty, gift.coins
         );
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn choose_festival_story(
+        &mut self,
+        choice_id: &str,
+        now: i64,
+    ) -> Result<Vec<Effect>, GameError> {
+        let today = self.state.daily.day.clone();
+        let festival =
+            crate::npc_story::festival_of(&today).ok_or(GameError::FestivalStoryUnavailable)?;
+        let story =
+            crate::festival_story::story(festival).ok_or(GameError::FestivalStoryUnavailable)?;
+        let year = crate::npc_story::year_of(&today);
+        let key = crate::festival_story::story_key(year, festival);
+        if self.state.festival_stories.contains_key(&key) {
+            return Err(GameError::FestivalStoryDone);
+        }
+        let choice = story
+            .choices
+            .iter()
+            .find(|choice| choice.id == choice_id)
+            .ok_or(GameError::FestivalStoryChoiceInvalid)?;
+
+        self.state.coins = self.state.coins.saturating_add(choice.coins);
+        if let Some(item_key) = choice.item_key {
+            *self.state.inventory.entry(item_key.to_string()).or_insert(0) += choice.item_qty;
+        }
+        if let Some(npc_id) = choice.npc_id {
+            if let Some(npc) = self.state.npcs.iter_mut().find(|npc| npc.id == npc_id) {
+                npc.friendship = (npc.friendship + choice.favor).min(100);
+            }
+        }
+        if choice.contribution > 0 && self.state.festival_market.name == festival {
+            self.state.festival_market.contribution = self
+                .state
+                .festival_market
+                .contribution
+                .saturating_add(choice.contribution);
+        }
+        self.state
+            .festival_stories
+            .insert(key, choice.id.to_string());
+        self.state.festival_memories.push(crate::model::FestivalMemory {
+            year,
+            festival: festival.to_string(),
+            title: story.title.to_string(),
+            text: choice.memory.to_string(),
+        });
+        let text = format!("{festival}·{}：{}", story.title, choice.memory);
         self.push_log(now, text.clone());
         Ok(vec![Effect::Log { text }])
     }

@@ -1213,6 +1213,21 @@ pub fn migrate_save(mut value: Value) -> Result<Value, SaveError> {
         value["schema"] = json!(53);
     }
 
+    if schema < 54 {
+        let state = value
+            .get_mut("state")
+            .and_then(Value::as_object_mut)
+            .ok_or(SaveError::Unknown(schema))?;
+        state
+            .entry("festivalStories")
+            .or_insert_with(|| json!({}));
+        state
+            .entry("festivalMemories")
+            .or_insert_with(|| json!([]));
+        state.insert("schema".into(), json!(54));
+        value["schema"] = json!(54);
+    }
+
     Ok(value)
 }
 

@@ -1255,6 +1255,15 @@ pub struct HandbookView {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct FestivalMemoryView {
+    pub year: i32,
+    pub festival: String,
+    pub title: String,
+    pub text: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Snapshot {
     pub rev: u64,
     pub now: i64,
@@ -1277,6 +1286,8 @@ pub struct Snapshot {
     pub daily: DailyView,
     pub handbook: HandbookView,
     pub festival_market: Option<crate::festival_market::FestivalMarketView>,
+    pub festival_story: Option<crate::festival_story::FestivalStoryView>,
+    pub festival_history: Vec<FestivalMemoryView>,
     pub orders: FarmOrdersView,
     pub mystery: MysteryShopView,
     pub level_rewards: Vec<LevelRewardView>,
@@ -3333,6 +3344,20 @@ impl Game {
             done: handbook_done,
             claimed: handbook_claimed,
         };
+        let festival_story = crate::festival_story::view(&self.state);
+        let festival_history: Vec<FestivalMemoryView> = self
+            .state
+            .festival_memories
+            .iter()
+            .rev()
+            .take(8)
+            .map(|memory| FestivalMemoryView {
+                year: memory.year,
+                festival: memory.festival.clone(),
+                title: memory.title.clone(),
+                text: memory.text.clone(),
+            })
+            .collect();
 
         Snapshot {
             rev: self.state.rev,
@@ -3356,6 +3381,8 @@ impl Game {
             daily: daily::view(&self.state.daily, self.state.ranch.has_animal()),
             handbook,
             festival_market: crate::festival_market::view(&self.state),
+            festival_story,
+            festival_history,
             orders,
             mystery,
             level_rewards: level_reward::views(&self.state, &self.content),

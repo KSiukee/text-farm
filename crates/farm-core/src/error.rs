@@ -216,6 +216,12 @@ pub enum GameError {
     FestivalUnavailable,
     #[error("今天没有节日集市")]
     FestivalMarketUnavailable,
+    #[error("今天没有可过的节日剧情")]
+    FestivalStoryUnavailable,
+    #[error("今年这段节日已经过过了")]
+    FestivalStoryDone,
+    #[error("这个节日选项不在了")]
+    FestivalStoryChoiceInvalid,
     #[error("集市还没开张，先把备货交了")]
     FestivalMarketClosed,
     #[error("这份备货已经交过了")]
@@ -452,6 +458,9 @@ impl GameError {
             GameError::NpcGiftUnavailable => "npc_gift_unavailable",
             GameError::FestivalUnavailable => "festival_unavailable",
             GameError::FestivalMarketUnavailable => "festival_market_unavailable",
+            GameError::FestivalStoryUnavailable => "festival_story_unavailable",
+            GameError::FestivalStoryDone => "festival_story_done",
+            GameError::FestivalStoryChoiceInvalid => "festival_story_choice_invalid",
             GameError::FestivalMarketClosed => "festival_market_closed",
             GameError::FestivalMarketRequestDone => "festival_market_request_done",
             GameError::FestivalMarketNotEnough => "festival_market_not_enough",

@@ -1,10 +1,14 @@
 # 更新日志
 
 > 文字农场 · 版本历史。
-> 本文由 `.codex/state.json` 的 `recent_changes` 生成，共 **178 条 / 159 个版本**；早期记录按当时原文保留，同一版本多条按发生顺序排列。
+> 本文由 `.codex/state.json` 的 `recent_changes` 生成，共 **179 条 / 160 个版本**；早期记录按当时原文保留，同一版本多条按发生顺序排列。
 > 版本号以 `Cargo.toml`、`app/tauri.conf.json`、`app/frontend/package.json`、`README.md` 为准。
 
 ---
+
+## 0.121.0 · 2026-10-25
+
+- 节日专属小剧情（A148/#177）——春节/元宵/国庆各一段二选一，一年一次；选完记进节日回忆；schema 54。Rust 387、前端 53、UI 213/213；exe 0.121.0。详见 docs/NPC有血有肉.md。
 
 ## 0.120.0 · 2026-10-25
 
