@@ -28,7 +28,139 @@ pub struct FestivalChoiceDef {
     pub contribution: u32,
 }
 
-pub const STORIES: [FestivalStoryDef; 6] = [
+pub const STORIES: [FestivalStoryDef; 10] = [
+    FestivalStoryDef {
+        festival: "播种节",
+        title: "第一把种子",
+        text: "春分前后，土刚化开。\
+阿禾蹲在田埂上捏了一把土，说今年墒情好，可以下种了。\
+他把一小袋种子倒在你手心，说第一把要自己撒。",
+        choices: &[
+            FestivalChoiceDef {
+                id: "sow_with_ahe",
+                label: "跟阿禾下地",
+                hint: "他教你怎么把种子撒匀",
+                memory: "播种节跟阿禾下了第一块地，他说手要低，种子才落得匀。",
+                coins: 60,
+                item_key: None,
+                item_qty: 0,
+                npc_id: Some("ahe"),
+                favor: 5,
+                contribution: 0,
+            },
+            FestivalChoiceDef {
+                id: "raise_at_home",
+                label: "自己在家育苗",
+                hint: "在窗边摆一排小盆",
+                memory: "播种节在窗边育了一排小苗，每天看一眼，长得比想象中慢。",
+                coins: 100,
+                item_key: Some("seed:xiaobaicai"),
+                item_qty: 2,
+                npc_id: None,
+                favor: 0,
+                contribution: 0,
+            },
+        ],
+    },
+    FestivalStoryDef {
+        festival: "凉夏宴",
+        title: "井里的瓜",
+        text: "夏至这天，日头最长。\
+六月把一只西瓜吊进井里，说等傍晚再提上来。\
+小满在灶边熬果酱，锅里的草莓翻着细小的泡。",
+        choices: &[
+            FestivalChoiceDef {
+                id: "river_melon",
+                label: "和六月去河边冰瓜",
+                hint: "河水比井水凉",
+                memory: "凉夏宴和六月把瓜浸在河湾里，傍晚切开，还是温的。",
+                coins: 60,
+                item_key: None,
+                item_qty: 0,
+                npc_id: Some("liuyue"),
+                favor: 5,
+                contribution: 0,
+            },
+            FestivalChoiceDef {
+                id: "jam_with_xiaoman",
+                label: "帮小满做冰果酱",
+                hint: "她一个人搅不过来",
+                memory: "凉夏宴帮小满搅了一锅果酱，她说过几天就能抹面包。",
+                coins: 100,
+                item_key: Some("seed:caomei"),
+                item_qty: 1,
+                npc_id: Some("xiaoman"),
+                favor: 3,
+                contribution: 0,
+            },
+        ],
+    },
+    FestivalStoryDef {
+        festival: "丰收节",
+        title: "最好的一篮",
+        text: "秋分，村里在晒场摆开一溜竹篮。\
+阿禾说今年不评谁家最大，只评谁家最用心。\
+你的仓库里也有几样拿得出手的东西。",
+        choices: &[
+            FestivalChoiceDef {
+                id: "contest_basket",
+                label: "交一篮菜去评比",
+                hint: "不一定要最多，要挑得干净",
+                memory: "丰收节交了一篮菜去评比，阿禾看了半天，说这篮有样子。",
+                coins: 150,
+                item_key: None,
+                item_qty: 0,
+                npc_id: None,
+                favor: 0,
+                contribution: 3,
+            },
+            FestivalChoiceDef {
+                id: "guard_granary",
+                label: "陪阿禾守谷仓",
+                hint: "最后一车谷子还没入库",
+                memory: "丰收节陪阿禾守到天黑，最后一车谷子进了仓，他才坐下喝水。",
+                coins: 80,
+                item_key: None,
+                item_qty: 0,
+                npc_id: Some("ahe"),
+                favor: 5,
+                contribution: 0,
+            },
+        ],
+    },
+    FestivalStoryDef {
+        festival: "围炉日",
+        title: "一锅热汤",
+        text: "冬至，天黑得早。\
+青杏把药柜后面的小桌支起来，说今天不诊脉，只喝汤。\
+阿禾提了一篮菜，小满端来米糕，老陶抱着一捆柴，六月拎着两条鱼。",
+        choices: &[
+            FestivalChoiceDef {
+                id: "qingxing_table",
+                label: "去青杏家喝汤",
+                hint: "五个人挤一张小桌",
+                memory: "围炉日去青杏家喝了汤，五个人挤一张小桌，谁也没先走。",
+                coins: 80,
+                item_key: None,
+                item_qty: 0,
+                npc_id: Some("qingxing"),
+                favor: 5,
+                contribution: 0,
+            },
+            FestivalChoiceDef {
+                id: "stay_farm_pot",
+                label: "在农场支一口锅",
+                hint: "把这些年攒的东西都放一点",
+                memory: "围炉日在农场支了一口锅，汤滚了很久，屋里的灯一直亮着。",
+                coins: 120,
+                item_key: Some("seed:luobo"),
+                item_qty: 1,
+                npc_id: None,
+                favor: 0,
+                contribution: 0,
+            },
+        ],
+    },
     FestivalStoryDef {
         festival: "春节",
         title: "年夜饭",

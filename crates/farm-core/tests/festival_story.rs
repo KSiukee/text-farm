@@ -62,3 +62,18 @@ fn qingming_dragon_boat_and_mid_autumn_have_stories() {
         assert_eq!(story.title, title);
     }
 }
+
+#[test]
+fn seasonal_festivals_have_stories() {
+    for (day, title) in [
+        ("2026-03-20", "第一把种子"),
+        ("2026-06-21", "井里的瓜"),
+        ("2026-09-23", "最好的一篮"),
+        ("2026-12-22", "一锅热汤"),
+    ] {
+        let mut game = Game::new(0);
+        game.sync(0, day);
+        let story = game.snapshot(0).festival_story.expect("节气剧情应出现");
+        assert_eq!(story.title, title);
+    }
+}
