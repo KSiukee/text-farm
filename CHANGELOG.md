@@ -1,10 +1,14 @@
 # 更新日志
 
 > 文字农场 · 版本历史。
-> 本文由 `.codex/state.json` 的 `recent_changes` 生成，共 **193 条 / 174 个版本**；早期记录按当时原文保留，同一版本多条按发生顺序排列。
+> 本文由 `.codex/state.json` 的 `recent_changes` 生成，共 **194 条 / 175 个版本**；早期记录按当时原文保留，同一版本多条按发生顺序排列。
 > 版本号以 `Cargo.toml`、`app/tauri.conf.json`、`app/frontend/package.json`、`README.md` 为准。
 
 ---
+
+## 0.134.0 · 2026-10-26
+
+- Android 生命周期与存档（A164/#192）—— 切后台先 sync 再强制落盘、回前台补一次 sync（Android 上 `CloseRequested` 不一定来；实测按 HOME / 按返回键都会在退出前写盘）；`window.confirm` 两处（放生宠物、删除作物）换成应用内确认弹层（`.confirm-overlay`，危险操作红字、Cancel 在左）；实测返回键退出后冷启动数据一致。详见 docs/android-生命周期-20261026.md。
 
 ## 0.133.0 · 2026-10-26
 

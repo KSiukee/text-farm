@@ -5322,3 +5322,56 @@ footer {
 [data-layout="classic"] .ws-subgroup {
   margin-top: 0;
 }
+
+/* ---- 应用内确认弹层（#192）----
+   替掉 window.confirm：Android WebView 里它可能不弹、也可能直接返回 false。
+   卡片封顶 360px、按钮靠右；上下 padding 让出状态栏/手势条，手机上不会把按钮挤出屏幕。 */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(env(safe-area-inset-top, 0px) + 20px) 16px
+    calc(env(safe-area-inset-bottom, 0px) + 20px);
+  background: rgba(0, 0, 0, 0.62);
+}
+
+.confirm-card {
+  width: min(88vw, 360px);
+  max-height: 100%;
+  overflow: auto;
+  padding: 18px 20px;
+  border: 1px solid var(--line-strong);
+  background: var(--panel-raised);
+  color: var(--ink);
+  box-shadow: 0 18px 50px var(--shadow-soft);
+}
+
+.confirm-title {
+  margin-bottom: 8px;
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+.confirm-body {
+  margin: 0 0 14px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.confirm-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.confirm-actions .confirm-ok {
+  font-weight: 700;
+}
+
+.confirm-actions .confirm-ok.danger {
+  color: var(--danger-strong);
+}

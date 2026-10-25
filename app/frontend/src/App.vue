@@ -198,6 +198,38 @@ let timer: number | undefined;
 let refreshTimer: number | undefined;
 let syncTimer: number | undefined;
 
+/// 应用内确认弹层（#192）：Android WebView 里 window.confirm 不可靠（可能不弹、也可能直接被拒），
+/// 放生宠物、删除作物这两处不可撤销的操作改成自家弹层；桌面也走同一条路。
+type ConfirmRequest = { title: string; body: string; okText: string; danger: boolean };
+const confirmDialog = ref<ConfirmRequest | null>(null);
+let confirmResolve: ((ok: boolean) => void) | null = null;
+
+function askConfirm(opts: Partial<ConfirmRequest> & { body: string }): Promise<boolean> {
+  // 上一个还没答就再来一个：先按「取消」收掉，避免两层叠着
+  if (confirmResolve) {
+    const prev = confirmResolve;
+    confirmResolve = null;
+    prev(false);
+  }
+  confirmDialog.value = {
+    title: opts.title ?? "确认",
+    body: opts.body,
+    okText: opts.okText ?? "确定",
+    danger: opts.danger ?? true,
+  };
+  return new Promise<boolean>((resolve) => {
+    confirmResolve = resolve;
+  });
+}
+
+function answerConfirm(ok: boolean) {
+  const resolve = confirmResolve;
+  confirmResolve = null;
+  confirmDialog.value = null;
+  resolve?.(ok);
+}
+
+
 const topIcons = [
   { icon: "🧑‍🌾", name: "农场" },
   { icon: "🐄", name: "畜牧场" },
@@ -1058,8 +1090,15 @@ function setPetBoarded(petId: string, boarded: boolean) {
 }
 
 function releasePet(petId: string, name: string) {
-  if (!window.confirm(`确定放生「${name}」吗？这一步不可撤销。`)) return;
-  void act({ type: "releasePet", petId });
+  void (async () => {
+    const ok = await askConfirm({
+      title: "放生",
+      body: `确定放生「${name}」吗？这一步不可撤销。`,
+      okText: "放生",
+    });
+    if (!ok) return;
+    void act({ type: "releasePet", petId });
+  })();
 }
 
 function buyPetSupply(kind: "dog_bed" | "cat_bed" | "bowl" | "dog_toy" | "cat_toy" | "soft_mat" | "water_fountain" | "medicine") {
@@ -1941,10 +1980,15 @@ function addCrop() {
 function removeCrop(index: number) {
   if (!editor.value) return;
   const crop = editor.value.crops[index];
-  if (!window.confirm(`删除「${crop?.name ?? "这个作物"}」？正在种或仓库里有货时会被拒绝。`)) {
-    return;
-  }
-  editor.value.crops.splice(index, 1);
+  void (async () => {
+    const ok = await askConfirm({
+      title: "删除作物",
+      body: `删除「${crop?.name ?? "这个作物"}」？正在种或仓库里有货时会被拒绝。`,
+      okText: "删除",
+    });
+    if (!ok || !editor.value) return;
+    editor.value.crops.splice(index, 1);
+  })();
 }
 
 async function previewEditor() {
@@ -2342,6 +2386,29 @@ async function syncFarm() {
   }
 }
 
+/// 切后台先结算再落盘（Android 上 CloseRequested 不一定会来，这条是兜底）；
+/// 回前台补一次 sync（后台期间 5s/30s 两个定时器都是停的）。
+/// 玩家点出来的每个动作本来就在 dispatch 里即时落盘，这里补的是"时间流逝"那一份。
+async function onVisibilityChange() {
+  if (document.hidden) {
+    try {
+      const reply = await syncGame();
+      snapshot.value = reply.snapshot;
+      await saveNow();
+    } catch {
+      // 落盘失败也不能挡住切后台
+    }
+    return;
+  }
+  try {
+    const reply = await syncGame();
+    snapshot.value = reply.snapshot;
+    if (reply.saveError) saveMessage.value = `已生效，但保存失败：${reply.saveError}`;
+  } catch {
+    // 拉不到就等下一轮 5 秒刷新
+  }
+}
+
 async function load() {
   loading.value = true;
   error.value = "";
@@ -2377,6 +2444,7 @@ async function doSave() {
 
 onMounted(() => {
   window.addEventListener("keydown", onFishingShortcut);
+  document.addEventListener("visibilitychange", onVisibilityChange);
   themeMedia =
     typeof window.matchMedia === "function"
       ? window.matchMedia("(prefers-color-scheme: dark)")
@@ -2439,6 +2507,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener("keydown", onFishingShortcut);
+  document.removeEventListener("visibilitychange", onVisibilityChange);
   themeMedia?.removeEventListener("change", onSystemThemeChange);
   themeMedia = null;
   if (timer !== undefined) window.clearInterval(timer);
@@ -6563,6 +6632,31 @@ onUnmounted(() => {
         <div class="catch-actions">
           <button class="link" type="button" @click="dismissCatch">[收下]</button>
           <span class="muted">按 F 收下并续钓</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 应用内确认弹层（#192）：替掉 window.confirm（Android WebView 里不可靠） -->
+    <div
+      v-if="confirmDialog"
+      class="confirm-overlay"
+      role="dialog"
+      aria-modal="true"
+      @click.self="answerConfirm(false)"
+    >
+      <div class="confirm-card">
+        <div class="confirm-title">{{ confirmDialog.title }}</div>
+        <p class="confirm-body">{{ confirmDialog.body }}</p>
+        <div class="confirm-actions">
+          <button class="link" type="button" @click="answerConfirm(false)">[取消]</button>
+          <button
+            class="link confirm-ok"
+            :class="{ danger: confirmDialog.danger }"
+            type="button"
+            @click="answerConfirm(true)"
+          >
+            {{ confirmDialog.okText }}
+          </button>
         </div>
       </div>
     </div>
