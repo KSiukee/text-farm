@@ -1,10 +1,14 @@
 # 更新日志
 
 > 文字农场 · 版本历史。
-> 本文由 `.codex/state.json` 的 `recent_changes` 生成，共 **150 条 / 131 个版本**；早期记录按当时原文保留，同一版本多条按发生顺序排列。
+> 本文由 `.codex/state.json` 的 `recent_changes` 生成，共 **151 条 / 132 个版本**；早期记录按当时原文保留，同一版本多条按发生顺序排列。
 > 版本号以 `Cargo.toml`、`app/tauri.conf.json`、`app/frontend/package.json`、`README.md` 为准。
 
 ---
+
+## 0.96.1 · 2026-10-25
+
+- 版本号守卫升级（A122/#149）——移植圈记 `version_check.py` 的设计：7 处来源清单 + `MIN_SEEN` 防空转 + `--selftest` 造临时树逐处改坏、每处都必须变红；保留 `--kind fix|feat` 与 `--allow-downgrade`；`scripts/version-guard.mjs` 改为兼容入口，`scripts/check.ps1` 增加守卫自检门；exe 0.96.1。
 
 ## 0.96.0 · 2026-10-25
 

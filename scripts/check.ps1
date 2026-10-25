@@ -20,7 +20,9 @@ try {
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
     # 两个门卫先跑：版本号 / 构建缓存不通过就不必再编。
-    Invoke-Gate -Exe "node" -Arguments @("scripts/version-guard.mjs")
+    # 版本守卫带 selftest：先证明它会红，再信它的绿灯。
+    Invoke-Gate -Exe "python" -Arguments @("scripts/version_guard.py")
+    Invoke-Gate -Exe "python" -Arguments @("scripts/version_guard.py", "--selftest")
     Invoke-Gate -Exe "python" -Arguments @("scripts/cache_guard.py", "--check")
     Invoke-Gate -Exe "python" -Arguments @("scripts/cache_guard.py", "--selftest")
 
