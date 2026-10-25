@@ -477,6 +477,13 @@ try {
   await startApp();
   const title = await evaluate("document.title");
   check("页面标题为文字农场", title.includes("文字农场"), title);
+  await clickText("说明", false);
+  await waitFor(async () => (await evaluate(`!!document.querySelector('.help-card')`)) === true);
+  const helpText = await bodyText();
+  check("游戏内玩法说明已打开", helpText.includes("先学会过日子"));
+  check("玩法说明包含第一天", helpText.includes("第一天：先把四块地种上"));
+  await clickText("[知道了]");
+  await waitFor(async () => (await evaluate(`!!document.querySelector('.help-card')`)) === false);
   await waitFor(async () => (saveState().orders?.offers.length ?? 0) >= 1);
   check("村庄订单已生成", (saveState().orders?.offers.length ?? 0) >= 1);
   check("村庄订单面板已显示", (await bodyText()).includes("村庄订单"));

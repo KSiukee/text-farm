@@ -6,6 +6,7 @@ app/gen/
 .DS_Store
 *.tmp
 *.exe
+smoke-run.log
 
 # 内部资料与产物：按铁律不入库
 docs/

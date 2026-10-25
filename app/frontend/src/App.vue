@@ -238,6 +238,7 @@ const fishingSpot = ref<FishingSpot>("creek");
 const catchResult = ref<FishCatchView | null>(null);
 const selectedFish = ref<FishCodexView | null>(null);
 const autoReportVisible = ref(false);
+const helpVisible = ref(false);
 const autoReportShownAt = ref(
   Number(window.localStorage.getItem("farm.autoReportShownAt") || 0),
 );
@@ -286,11 +287,6 @@ watch(
 );
 
 watch(
-  () => workshop.value?.autoReport?.at ?? 0,
-  () => maybeShowAutoReport(),
-);
-
-watch(
   () => fishing.value?.activeBait,
   (quality) => {
     if (quality) activeBaitQuality.value = quality;
@@ -322,6 +318,10 @@ watch(
   { immediate: true },
 );
 const workshop = computed(() => snapshot.value?.workshop ?? null);
+watch(
+  () => workshop.value?.autoReport?.at ?? 0,
+  () => maybeShowAutoReport(),
+);
 const emptyEquipmentSlot = computed(
   () =>
     workshop.value?.slotViews.find((slot) => slot.index > 0 && !slot.equipment)?.index ??
@@ -1744,7 +1744,7 @@ function placeholder(name: string) {
 }
 
 function showHelp() {
-  notice.value = "文字农场：种地/养牧/钓鱼/制造；设置、外观和存档在右上角玩家页。";
+  helpVisible.value = true;
 }
 
 function fileStamp(): string {
@@ -5894,6 +5894,89 @@ onUnmounted(() => {
           </div>
         </div>
         <button class="link" type="button" @click="dismissAutoReport">[知道了]</button>
+      </div>
+    </div>
+
+    <div v-if="helpVisible" class="npc-scene-overlay help-overlay" @click.self="helpVisible = false">
+      <div class="npc-scene-card help-card">
+        <div class="npc-scene-title">先学会过日子</div>
+        <p class="help-lead">
+          种下去，等它长，收了卖，卖了再种。时间是真实的，关掉游戏它也会继续长。
+          没有倒计时追你，也没有“今天必须做完”的清单。
+        </p>
+        <div class="help-body">
+          <section>
+            <h3>第一天：先把四块地种上</h3>
+            <p>开局有 4 块地、3 份小青菜种子、2 份萝卜种子、200 金币。</p>
+            <ul>
+              <li>三块地种小青菜，三分钟就能收一轮；</li>
+              <li>一块地种萝卜，十分钟左右；</li>
+              <li>剩下的萝卜种子先留着，明天再种。</li>
+            </ul>
+            <p>种完记得浇水。看到土干了就浇，不用一直盯着。</p>
+          </section>
+
+          <section>
+            <h3>头几天：卖菜、接订单、开地</h3>
+            <p>收完可以卖，也可以先放仓库。<b>别把菜全卖光</b>，村庄订单可能要你交作物，留两三份在手里。</p>
+            <p>每天会有三条村庄订单，最多同时接两条。接之前先看仓库，种得出来、交得上的再接。</p>
+            <p>
+              等级到了可以开第五、第六块地：第五块 3 级、300 金币；第六块 6 级、1200 金币。
+              不用一够钱就开，先留 100～200 金币买种子周转。
+            </p>
+          </section>
+
+          <section>
+            <h3>每天顺手做的事</h3>
+            <ul>
+              <li>签到：金币 +20，小青菜种子 +2；</li>
+              <li>看订单：今天要什么，决定你种什么；</li>
+              <li>收菜、浇水、补种：下线前把地种满；</li>
+              <li>去邻居家帮忙浇水、顺手摘一点，每天有次数；</li>
+              <li>和村民聊一句，每天一次，关系会慢慢变好。</li>
+            </ul>
+          </section>
+
+          <section>
+            <h3>邻居不是任务板</h3>
+            <p>
+              帮他们浇水、喂牲畜，或者只是聊一句。聊熟了，他们会记住你，讲一点自己的事；
+              每周还有个小小心愿，帮得上就帮，帮不上也不用躲着走。
+            </p>
+            <p>不用为了让谁喜欢你，把每天的次数刷满。关系是慢慢长出来的，跟地里的菜一样。</p>
+          </section>
+
+          <section>
+            <h3>等你长大一点</h3>
+            <p>
+              后面会慢慢开出牧场、制造屋、鱼塘、钓鱼和宠物。看到什么感兴趣就点进去看看，不用一次全懂。
+            </p>
+            <p>
+              制造屋做复杂东西时，配方旁边有 <b>[自动做]</b>：不用背公式，它会自己拆步骤、自己收。
+              村庄的加工订单也有 <b>[自动排程]</b>，做完会在自动汇报卡里告诉你。
+            </p>
+          </section>
+
+          <section>
+            <h3>可以记住的几句话</h3>
+            <ul>
+              <li>别把菜卖光，留一点给订单和明天；</li>
+              <li>别接满订单，两条刚好，种得过来最重要；</li>
+              <li>别把钱花空，开地、买种子、买设备，慢慢来；</li>
+              <li>不用跟别人比，这是单机，也没有人来检查你的农场。</li>
+            </ul>
+          </section>
+
+          <section>
+            <h3>什么时候算入门</h3>
+            <p>
+              收过第一轮菜、交过第一单、开过第五块地、和至少一个邻居聊出一小段故事——
+              做到这些，就算入门了。后面的，就自己去摸吧。
+            </p>
+            <p class="help-end">村里那五个人，会慢慢告诉你他们是谁。</p>
+          </section>
+        </div>
+        <button class="link" type="button" @click="helpVisible = false">[知道了]</button>
       </div>
     </div>
 
