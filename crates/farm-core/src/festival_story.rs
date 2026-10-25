@@ -28,7 +28,7 @@ pub struct FestivalChoiceDef {
     pub contribution: u32,
 }
 
-pub const STORIES: [FestivalStoryDef; 3] = [
+pub const STORIES: [FestivalStoryDef; 6] = [
     FestivalStoryDef {
         festival: "春节",
         title: "年夜饭",
@@ -124,6 +124,105 @@ pub const STORIES: [FestivalStoryDef; 3] = [
                 item_qty: 0,
                 npc_id: None,
                 favor: 0,
+                contribution: 3,
+            },
+        ],
+    },
+    FestivalStoryDef {
+        festival: "清明节",
+        title: "田埂上的青团",
+        text: "清明前后，田埂上冒出新艾。\
+青杏挎着竹篮从坡上下来，篮里一半是艾草，一半是刚挖的春笋。\
+她说今天的雨不大，正好走一走。",
+        choices: &[
+            FestivalChoiceDef {
+                id: "walk_ridge",
+                label: "陪青杏去田埂采艾",
+                hint: "她走得很慢，像在等谁",
+                memory: "清明和青杏沿着田埂采了一篮艾草，她说春笋晚上炖汤。",
+                coins: 60,
+                item_key: None,
+                item_qty: 0,
+                npc_id: Some("qingxing"),
+                favor: 5,
+                contribution: 0,
+            },
+            FestivalChoiceDef {
+                id: "make_qingtuan",
+                label: "在家做一屉青团",
+                hint: "把春天揉进糯米里",
+                memory: "清明在家蒸了一屉青团，给阿禾和小满各送了几个。",
+                coins: 120,
+                item_key: Some("seed:xiaobaicai"),
+                item_qty: 1,
+                npc_id: None,
+                favor: 0,
+                contribution: 0,
+            },
+        ],
+    },
+    FestivalStoryDef {
+        festival: "端午节",
+        title: "河边的粽子",
+        text: "端午前一天，小满就把糯米泡上了。\
+六月蹲在河边洗粽叶，水从指缝里流过去。\
+上游传来试锣鼓的声音，龙舟还没到，岸上已经站了人。",
+        choices: &[
+            FestivalChoiceDef {
+                id: "wrap_zongzi",
+                label: "帮小满包粽子",
+                hint: "甜的咸的各包一挂",
+                memory: "端午帮小满包了两挂粽子，她往你手里塞了一个刚出锅的。",
+                coins: 80,
+                item_key: None,
+                item_qty: 0,
+                npc_id: Some("xiaoman"),
+                favor: 5,
+                contribution: 0,
+            },
+            FestivalChoiceDef {
+                id: "watch_boat",
+                label: "去河边看龙舟",
+                hint: "六月在岸边给你留了位置",
+                memory: "端午在河边看龙舟从上游下来，六月说今年的鼓点比去年急。",
+                coins: 120,
+                item_key: None,
+                item_qty: 0,
+                npc_id: Some("liuyue"),
+                favor: 3,
+                contribution: 0,
+            },
+        ],
+    },
+    FestivalStoryDef {
+        festival: "中秋节",
+        title: "晒场上的月亮",
+        text: "中秋的月亮升得早，晒场上的谷子已经收拢成一座座小丘。\
+小满把月饼切成一角一角，阿禾搬来几把椅子，说今晚不急着收工。\
+风里有新稻草的味道。",
+        choices: &[
+            FestivalChoiceDef {
+                id: "moon_cake",
+                label: "和小满分月饼",
+                hint: "她留了最甜的那一块",
+                memory: "中秋和小满在晒场上分月饼，她把最甜的一块推到你面前。",
+                coins: 100,
+                item_key: None,
+                item_qty: 0,
+                npc_id: Some("xiaoman"),
+                favor: 5,
+                contribution: 0,
+            },
+            FestivalChoiceDef {
+                id: "stay_harvest",
+                label: "陪阿禾守晒场",
+                hint: "谷子还没盖好",
+                memory: "中秋陪阿禾守到月亮偏西，把最后一块油布盖在谷子上。",
+                coins: 80,
+                item_key: None,
+                item_qty: 0,
+                npc_id: Some("ahe"),
+                favor: 5,
                 contribution: 3,
             },
         ],

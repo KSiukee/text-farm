@@ -48,3 +48,17 @@ fn national_day_story_gives_market_contribution() {
         "帮村里把旗挂上了，风一吹，整面旗都展开。"
     );
 }
+
+#[test]
+fn qingming_dragon_boat_and_mid_autumn_have_stories() {
+    for (day, title) in [
+        ("2026-04-05", "田埂上的青团"),
+        ("2026-06-19", "河边的粽子"),
+        ("2026-09-25", "晒场上的月亮"),
+    ] {
+        let mut game = Game::new(0);
+        game.sync(0, day);
+        let story = game.snapshot(0).festival_story.expect("节日剧情应出现");
+        assert_eq!(story.title, title);
+    }
+}

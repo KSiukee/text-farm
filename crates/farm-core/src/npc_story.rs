@@ -618,6 +618,78 @@ const LUNAR_NEW_YEARS: [(i32, &str); 21] = [
     (2040, "2040-02-12"),
 ];
 
+const QINGMING: [(i32, &str); 21] = [
+    (2020, "2020-04-04"),
+    (2021, "2021-04-04"),
+    (2022, "2022-04-05"),
+    (2023, "2023-04-05"),
+    (2024, "2024-04-04"),
+    (2025, "2025-04-04"),
+    (2026, "2026-04-05"),
+    (2027, "2027-04-05"),
+    (2028, "2028-04-04"),
+    (2029, "2029-04-04"),
+    (2030, "2030-04-05"),
+    (2031, "2031-04-05"),
+    (2032, "2032-04-04"),
+    (2033, "2033-04-04"),
+    (2034, "2034-04-05"),
+    (2035, "2035-04-05"),
+    (2036, "2036-04-04"),
+    (2037, "2037-04-04"),
+    (2038, "2038-04-05"),
+    (2039, "2039-04-05"),
+    (2040, "2040-04-04"),
+];
+
+const DRAGON_BOATS: [(i32, &str); 21] = [
+    (2020, "2020-06-25"),
+    (2021, "2021-06-14"),
+    (2022, "2022-06-03"),
+    (2023, "2023-06-22"),
+    (2024, "2024-06-10"),
+    (2025, "2025-05-31"),
+    (2026, "2026-06-19"),
+    (2027, "2027-06-09"),
+    (2028, "2028-05-28"),
+    (2029, "2029-06-16"),
+    (2030, "2030-06-05"),
+    (2031, "2031-06-24"),
+    (2032, "2032-06-12"),
+    (2033, "2033-06-01"),
+    (2034, "2034-06-20"),
+    (2035, "2035-06-10"),
+    (2036, "2036-05-30"),
+    (2037, "2037-06-18"),
+    (2038, "2038-06-07"),
+    (2039, "2039-05-28"),
+    (2040, "2040-06-14"),
+];
+
+const MID_AUTUMNS: [(i32, &str); 21] = [
+    (2020, "2020-10-01"),
+    (2021, "2021-09-21"),
+    (2022, "2022-09-10"),
+    (2023, "2023-09-29"),
+    (2024, "2024-09-17"),
+    (2025, "2025-10-06"),
+    (2026, "2026-09-25"),
+    (2027, "2027-09-15"),
+    (2028, "2028-10-03"),
+    (2029, "2029-09-22"),
+    (2030, "2030-09-12"),
+    (2031, "2031-10-01"),
+    (2032, "2032-09-19"),
+    (2033, "2033-09-08"),
+    (2034, "2034-09-27"),
+    (2035, "2035-09-16"),
+    (2036, "2036-10-04"),
+    (2037, "2037-09-24"),
+    (2038, "2038-09-13"),
+    (2039, "2039-10-02"),
+    (2040, "2040-09-20"),
+];
+
 fn month_day(day: &str) -> &str {
     day.get(5..).unwrap_or("")
 }
@@ -711,7 +783,7 @@ pub fn festival_reward() -> u64 {
 }
 
 pub fn festival_reward_for(name: &str) -> u64 {
-    if matches!(name, "春节" | "国庆节") {
+    if matches!(name, "春节" | "国庆节" | "中秋节") {
         500
     } else {
         festival_reward()
@@ -719,7 +791,7 @@ pub fn festival_reward_for(name: &str) -> u64 {
 }
 
 pub fn is_major_festival(name: &str) -> bool {
-    matches!(name, "春节" | "国庆节")
+    matches!(name, "春节" | "国庆节" | "中秋节")
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -761,6 +833,11 @@ pub fn festival_of(day: &str) -> Option<&'static str> {
 
 fn solar_festival_of(day: &str) -> Option<&'static str> {
     let year = year_of(day);
+    if let Some((_, date)) = QINGMING.iter().find(|(value, _)| *value == year) {
+        if day == *date {
+            return Some("清明节");
+        }
+    }
     if let Some((_, spring, summer, autumn, winter)) =
         SOLAR_FESTIVALS.iter().find(|(value, ..)| *value == year)
     {
@@ -794,6 +871,16 @@ fn lunar_festival_of(day: &str) -> Option<&'static str> {
         Some("春节")
     } else if day == crate::orders::add_days(new_year, 14) {
         Some("元宵节")
+    } else if DRAGON_BOATS
+        .iter()
+        .any(|(value, date)| *value == year && day == *date)
+    {
+        Some("端午节")
+    } else if MID_AUTUMNS
+        .iter()
+        .any(|(value, date)| *value == year && day == *date)
+    {
+        Some("中秋节")
     } else {
         None
     }
@@ -815,9 +902,18 @@ pub fn festival_dates_for_year(year: i32) -> Vec<(&'static str, String)> {
         }
     }
     dates.push(("国庆节", format!("{year:04}-10-01")));
+    if let Some((_, date)) = QINGMING.iter().find(|(value, _)| *value == year) {
+        dates.push(("清明节", (*date).to_string()));
+    }
     if let Some((_, new_year)) = LUNAR_NEW_YEARS.iter().find(|(value, _)| *value == year) {
         dates.push(("春节", (*new_year).to_string()));
         dates.push(("元宵节", crate::orders::add_days(new_year, 14)));
+    }
+    if let Some((_, date)) = DRAGON_BOATS.iter().find(|(value, _)| *value == year) {
+        dates.push(("端午节", (*date).to_string()));
+    }
+    if let Some((_, date)) = MID_AUTUMNS.iter().find(|(value, _)| *value == year) {
+        dates.push(("中秋节", (*date).to_string()));
     }
     dates.sort_by(|a, b| a.1.cmp(&b.1));
     dates
@@ -843,6 +939,9 @@ fn festival_line(id: &str, festival: &str) -> &'static str {
         ("ahe", "国庆节") => "国庆节，村里挂了旗，晒谷场热闹。",
         ("ahe", "春节") => "春节，先吃顿好的，地不急。",
         ("ahe", "元宵节") => "元宵节，晚上去河边看灯。",
+        ("ahe", "清明节") => "清明前后，种瓜点豆。",
+        ("ahe", "端午节") => "端午门头挂艾，蚊子少。",
+        ("ahe", "中秋节") => "中秋月亮亮，晒场上的谷子也收完了。",
         ("xiaoman", "播种节") => "播种节我熬了锅甜粥，等会儿给你盛一碗。",
         ("xiaoman", "凉夏宴") => "凉夏宴我做了冰果酱，酸甜的。",
         ("xiaoman", "丰收节") => "丰收节我把最甜的一篮留出来了。",
@@ -850,6 +949,9 @@ fn festival_line(id: &str, festival: &str) -> &'static str {
         ("xiaoman", "国庆节") => "国庆节我蒸了米糕，来拿一块。",
         ("xiaoman", "春节") => "春节的糖我熬好了，甜。",
         ("xiaoman", "元宵节") => "元宵节煮了汤圆，黑芝麻的。",
+        ("xiaoman", "清明节") => "清明做青团，艾草汁揉的。",
+        ("xiaoman", "端午节") => "端午包粽子，我留了甜的。",
+        ("xiaoman", "中秋节") => "中秋月饼切好了，来拿一块。",
         ("qingxing", "播种节") => "播种节别光顾着下地，晌午记得歇。",
         ("qingxing", "凉夏宴") => "凉夏宴别贪凉，晚上还要盖薄被。",
         ("qingxing", "丰收节") => "丰收节家家都忙，我得多备点药。",
@@ -857,6 +959,9 @@ fn festival_line(id: &str, festival: &str) -> &'static str {
         ("qingxing", "国庆节") => "国庆节人多，别挤着。",
         ("qingxing", "春节") => "春节别守太晚，身子要紧。",
         ("qingxing", "元宵节") => "元宵节灯亮，路也亮，慢点走。",
+        ("qingxing", "清明节") => "清明雨水多，别淋着。",
+        ("qingxing", "端午节") => "端午雄黄别碰，看看就行。",
+        ("qingxing", "中秋节") => "中秋夜里凉，加件衣裳。",
         ("laotao", "播种节") => "播种节我给锄头换了个新柄。",
         ("laotao", "凉夏宴") => "凉夏宴我在门口支了张桌子，来坐。",
         ("laotao", "丰收节") => "丰收节木匠也歇一天，喝口茶。",
@@ -864,6 +969,9 @@ fn festival_line(id: &str, festival: &str) -> &'static str {
         ("laotao", "国庆节") => "国庆节我把门口修了修，挂盏灯。",
         ("laotao", "春节") => "春节歇工，锯子也歇。",
         ("laotao", "元宵节") => "元宵节做个兔子灯，给小孩。",
+        ("laotao", "清明节") => "清明给老锄头紧一紧，要下地了。",
+        ("laotao", "端午节") => "端午河边锣鼓响，船慢些。",
+        ("laotao", "中秋节") => "中秋做个木盘摆月饼。",
         ("liuyue", "播种节") => "播种节河风软，鱼也肯开口。",
         ("liuyue", "凉夏宴") => "凉夏宴船上有风，比岸上凉快。",
         ("liuyue", "丰收节") => "丰收节河里的鱼肥，今晚有汤。",
@@ -871,6 +979,9 @@ fn festival_line(id: &str, festival: &str) -> &'static str {
         ("liuyue", "国庆节") => "国庆节河上也有灯，船慢些。",
         ("liuyue", "春节") => "春节河面静，鱼也过年。",
         ("liuyue", "元宵节") => "元宵节放河灯，好看。",
+        ("liuyue", "清明节") => "清明河鱼肥，水面也亮。",
+        ("liuyue", "端午节") => "端午龙舟从上游下来，我在岸边看。",
+        ("liuyue", "中秋节") => "中秋河上月亮，跟着水漂。",
         _ => "今天是个好日子。",
     }
 }

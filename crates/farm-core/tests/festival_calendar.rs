@@ -1,11 +1,11 @@
 use farm_core::{Action, Game};
 
 #[test]
-fn calendar_shows_seven_festivals_and_next_one() {
+fn calendar_shows_ten_festivals_and_next_one() {
     let mut game = Game::new(0);
     game.sync(0, "2026-10-25");
     let calendar = game.snapshot(0).festival_calendar;
-    assert_eq!(calendar.festivals.len(), 7);
+    assert_eq!(calendar.festivals.len(), 10);
     let next = calendar.next.expect("应有下一个节日");
     assert_eq!(next.name, "围炉日");
     assert_eq!(next.date, "2026-12-22");
