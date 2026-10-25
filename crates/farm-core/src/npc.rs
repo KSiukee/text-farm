@@ -70,6 +70,9 @@ pub struct NpcState {
     /// 最近一次聊天的日期（`daily.day`），同一天只加一次好感。
     #[serde(default)]
     pub last_chat_day: String,
+    /// 已发生的故事记忆，用于主动想起和人物志。
+    #[serde(default)]
+    pub memories: Vec<NpcMemory>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -79,6 +82,16 @@ pub struct NpcMessage {
     pub npc_id: String,
     pub text: String,
     pub from_player: bool,
+}
+
+/// 一段发生过的旧事；只存事件 id/日期/季节，不存正文。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NpcMemory {
+    pub event_id: String,
+    pub day: i64,
+    pub season: String,
+    pub last_recall_day: i64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -112,8 +125,17 @@ pub struct NpcView {
     pub routine: String,
     pub today_line: String,
     pub next_event: Option<String>,
+    pub memories: Vec<NpcMemoryView>,
     pub plots: Vec<NpcPlotView>,
     pub ranch: Vec<NpcRanchAnimalView>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NpcMemoryView {
+    pub title: String,
+    pub summary: String,
+    pub season: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -213,6 +235,7 @@ pub fn starter(now: i64, content: &ContentPack) -> Vec<NpcState> {
                 last_greeting_at: 0,
                 seen_events: Vec::new(),
                 last_chat_day: String::new(),
+                memories: Vec::new(),
             }
         })
         .collect()
@@ -242,6 +265,18 @@ pub fn view(npc: &NpcState, content: &ContentPack, now: i64) -> NpcView {
     let today_line = crate::npc_story::daily_line(&npc.id, npc.friendship, now / 86_400_000);
     let next_event = crate::npc_story::upcoming_event(&npc.id, &npc.seen_events)
         .map(|event| format!("{} 好感 · {}", event.threshold, event.title));
+    let memories = npc
+        .memories
+        .iter()
+        .filter_map(|memory| {
+            let event = crate::npc_story::event_by_id(&memory.event_id)?;
+            Some(NpcMemoryView {
+                title: event.title.to_string(),
+                summary: crate::npc_story::summary(&memory.event_id).to_string(),
+                season: memory.season.clone(),
+            })
+        })
+        .collect();
     let plots = npc
         .plots
         .iter()
@@ -312,6 +347,7 @@ pub fn view(npc: &NpcState, content: &ContentPack, now: i64) -> NpcView {
         routine: profile.map(|profile| profile.routine.to_string()).unwrap_or_default(),
         today_line: today_line.to_string(),
         next_event,
+        memories,
         plots,
         ranch,
     }

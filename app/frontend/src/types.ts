@@ -776,8 +776,15 @@ export interface NpcView {
   routine: string;
   todayLine: string;
   nextEvent: string | null;
+  memories: NpcMemoryView[];
   plots: NpcPlotView[];
   ranch: NpcRanchAnimalView[];
+}
+
+export interface NpcMemoryView {
+  title: string;
+  summary: string;
+  season: string;
 }
 
 export interface NpcRoomView {
@@ -1320,6 +1327,7 @@ export interface NpcTalkEffect {
   text: string;
   reward: string;
   favor: number;
+  tag: string;
 }
 
 export type Effect =

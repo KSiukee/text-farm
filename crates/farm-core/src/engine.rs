@@ -67,6 +67,7 @@ pub enum Effect {
         text: String,
         reward: String,
         favor: i32,
+        tag: String,
     },
 }
 
@@ -4898,34 +4899,75 @@ impl Game {
         let day_index = now / 86_400_000;
         let npc_name = self.state.npcs[pos].name.clone();
         let mut coins_reward = 0;
-        let (title, text, favor) = {
+        let (title, text, favor, tag) = {
             let npc = &mut self.state.npcs[pos];
             if npc.last_chat_day == today {
                 (
                     "闲聊".to_string(),
                     crate::npc_story::daily_line(&npc.id, npc.friendship, day_index).to_string(),
                     0,
+                    String::new(),
                 )
             } else {
-                npc.last_chat_day = today;
+                npc.last_chat_day = today.clone();
                 npc.friendship = (npc.friendship + 1).min(100);
                 if let Some(event) =
                     crate::npc_story::next_event(&npc.id, npc.friendship, &npc.seen_events)
                 {
                     npc.seen_events.push(event.id.to_string());
+                    npc.memories.push(crate::npc::NpcMemory {
+                        event_id: event.id.to_string(),
+                        day: day_index,
+                        season: crate::npc_story::season_of(&today).to_string(),
+                        last_recall_day: 0,
+                    });
                     npc.friendship = (npc.friendship + event.favor).min(100);
                     coins_reward = event.reward;
                     (
                         event.title.to_string(),
                         event.text.to_string(),
                         event.favor,
+                        String::new(),
                     )
                 } else {
-                    (
-                        "闲聊".to_string(),
-                        crate::npc_story::daily_line(&npc.id, npc.friendship, day_index).to_string(),
-                        1,
-                    )
+                    let current_season = crate::npc_story::season_of(&today);
+                    let recall_id = npc
+                        .memories
+                        .iter()
+                        .filter(|memory| {
+                            memory.season == current_season
+                                && day_index - memory.day >= 3
+                                && day_index - memory.last_recall_day >= 3
+                        })
+                        .filter_map(|memory| {
+                            crate::npc_story::event_by_id(&memory.event_id)
+                                .map(|event| (memory.event_id.clone(), event.threshold))
+                        })
+                        .max_by_key(|(_, threshold)| *threshold)
+                        .map(|(event_id, _)| event_id);
+                    if let Some(event_id) = recall_id {
+                        if let Some(memory) = npc
+                            .memories
+                            .iter_mut()
+                            .find(|memory| memory.event_id == event_id)
+                        {
+                            memory.last_recall_day = day_index;
+                        }
+                        (
+                            "旧事".to_string(),
+                            crate::npc_story::recall_line(&event_id).to_string(),
+                            1,
+                            "记得".to_string(),
+                        )
+                    } else {
+                        (
+                            "闲聊".to_string(),
+                            crate::npc_story::daily_line(&npc.id, npc.friendship, day_index)
+                                .to_string(),
+                            1,
+                            String::new(),
+                        )
+                    }
                 }
             }
         };
@@ -4939,6 +4981,8 @@ impl Game {
         };
         let log = if title == "闲聊" {
             format!("你和{npc_name}聊了几句")
+        } else if title == "旧事" {
+            format!("你和{npc_name}聊起一件旧事")
         } else {
             format!("{npc_name}跟你讲了「{title}」")
         };
@@ -4949,6 +4993,7 @@ impl Game {
             text,
             reward,
             favor,
+            tag,
         }])
     }
 

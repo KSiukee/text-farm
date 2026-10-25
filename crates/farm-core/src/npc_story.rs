@@ -260,6 +260,63 @@ pub fn events(id: &str) -> &'static [NpcEvent] {
     }
 }
 
+pub fn event_by_id(event_id: &str) -> Option<&'static NpcEvent> {
+    PROFILES
+        .iter()
+        .flat_map(|profile| events(profile.id))
+        .find(|event| event.id == event_id)
+}
+
+/// 给人看的一行摘要（人物志用）。
+pub fn summary(event_id: &str) -> &'static str {
+    match event_id {
+        "ahe_hoe" => "你帮他修好了父亲留下的旧锄头",
+        "ahe_field" => "他第一次说起父亲和这块地",
+        "xiaoman_jam" => "你尝了她第一锅没糊的果酱",
+        "xiaoman_bees" => "你陪她听了蜂箱里的动静",
+        "qingxing_lamp" => "她把出诊的小灯借给了你",
+        "qingxing_cabinet" => "她让你帮忙盯着老陶的咳嗽",
+        "laotao_chair" => "你坐上了他没送出去的小椅子",
+        "laotao_apprentice" => "他让你试着刨了一块板",
+        "liuyue_boat" => "你帮她换好了漏水的船板",
+        "liuyue_moon" => "她和你说起父亲看月亮的习惯",
+        _ => "一件小事",
+    }
+}
+
+/// 主动想起时的一句旧话；不展示原文，只提一个细节。
+pub fn recall_line(event_id: &str) -> &'static str {
+    match event_id {
+        "ahe_hoe" => "上次你帮我紧的那把锄头，今年使着顺手。",
+        "ahe_field" => "田埂上说的那些话，我还记着。",
+        "xiaoman_jam" => "那罐糊掉的果酱，我还留着。",
+        "xiaoman_bees" => "蜂箱今年又分群了，我想起你那天听蜂的样子。",
+        "qingxing_lamp" => "那盏灯还在你那儿吧？夜里走路当心。",
+        "qingxing_cabinet" => "老陶的咳嗽好多了，上次托你的事，我没忘。",
+        "laotao_chair" => "那把椅子你坐着还稳吗？",
+        "laotao_apprentice" => "你上回推的那层木花，薄得正好。",
+        "liuyue_boat" => "船今年没再漏，上次你扶的那块板还牢。",
+        "liuyue_moon" => "今晚月亮好，我想起你上次在船上说的话。",
+        _ => "上次那件事，我还记得。",
+    }
+}
+
+/// 日期字符串（`YYYY-MM-DD`）对应的季节；解析失败时返回“未知”。
+pub fn season_of(day: &str) -> &'static str {
+    let month = day
+        .split('-')
+        .nth(1)
+        .and_then(|value| value.parse::<u32>().ok())
+        .unwrap_or(0);
+    match month {
+        3..=5 => "春",
+        6..=8 => "夏",
+        9..=11 => "秋",
+        12 | 1 | 2 => "冬",
+        _ => "未知",
+    }
+}
+
 pub fn next_event(
     id: &str,
     friendship: i32,

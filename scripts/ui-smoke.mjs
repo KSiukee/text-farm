@@ -578,6 +578,12 @@ try {
     "NPC 下一段故事已提示",
     (await bodyText()).includes("下一段故事：60 好感 · 田埂上的话"),
   );
+  await clickText("[人物志]");
+  await waitFor(async () => (await evaluate(`document.querySelectorAll('.npc-memory').length`)) === 1);
+  const journalText = await bodyText();
+  check("NPC 人物志已打开", journalText.includes("老锄头") && journalText.includes("你帮他修好了父亲留下的旧锄头"));
+  await clickText("[合上]");
+  await waitFor(async () => (await evaluate(`!!document.querySelector('.npc-memory')`)) === false);
   await screenshot("docs/npc-people-v0100.png");
   await clickText("图鉴");
   await waitFor(async () => (await evaluate(`!!document.querySelector('#farm-codex')?.open`)) === true);

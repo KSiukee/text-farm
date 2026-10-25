@@ -673,6 +673,7 @@ const specimenFeatured = computed(
 const specimenMilestones = computed(() => snapshot.value?.specimenMilestones ?? []);
 const specimenResult = ref<Extract<Effect, { kind: "specimen" }> | null>(null);
 const npcTalk = ref<NpcTalkEffect | null>(null);
+const npcJournal = ref<NpcView | null>(null);
 const specimenResultCrop = computed(
   () => specimens.value.find((item) => item.cropId === specimenResult.value?.cropId) ?? null,
 );
@@ -1062,6 +1063,10 @@ function greetNpc(npc: NpcView) {
 
 function chatWithNpc(npc: NpcView) {
   void act({ type: "chatWithNpc", npcId: npc.id });
+}
+
+function openNpcJournal(npc: NpcView) {
+  npcJournal.value = npc;
 }
 
 function cropById(id: string): CropDef | undefined {
@@ -3528,6 +3533,14 @@ onUnmounted(() => {
               <button class="link" type="button" :disabled="acting" @click="chatWithNpc(npc)">
                 [聊聊]
               </button>
+              <button
+                v-if="npc.memories.length"
+                class="link"
+                type="button"
+                @click="openNpcJournal(npc)"
+              >
+                [人物志]
+              </button>
               <button class="link" type="button" :disabled="acting" @click="greetNpc(npc)">
                 [留句话]
               </button>
@@ -5449,13 +5462,28 @@ onUnmounted(() => {
 
       <div v-if="npcTalk" class="npc-scene-overlay" @click.self="npcTalk = null">
         <div class="npc-scene-card">
-          <div class="npc-scene-title">{{ npcTalk.npcName }} · {{ npcTalk.title }}</div>
+          <div class="npc-scene-title">
+            <span v-if="npcTalk.tag" class="npc-tag">{{ npcTalk.tag }}</span>
+            {{ npcTalk.npcName }} · {{ npcTalk.title }}
+          </div>
           <p class="npc-scene-text">{{ npcTalk.text }}</p>
           <div v-if="npcTalk.reward || npcTalk.favor" class="npc-scene-reward">
             <span v-if="npcTalk.reward">收下：{{ npcTalk.reward }}</span>
             <span v-if="npcTalk.favor">好感 +{{ npcTalk.favor }}</span>
           </div>
           <button class="link" type="button" @click="npcTalk = null">[收下]</button>
+        </div>
+      </div>
+
+      <div v-if="npcJournal" class="npc-scene-overlay" @click.self="npcJournal = null">
+        <div class="npc-scene-card">
+          <div class="npc-scene-title">{{ npcJournal.emoji }} {{ npcJournal.name }} · 人物志</div>
+          <div v-for="memory in npcJournal.memories" :key="memory.title" class="npc-memory">
+            <span class="npc-tag">{{ memory.season }}</span>
+            <strong>{{ memory.title }}</strong>
+            <span class="muted">{{ memory.summary }}</span>
+          </div>
+          <button class="link" type="button" @click="npcJournal = null">[合上]</button>
         </div>
       </div>
     </main>

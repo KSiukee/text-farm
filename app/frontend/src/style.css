@@ -2051,6 +2051,24 @@ textarea {
   font-weight: 700;
 }
 
+.npc-scene-title .npc-tag {
+  margin-right: 6px;
+  color: var(--accent-text);
+}
+
+.npc-memory {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  padding: 6px 0;
+  border-bottom: 1px dotted var(--line);
+}
+
+.npc-memory:last-of-type {
+  border-bottom: none;
+}
+
 .npc-scene-text {
   margin: 0 0 10px;
   line-height: 1.8;

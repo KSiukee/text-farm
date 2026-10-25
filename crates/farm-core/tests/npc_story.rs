@@ -1,4 +1,4 @@
-use farm_core::{Action, Effect, Game};
+use farm_core::{Action, Effect, Game, NpcMemory};
 
 fn setup() -> Game {
     let mut game = Game::new(0);
@@ -63,4 +63,43 @@ fn second_story_unlocks_at_sixty_and_never_repeats() {
     assert_eq!(title, "闲聊");
     assert_eq!(favor, 1);
     assert_eq!(coins, 0);
+}
+
+#[test]
+fn old_memory_is_recalled_with_tag_once_per_cooldown() {
+    let mut game = setup();
+    game.state_mut().npcs[0].friendship = 35;
+    game.state_mut().npcs[0].seen_events = vec!["ahe_hoe".into()];
+    game.state_mut().npcs[0].memories = vec![NpcMemory {
+        event_id: "ahe_hoe".into(),
+        day: -5,
+        season: "秋".into(),
+        last_recall_day: -10,
+    }];
+    let before = game.state().coins;
+    let outcome = game
+        .dispatch(
+            Action::ChatWithNpc {
+                npc_id: "ahe".into(),
+            },
+            0,
+        )
+        .unwrap();
+    let Effect::NpcTalk {
+        title,
+        tag,
+        favor,
+        ..
+    } = outcome.effects[0].clone()
+    else {
+        panic!("expected npc talk effect");
+    };
+    assert_eq!(title, "旧事");
+    assert_eq!(tag, "记得");
+    assert_eq!(favor, 1);
+    assert_eq!(game.state().coins, before);
+    assert_eq!(game.state().npcs[0].memories[0].last_recall_day, 0);
+
+    let (title, _, _) = talk(&mut game);
+    assert_eq!(title, "闲聊");
 }
