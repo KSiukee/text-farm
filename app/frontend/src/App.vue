@@ -604,7 +604,6 @@ const petSpecies = computed(
 );
 const visibleBreeds = computed(() => BREEDS.filter((breed) => breed.species === petSpecies.value));
 const selectedBreed = computed(() => BREEDS.find((breed) => breed.id === petBreed.value) ?? BREEDS[0]);
-const feedCropId = ref("");
 const renameName = ref("");
 
 const anyReady = computed(
@@ -931,11 +930,23 @@ function adoptPet() {
 
 function feedPet() {
   const target = selectedPet.value;
-  const cropId = feedCropId.value || produce.value[0]?.key.replace("crop:", "");
-  if (target && cropId) {
-    playPetAnim("eat", "🍖");
-    void act({ type: "feedPet", petId: target.id, cropId });
+  if (!target) return;
+  const fish = (snapshot.value?.inventory ?? [])
+    .filter((item) => item.kind === "fish" && item.qty > 0)
+    .sort(
+      (a, b) =>
+        (a.unitPrice ?? 0) - (b.unitPrice ?? 0) || a.key.localeCompare(b.key),
+    )[0];
+  if (!fish) {
+    notice.value = "鱼篓里没有鱼，先去钓鱼";
+    return;
   }
+  playPetAnim("eat", "🍖");
+  void act({
+    type: "feedPet",
+    petId: target.id,
+    fishId: fish.key.replace("fish:", ""),
+  });
 }
 
 function petAction(action: "petCompanion" | "playWithPet" | "healPet" | "digWithPet") {
@@ -4901,17 +4912,17 @@ onUnmounted(() => {
                   <section class="pet-card">
                     <div class="pet-card-head">
                       <b>日常</b>
-                      <span class="muted">喂食 / 摸摸 / 玩耍 / 挖种子</span>
                     </div>
                     <div class="row pet-actions">
-                      <select v-model="feedCropId">
-                        <option v-for="item in produce" :key="item.key" :value="item.key.replace('crop:', '')">
-                          {{ item.name }} ×{{ item.qty }}
-                        </option>
-                      </select>
-                      <button class="link" type="button" :disabled="acting || !produce.length" @click="feedPet">
-                        [喂食]
+                      <button
+                        class="link"
+                        type="button"
+                        :disabled="acting || !fishItems.length"
+                        @click="feedPet"
+                      >
+                        [喂鱼]
                       </button>
+                      <span class="muted">鱼篓 {{ fishItems.length }} 种</span>
                       <button
                         class="link"
                         type="button"

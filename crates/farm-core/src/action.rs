@@ -67,8 +67,9 @@ pub enum Action {
     FeedPet {
         #[serde(rename = "petId")]
         pet_id: String,
-        #[serde(rename = "cropId")]
-        crop_id: String,
+        /// 喂一条鱼（`fish:<id>` 的 id）。
+        #[serde(rename = "fishId")]
+        fish_id: String,
     },
     PetCompanion {
         #[serde(rename = "petId")]

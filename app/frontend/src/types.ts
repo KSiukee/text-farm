@@ -1324,7 +1324,7 @@ export type Action =
   | { type: "claimSpecimenMilestone"; unique: number }
   | { type: "repairWindmills" }
   | { type: "adoptPet"; name: string; breed: PetBreed; board: boolean }
-  | { type: "feedPet"; petId: string; cropId: string }
+  | { type: "feedPet"; petId: string; fishId: string }
   | { type: "petCompanion"; petId: string }
   | { type: "playWithPet"; petId: string }
   | { type: "healPet"; petId: string }

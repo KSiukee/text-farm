@@ -106,7 +106,7 @@ impl Game {
             }
             Action::RepairWindmills => self.repair_windmills(now)?,
             Action::AdoptPet { name, breed, board } => self.adopt_pet(name, breed, board, now)?,
-            Action::FeedPet { pet_id, crop_id } => self.feed_pet(&pet_id, &crop_id, now)?,
+            Action::FeedPet { pet_id, fish_id } => self.feed_pet(&pet_id, &fish_id, now)?,
             Action::PetCompanion { pet_id } => self.touch_pet(&pet_id, now)?,
             Action::PlayWithPet { pet_id } => self.play_pet(&pet_id, now)?,
             Action::HealPet { pet_id } => self.heal_pet(&pet_id, now)?,
@@ -1984,19 +1984,15 @@ impl Game {
     fn feed_pet(
         &mut self,
         pet_id: &str,
-        crop_id: &str,
+        fish_id: &str,
         now: i64,
     ) -> Result<Vec<Effect>, GameError> {
         let pos = self.pet_pos(pet_id)?;
         if self.state.pets[pos].boarded {
             return Err(GameError::PetBoarded);
         }
-        let def = self
-            .content
-            .crop(crop_id)
-            .cloned()
-            .ok_or(GameError::UnknownCrop)?;
-        let key = format!("crop:{}", def.id);
+        let def = crate::fishing::fish(fish_id).ok_or(GameError::UnknownFish)?;
+        let key = format!("fish:{}", def.id);
         let have = *self.state.inventory.get(&key).unwrap_or(&0);
         if have == 0 {
             return Err(GameError::NotEnoughItems);
@@ -2011,10 +2007,8 @@ impl Game {
         let bowls = self.state.pet_care.bowls;
         let action_seed = self.state.rev;
         let pet = &mut self.state.pets[pos];
-        let preferred = match pet.species {
-            PetSpecies::Dog => def.id == "yumi",
-            PetSpecies::Cat => def.id == "xiaobaicai",
-        };
+        // 猫爱吃鱼；狗也吃，但不加成。
+        let preferred = pet.species == PetSpecies::Cat;
         let bowl_ok = bowls >= active as u8;
         let mut fought = false;
         if !bowl_ok && active > 1 {
@@ -2032,7 +2026,7 @@ impl Game {
         let text = if fought {
             format!("{}们为食盆打了一架，{}没吃好", pet.name, pet.name)
         } else {
-            format!("你喂了{}一份{}，它看起来很开心", pet.name, def.name)
+            format!("你喂了{}一条{}，它吃得很香", pet.name, def.name)
         };
         self.push_log(now, text.clone());
         Ok(vec![Effect::Log { text }])

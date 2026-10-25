@@ -345,14 +345,14 @@ fn breed_sets_species_and_image() {
 }
 
 #[test]
-fn feeding_consumes_crop_and_raises_satiety() {
+fn feeding_consumes_fish_and_raises_satiety() {
     let mut game = game_with_pet(PetSpecies::Dog);
-    game.state_mut().inventory.insert("crop:yumi".into(), 1);
+    game.state_mut().inventory.insert("fish:crucian".into(), 1);
     let before = game.snapshot(0).pet.unwrap().satiety;
     game.dispatch(
         Action::FeedPet {
             pet_id: "pet_1".into(),
-            crop_id: "yumi".into(),
+            fish_id: "crucian".into(),
         },
         0,
     )
@@ -360,7 +360,7 @@ fn feeding_consumes_crop_and_raises_satiety() {
     let pet = game.snapshot(0).pet.unwrap();
     assert!(pet.satiety > before);
     assert!(pet.bond > 10);
-    assert!(!game.state().inventory.contains_key("crop:yumi"));
+    assert!(!game.state().inventory.contains_key("fish:crucian"));
 }
 
 #[test]

@@ -155,6 +155,7 @@ function seedSave() {
     }
   }
   state.inventory["fish:crucian"] = 5;
+  state.inventory["fish:white_bait"] = 50;
   state.fishing = state.fishing || {};
   state.fishing.fishBatches = state.fishing.fishBatches || {};
   state.fishing.fishBatches["crucian"] = {
@@ -649,7 +650,7 @@ try {
         : idleState.name.includes("pet-idle-bob")),
     JSON.stringify(idleState),
   );
-  await clickText("[喂食]", false);
+  await clickText("[喂鱼]", false);
   await new Promise((r) => setTimeout(r, 120));
   const petEmote = await evaluate(`document.querySelector('.pet-emote')?.textContent || ''`);
   check("互动触发宠物动画和表情", petEmote.includes("🍖"), petEmote);
@@ -1032,9 +1033,9 @@ try {
   check("点击购买药品", saveState().petCare.medicine === 4);
 
   const inventoryBefore = JSON.stringify(saveState().inventory);
-  await clickText("[喂食]");
+  await clickText("[喂鱼]");
   await new Promise((r) => setTimeout(r, 400));
-  check("点击喂食不报错（库存/饱食度变化）", JSON.stringify(saveState().inventory) !== inventoryBefore || saveState().pets.some((p) => p.satiety !== 80));
+  check("点击喂鱼不报错（库存/饱食度变化）", JSON.stringify(saveState().inventory) !== inventoryBefore || saveState().pets.some((p) => p.satiety !== 80));
 
   await screenshot();
   check("用品截图已保存", existsSync(screenshotPath), screenshotPath);
@@ -1050,7 +1051,7 @@ try {
     await advanceTimeControl("+1 小时");
     await new Promise((r) => setTimeout(r, 500));
     await clickText("宠物");
-    await clickText("[喂食]");
+    await clickText("[喂鱼]");
     await new Promise((r) => setTimeout(r, 150));
     fightSeen = saveState().log.some(
       (entry) => entry.text.includes("抢食") || entry.text.includes("打了一架"),
@@ -1070,8 +1071,8 @@ try {
         await clickEnabled("[看兽医 500]");
       } catch {}
     }
-    await clickEnabled("[喂食]");
-    await clickEnabled("[喂食]");
+    await clickEnabled("[喂鱼]");
+    await clickEnabled("[喂鱼]");
     mischiefSeen = saveState().log.some(
       (entry) =>
         entry.text.includes("拆了一角") ||
@@ -1261,7 +1262,12 @@ try {
     (await bodyText()).includes("详细水质") && (await bodyText()).includes("水质"),
   );
   check("鱼塘留种开关已显示", (await bodyText()).includes("留种："));
-  await clickText("[放养", false);
+  await evaluate(`(() => {
+    const row = [...document.querySelectorAll('.pond-stock')].find((el) =>
+      (el.innerText || '').includes('鲫鱼')
+    );
+    row?.querySelector('button')?.click();
+  })()`);
   await waitFor(async () => (saveState().pond.ponds[0]?.fish.length ?? 0) === 1);
   check("放养进鱼塘", (saveState().pond.ponds[0]?.fish[0]?.count ?? 0) === 5);
   const pondOrder = saveState().pond.order;

@@ -824,14 +824,14 @@ fn pet_actions(game: &mut Game, now: i64, errors: &mut u64) {
             if let Some(item) = snap
                 .inventory
                 .iter()
-                .find(|item| item.kind == ItemKind::Produce && item.qty > 0)
+                .find(|item| item.kind == ItemKind::Fish && item.qty > 0)
             {
-                if let Some(crop_id) = item.key.strip_prefix("crop:") {
+                if let Some(fish_id) = item.key.strip_prefix("fish:") {
                     run(
                         game,
                         Action::FeedPet {
                             pet_id: pet.id.clone(),
-                            crop_id: crop_id.to_string(),
+                            fish_id: fish_id.to_string(),
                         },
                         now,
                         errors,
