@@ -39,6 +39,7 @@ fn craft_order() -> farm_core::FarmOrder {
         recipe: Some(recipe),
         auto: false,
         favorite: false,
+        fresh: false,
     }
 }
 
@@ -150,6 +151,7 @@ fn auto_schedule_builds_intermediate_steps() {    let mut game = Game::new(0);
         recipe: Some(recipe),
         auto: false,
         favorite: false,
+        fresh: false,
     });
 
     game.dispatch(

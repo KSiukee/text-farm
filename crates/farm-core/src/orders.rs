@@ -73,6 +73,9 @@ pub struct FarmOrder {
     /// 是否是这位村民偏爱的东西；偏爱订单给更高回礼。
     #[serde(default)]
     pub favorite: bool,
+    /// 是否要求“当天摘”的作物。
+    #[serde(default)]
+    pub fresh: bool,
 }
 
 impl FarmOrder {
@@ -203,12 +206,14 @@ fn crop_offer(
     let days = 3 + ((roll >> 32) % 2) as u32;
     let item_key = format!("crop:{}", crop.id);
     let favorite = is_favorite(npc_id, &item_key);
+    let fresh = npc_id == "ahe" && (roll >> 48) % 100 < 55;
     let reward_coins = crop
         .sell_price
         .saturating_mul(u64::from(qty))
         .saturating_mul(premium)
         .saturating_mul(if favorite { 125 } else { 100 })
-        / 10_000;
+        .saturating_mul(if fresh { 120 } else { 100 })
+        / 1_000_000;
     FarmOrder {
         id: format!("{today}-{index}"),
         npc_id: npc_id.into(),
@@ -218,12 +223,16 @@ fn crop_offer(
         qty,
         expires_day: add_days(today, days),
         reward_coins,
-        reward_exp: 10 + u64::from(qty) * 2 + if favorite { 5 } else { 0 },
+        reward_exp: 10
+            + u64::from(qty) * 2
+            + if favorite { 5 } else { 0 }
+            + if fresh { 5 } else { 0 },
         item_key,
         item_name: crop.name.clone(),
         recipe: None,
         auto: false,
         favorite,
+        fresh,
     }
 }
 
@@ -263,6 +272,7 @@ fn craft_offer(today: &str, level: u32) -> Option<FarmOrder> {
         recipe: Some(recipe),
         auto: false,
         favorite,
+        fresh: false,
     })
 }
 

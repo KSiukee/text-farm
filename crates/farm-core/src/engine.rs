@@ -588,6 +588,12 @@ impl Game {
 
         let produce_key = format!("crop:{}", def.id);
         *self.state.inventory.entry(produce_key).or_insert(0) += qty;
+        let today = self.state.daily.day.clone();
+        if !today.is_empty() {
+            self.state
+                .crop_fresh_day
+                .insert(def.id.clone(), today);
+        }
         let seed_returned = plant_seed_level > 0
             && roll_pest((now.max(0) as u64) ^ 0x5eed, index, &def.id) % 100
                 < u64::from(planting::seed_return_pct(plant_seed_level));
@@ -5688,6 +5694,11 @@ impl Game {
         let have = self.state.inventory.get(&key).copied().unwrap_or(0);
         if have < order.qty {
             return Err(GameError::FarmOrderNotEnough);
+        }
+        if order.fresh
+            && self.state.crop_fresh_day.get(&order.crop_id) != Some(&self.state.daily.day)
+        {
+            return Err(GameError::FarmOrderNotFresh);
         }
         if have == order.qty {
             self.state.inventory.remove(&key);

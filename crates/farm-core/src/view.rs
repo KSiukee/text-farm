@@ -1169,6 +1169,8 @@ pub struct FarmOrderView {
     pub can_deliver: bool,
     pub is_craft: bool,
     pub favorite: bool,
+    pub fresh: bool,
+    pub fresh_today: bool,
     pub craft: Option<CraftOrderTrackView>,
 }
 
@@ -3214,6 +3216,9 @@ impl Game {
         let to_order_view = |order: &crate::orders::FarmOrder| {
             let key = order.delivery_key();
             let have = self.state.inventory.get(&key).copied().unwrap_or(0);
+            let fresh_today = !order.fresh
+                || self.state.crop_fresh_day.get(&order.crop_id)
+                    == Some(&self.state.daily.day);
             FarmOrderView {
                 id: order.id.clone(),
                 npc_name: order.npc_name.clone(),
@@ -3226,9 +3231,11 @@ impl Game {
                 reward_coins: order.reward_coins,
                 reward_exp: order.reward_exp,
                 have,
-                can_deliver: have >= order.qty,
+                can_deliver: have >= order.qty && fresh_today,
                 is_craft: order.is_craft(),
                 favorite: order.favorite,
+                fresh: order.fresh,
+                fresh_today,
                 craft: order
                     .recipe
                     .map(|_| craft_order_track(self, order, now)),

@@ -33,6 +33,12 @@ fn farm_order_accept_deliver_and_expire() {
     game.state_mut()
         .inventory
         .insert(format!("crop:{}", first.crop_id), first.qty);
+    if first.fresh {
+        let today = game.state().daily.day.clone();
+        game.state_mut()
+            .crop_fresh_day
+            .insert(first.crop_id.clone(), today);
+    }
     let coins = game.state().coins;
     game.dispatch(
         Action::DeliverFarmOrder {

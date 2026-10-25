@@ -2993,12 +2993,16 @@ onUnmounted(() => {
             <b>{{ order.npcName }}</b> 收 {{ order.itemName }} ×{{ order.qty }}
             <span v-if="order.isCraft" class="npc-tag">加工</span>
             <span v-if="order.favorite" class="npc-tag">偏爱</span>
+            <span v-if="order.fresh" class="npc-tag">当天摘</span>
           </span>
           <span class="muted">
             {{ order.expiresDay }} 前 · 仓库 {{ order.have }}/{{ order.qty }}
           </span>
           <span v-if="order.craft" class="muted craft-order-status">
             {{ order.craft.status }} · {{ order.craft.detail }}
+          </span>
+          <span v-if="order.fresh && !order.freshToday" class="muted">
+            今天还没收 {{ order.itemName }}，这单要当天摘的
           </span>
           <button
             v-if="order.canDeliver"
@@ -3039,6 +3043,7 @@ onUnmounted(() => {
             <b>{{ order.npcName }}</b> 收 {{ order.itemName }} ×{{ order.qty }}
             <span v-if="order.isCraft" class="npc-tag">加工</span>
             <span v-if="order.favorite" class="npc-tag">偏爱</span>
+            <span v-if="order.fresh" class="npc-tag">当天摘</span>
           </span>
           <span class="muted">{{ order.expiresDay }} 前 · 仓库 {{ order.have }}</span>
           <span v-if="order.craft" class="muted craft-order-status">
