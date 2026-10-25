@@ -128,6 +128,45 @@ fn anniversary_chat_uses_special_line() {
 }
 
 #[test]
+fn birthday_gift_can_only_be_given_once_a_year() {
+    let mut game = Game::new(0);
+    game.state_mut().daily.day = "2026-04-12".into();
+    game.state_mut().inventory.insert("crop:xiaobaicai".into(), 3);
+    let before = game.state().coins;
+    game.dispatch(
+        Action::GiveNpcBirthdayGift {
+            npc_id: "ahe".into(),
+        },
+        0,
+    )
+    .unwrap();
+    assert_eq!(game.state().coins, before + 200);
+    assert_eq!(game.state().npcs[0].friendship, 18);
+    assert_eq!(game.state().npcs[0].birthday_gift_year, 2026);
+    assert!(!game.state().inventory.contains_key("crop:xiaobaicai"));
+    assert!(matches!(
+        game.dispatch(
+            Action::GiveNpcBirthdayGift {
+                npc_id: "ahe".into(),
+            },
+            0
+        ),
+        Err(farm_core::GameError::NpcBirthdayGiftUnavailable)
+    ));
+
+    game.state_mut().daily.day = "2027-04-12".into();
+    game.state_mut().inventory.insert("crop:xiaobaicai".into(), 3);
+    game.dispatch(
+        Action::GiveNpcBirthdayGift {
+            npc_id: "ahe".into(),
+        },
+        0,
+    )
+    .unwrap();
+    assert_eq!(game.state().npcs[0].birthday_gift_year, 2027);
+}
+
+#[test]
 fn weekly_request_consumes_items_and_leaves_souvenir() {
     let mut game = Game::new(0);
     game.state_mut().inventory.insert("crop:xiaobaicai".into(), 5);

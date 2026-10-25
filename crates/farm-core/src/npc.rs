@@ -89,6 +89,9 @@ pub struct NpcState {
     /// 每个故事选过的选项（event id -> choice id）。
     #[serde(default)]
     pub choices: BTreeMap<String, String>,
+    /// 上一次送生日礼物的年份（0 = 没送过）。
+    #[serde(default)]
+    pub birthday_gift_year: i32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -147,8 +150,18 @@ pub struct NpcView {
     pub request: Option<NpcRequestView>,
     pub request_done: bool,
     pub last_souvenir: Option<String>,
+    pub birthday_gift: Option<NpcBirthdayGiftView>,
     pub plots: Vec<NpcPlotView>,
     pub ranch: Vec<NpcRanchAnimalView>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NpcBirthdayGiftView {
+    pub item_name: String,
+    pub qty: u32,
+    pub have: u32,
+    pub can_give: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -178,6 +191,24 @@ pub struct NpcMemoryView {
 pub struct NpcChoiceView {
     pub id: String,
     pub label: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NpcSouvenirView {
+    pub name: String,
+    pub icon: String,
+}
+
+pub fn souvenir_icon(name: &str) -> &'static str {
+    match name {
+        "一把扎好的小青菜" => "🥬",
+        "一小罐草莓酱" => "🍓",
+        "一只晒药筛" => "🌿",
+        "一小块打磨过的木料" => "🪵",
+        "一枚旧船钉" => "⚓",
+        _ => "🎁",
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -283,6 +314,7 @@ pub fn starter(now: i64, content: &ContentPack) -> Vec<NpcState> {
                 souvenirs: Vec::new(),
                 pending_event: String::new(),
                 choices: BTreeMap::new(),
+                birthday_gift_year: 0,
             }
         })
         .collect()
@@ -345,6 +377,21 @@ pub fn view(
                 souvenir: request.souvenir.to_string(),
             }
         })
+    };
+    let birthday_gift = if crate::npc_story::is_birthday(&npc.id, today)
+        && npc.birthday_gift_year != crate::npc_story::year_of(today)
+    {
+        crate::npc_story::birthday_gift(&npc.id).map(|gift| {
+            let have = *inventory.get(gift.item_key).unwrap_or(&0);
+            NpcBirthdayGiftView {
+                item_name: gift.item_name.to_string(),
+                qty: gift.qty,
+                have,
+                can_give: have >= gift.qty,
+            }
+        })
+    } else {
+        None
     };
     let memories = npc
         .memories
@@ -441,6 +488,7 @@ pub fn view(
         request,
         request_done,
         last_souvenir: npc.souvenirs.last().cloned(),
+        birthday_gift,
         plots,
         ranch,
     }

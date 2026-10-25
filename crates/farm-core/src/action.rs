@@ -355,6 +355,11 @@ pub enum Action {
         #[serde(rename = "choiceId")]
         choice_id: String,
     },
+    /// 生日当天送一份小礼物。
+    GiveNpcBirthdayGift {
+        #[serde(rename = "npcId")]
+        npc_id: String,
+    },
     ClaimSignIn,
     UpdateProfile {
         #[serde(rename = "ownerName")]

@@ -87,51 +87,81 @@ const AHE_LOW: &[&str] = &[
     "早啊。田里露水重，你鞋别湿了。",
     "这批菜苗长得慢，不过根扎得稳。",
     "锄头又松了……等会儿我自己紧一紧。",
+    "你来得早。灶上还有半块饼，自己拿。",
+    "这垄土有点板，下午得翻一翻。",
+    "别站风口，凉。",
 ];
 const AHE_HIGH: &[&str] = &[
     "你来得正好，帮我看看这垄是不是该间苗了。",
     "我留了两棵最好的小青菜，等会儿给你带走。",
     "以前我爹说，地不会骗人。你信吗？",
+    "你上次说想学间苗，今天正好。",
+    "我嘴笨，不会说好听的。你来了，我高兴。",
+    "等收了这茬，我请你喝碗新米粥。",
 ];
 const XIAOMAN_LOW: &[&str] = &[
     "来得巧，果酱刚出锅，尝一勺？",
     "今天蜂箱那边有点吵，大概要分群了。",
     "你别看我笑，我熬糊过三锅。",
+    "蜂蜜快见底了，得去镇上补一罐。",
+    "你闻闻，这锅是不是有点焦？",
+    "别站着看呀，帮我递个勺子。",
 ];
 const XIAOMAN_HIGH: &[&str] = &[
     "我给你留了一小罐，别告诉别人啊。",
     "你说，草莓是不是天生就该做果酱？",
     "等忙完这阵，我想把摊子摆到村口去。",
+    "这罐我没贴标签，你猜是什么味？",
+    "你一来，我这儿就热闹了。",
+    "等会儿别走，我切块蛋糕给你。",
 ];
 const QINGXING_LOW: &[&str] = &[
     "先坐，手伸出来我看看。",
     "夜里凉，回去把窗关上。",
     "药得按时吃，别嫌苦。",
+    "你最近是不是又熬夜了？",
+    "药草得翻面，不然要霉。",
+    "手给我，我把个脉。",
 ];
 const QINGXING_HIGH: &[&str] = &[
     "你今天气色好多了，别逞强。",
     "老陶的咳嗽总不好，我还在试方子。",
     "有空的话，帮我晒一筛子药草。",
+    "我给你留了包安神的茶，睡前喝。",
+    "你别总照顾别人，也照顾照顾自己。",
+    "今天没什么病人，陪我说会儿话吧。",
 ];
 const LAOTAO_LOW: &[&str] = &[
     "木头有脾气，你得顺着它。",
     "这刨子跟我三十年了，比人听话。",
     "年轻人，别急着下锯。",
+    "这块木头纹理好，我留了半年。",
+    "你脚边那堆刨花，扫一扫。",
+    "茶凉了，将就喝。",
 ];
 const LAOTAO_HIGH: &[&str] = &[
     "坐，喝茶。别嫌浓。",
     "我年轻时也想过出去，后来还是留下了。",
     "你手稳，要不要试试刨这块板？",
+    "我年轻时也做过一把摇椅，后来送人了。",
+    "你要是有空，帮我拉一下墨线。",
+    "别看我嘴碎，这院里有人来，我高兴。",
 ];
 const LIUYUE_LOW: &[&str] = &[
     "风向不对，今天鱼口浅。",
     "网补好了，明早能下。",
     "河上雾大，走路看着点。",
+    "今天水凉，别下水。",
+    "鱼护里还有两条，够一顿。",
+    "风向变了，傍晚可能下雨。",
 ];
 const LIUYUE_HIGH: &[&str] = &[
     "月亮好的时候，鱼会浮上来。",
     "这条鲫鱼给你，拿回去炖汤。",
     "船老了，划起来倒还顺手。",
+    "你要是想学看水，我教你。",
+    "这条河我熟，闭着眼也能划。",
+    "等月亮上来，我带你去看鱼群。",
 ];
 
 const AHE_EVENTS: &[NpcEvent] = &[
@@ -535,6 +565,72 @@ const FESTIVALS: [(&str, &str); 4] = [
 
 fn month_day(day: &str) -> &str {
     day.get(5..).unwrap_or("")
+}
+
+pub fn is_birthday(id: &str, day: &str) -> bool {
+    profile(id).is_some_and(|profile| profile.birthday == month_day(day))
+}
+
+pub fn year_of(day: &str) -> i32 {
+    day.get(0..4)
+        .and_then(|value| value.parse::<i32>().ok())
+        .unwrap_or(0)
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct NpcBirthdayGift {
+    pub item_key: &'static str,
+    pub item_name: &'static str,
+    pub qty: u32,
+    pub reward: u64,
+    pub favor: i32,
+    pub reply: &'static str,
+}
+
+pub fn birthday_gift(id: &str) -> Option<NpcBirthdayGift> {
+    match id {
+        "ahe" => Some(NpcBirthdayGift {
+            item_key: "crop:xiaobaicai",
+            item_name: "小青菜",
+            qty: 3,
+            reward: 200,
+            favor: 8,
+            reply: "阿禾收下菜，耳朵有点红：「你还记得。」",
+        }),
+        "xiaoman" => Some(NpcBirthdayGift {
+            item_key: "crop:caomei",
+            item_name: "草莓",
+            qty: 3,
+            reward: 200,
+            favor: 8,
+            reply: "小满当场拆开尝了一颗：「甜的。你挑得真好。」",
+        }),
+        "qingxing" => Some(NpcBirthdayGift {
+            item_key: "crop:luobo",
+            item_name: "萝卜",
+            qty: 3,
+            reward: 250,
+            favor: 8,
+            reply: "青杏把萝卜放进药筐：「今晚给老陶炖汤。」",
+        }),
+        "laotao" => Some(NpcBirthdayGift {
+            item_key: "ranch:wool",
+            item_name: "羊毛",
+            qty: 1,
+            reward: 300,
+            favor: 8,
+            reply: "老陶摸着羊毛：「这料子软，给你做个小垫子。」",
+        }),
+        "liuyue" => Some(NpcBirthdayGift {
+            item_key: "fish:crucian",
+            item_name: "鲫鱼",
+            qty: 1,
+            reward: 250,
+            favor: 8,
+            reply: "六月把鱼收进舱里：「今晚有汤了。」",
+        }),
+        _ => None,
+    }
 }
 
 pub fn festival_of(day: &str) -> Option<&'static str> {

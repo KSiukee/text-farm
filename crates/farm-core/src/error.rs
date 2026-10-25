@@ -196,6 +196,8 @@ pub enum GameError {
     NpcRequestDone,
     #[error("这段故事现在不能选，先聊到它再说")]
     NpcChoiceUnavailable,
+    #[error("今天不是他的生日，或者今年已经送过了")]
+    NpcBirthdayGiftUnavailable,
     #[error("这个用品已经买了")]
     PetSupplyOwned,
     #[error("这个用品没有损坏")]
@@ -410,6 +412,7 @@ impl GameError {
             GameError::PetFoodWrongSpecies => "pet_food_wrong_species",
             GameError::NpcRequestDone => "npc_request_done",
             GameError::NpcChoiceUnavailable => "npc_choice_unavailable",
+            GameError::NpcBirthdayGiftUnavailable => "npc_birthday_gift_unavailable",
             GameError::PetSupplyOwned => "pet_supply_owned",
             GameError::PetSupplyNotBroken => "pet_supply_not_broken",
             GameError::NoBoardingDebt => "no_boarding_debt",

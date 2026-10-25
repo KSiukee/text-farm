@@ -1119,6 +1119,7 @@ pub struct NpcRoomView {
     pub threshold: i32,
     pub unlocked: bool,
     pub souvenirs: Vec<String>,
+    pub souvenir_items: Vec<crate::npc::NpcSouvenirView>,
     pub room: RoomView,
 }
 
@@ -3045,6 +3046,14 @@ impl Game {
                     threshold,
                     unlocked: entry.friendship >= threshold,
                     souvenirs: entry.souvenirs.clone(),
+                    souvenir_items: entry
+                        .souvenirs
+                        .iter()
+                        .map(|name| crate::npc::NpcSouvenirView {
+                            name: name.clone(),
+                            icon: crate::npc::souvenir_icon(name).to_string(),
+                        })
+                        .collect(),
                     room: room_view_data(
                         &format!("npc_{}", entry.id),
                         &format!("{}的小屋", entry.name),

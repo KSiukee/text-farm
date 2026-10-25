@@ -1084,6 +1084,10 @@ function helpNpcRequest(npc: NpcView) {
   void act({ type: "helpNpcRequest", npcId: npc.id });
 }
 
+function giveBirthdayGift(npc: NpcView) {
+  void act({ type: "giveNpcBirthdayGift", npcId: npc.id });
+}
+
 function cropById(id: string): CropDef | undefined {
   return content.value?.crops.find((crop) => crop.id === id);
 }
@@ -3449,8 +3453,15 @@ onUnmounted(() => {
               <span class="muted">只读参观 · 不能装修</span>
               <button class="link" type="button" @click="selectedNpcRoomId = ''">[返回]</button>
             </div>
-            <div v-if="selectedNpcRoom.souvenirs.length" class="muted npc-room-souvenirs">
-              屋里多了：{{ selectedNpcRoom.souvenirs.join("、") }}
+            <div v-if="selectedNpcRoom.souvenirItems.length" class="npc-souvenirs">
+              <span class="muted">屋里多了：</span>
+              <span
+                v-for="item in selectedNpcRoom.souvenirItems"
+                :key="item.name"
+                class="npc-souvenir"
+              >
+                {{ item.icon }} {{ item.name }}
+              </span>
             </div>
             <RoomScene
               :room="selectedNpcRoom.room"
@@ -3589,6 +3600,18 @@ onUnmounted(() => {
             </div>
             <div v-else-if="npc.requestDone" class="muted npc-request-done">
               本周已帮过 · 回礼：{{ npc.lastSouvenir || "一份小心意" }}
+            </div>
+            <div v-if="npc.birthdayGift" class="npc-request npc-birthday-gift">
+              <span>生日礼物：{{ npc.birthdayGift.itemName }} ×{{ npc.birthdayGift.qty }}</span>
+              <span class="muted">仓库 {{ npc.birthdayGift.have }}/{{ npc.birthdayGift.qty }}</span>
+              <button
+                class="link"
+                type="button"
+                :disabled="acting || !npc.birthdayGift.canGive"
+                @click="giveBirthdayGift(npc)"
+              >
+                [送生日礼物]
+              </button>
             </div>
             <div v-for="plot in npc.plots" :key="plot.index" class="npc-plot">
               <span>{{ plot.label }}[普通]:{{ plot.cropName }}</span>

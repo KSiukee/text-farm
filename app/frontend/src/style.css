@@ -2053,6 +2053,22 @@ textarea {
   font-size: 12px;
 }
 
+.npc-souvenirs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin: 4px 0 8px;
+  font-size: 12px;
+}
+
+.npc-souvenir {
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-soft);
+}
+
 .npc-scene-overlay {
   position: fixed;
   inset: 0;

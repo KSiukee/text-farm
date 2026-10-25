@@ -138,6 +138,9 @@ impl Game {
                 event_id,
                 choice_id,
             } => self.npc_story_choice(&npc_id, &event_id, &choice_id, now)?,
+            Action::GiveNpcBirthdayGift { npc_id } => {
+                self.give_npc_birthday_gift(&npc_id, now)?
+            }
             Action::PetCompanion { pet_id } => self.touch_pet(&pet_id, now)?,
             Action::PlayWithPet { pet_id } => self.play_pet(&pet_id, now)?,
             Action::HealPet { pet_id } => self.heal_pet(&pet_id, now)?,
@@ -5089,6 +5092,51 @@ impl Game {
             reward: format!("{reward} 金币"),
             favor: event.favor,
             tag: "选择".to_string(),
+            event_id: String::new(),
+            choices: Vec::new(),
+        }])
+    }
+
+    fn give_npc_birthday_gift(
+        &mut self,
+        npc_id: &str,
+        now: i64,
+    ) -> Result<Vec<Effect>, GameError> {
+        let pos = self.npc_pos(npc_id)?;
+        let today = self.state.daily.day.clone();
+        let year = crate::npc_story::year_of(&today);
+        if !crate::npc_story::is_birthday(npc_id, &today)
+            || self.state.npcs[pos].birthday_gift_year == year
+        {
+            return Err(GameError::NpcBirthdayGiftUnavailable);
+        }
+        let gift = crate::npc_story::birthday_gift(npc_id)
+            .ok_or(GameError::NpcBirthdayGiftUnavailable)?;
+        let have = *self.state.inventory.get(gift.item_key).unwrap_or(&0);
+        if have < gift.qty {
+            return Err(GameError::NotEnoughItems);
+        }
+        if have == gift.qty {
+            self.state.inventory.remove(gift.item_key);
+        } else {
+            self.state
+                .inventory
+                .insert(gift.item_key.into(), have - gift.qty);
+        }
+        self.state.coins = self.state.coins.saturating_add(gift.reward);
+        let npc = &mut self.state.npcs[pos];
+        npc.birthday_gift_year = year;
+        npc.friendship = (npc.friendship + gift.favor).min(100);
+        let npc_name = npc.name.clone();
+        self.push_log(now, format!("你送了{npc_name}一份生日礼物"));
+        Ok(vec![Effect::NpcTalk {
+            npc_id: npc_id.into(),
+            npc_name,
+            title: "生日礼物".to_string(),
+            text: gift.reply.to_string(),
+            reward: format!("{} 金币", gift.reward),
+            favor: gift.favor,
+            tag: "生日".to_string(),
             event_id: String::new(),
             choices: Vec::new(),
         }])

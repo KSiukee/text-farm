@@ -782,8 +782,16 @@ export interface NpcView {
   request: NpcRequestView | null;
   requestDone: boolean;
   lastSouvenir: string | null;
+  birthdayGift: NpcBirthdayGiftView | null;
   plots: NpcPlotView[];
   ranch: NpcRanchAnimalView[];
+}
+
+export interface NpcBirthdayGiftView {
+  itemName: string;
+  qty: number;
+  have: number;
+  canGive: boolean;
 }
 
 export interface NpcRequestView {
@@ -817,7 +825,13 @@ export interface NpcRoomView {
   threshold: number;
   unlocked: boolean;
   souvenirs: string[];
+  souvenirItems: NpcSouvenirView[];
   room: RoomView;
+}
+
+export interface NpcSouvenirView {
+  name: string;
+  icon: string;
 }
 
 export interface NpcMessageView {
@@ -1463,6 +1477,7 @@ export type Action =
   | { type: "chatWithNpc"; npcId: string }
   | { type: "helpNpcRequest"; npcId: string }
   | { type: "npcStoryChoice"; npcId: string; eventId: string; choiceId: string }
+  | { type: "giveNpcBirthdayGift"; npcId: string }
   | { type: "claimSignIn" }
   | { type: "updateProfile"; ownerName: string }
   | { type: "claimDaily"; id: number }
