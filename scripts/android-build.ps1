@@ -17,7 +17,14 @@ param(
     [switch]$Install,
     [switch]$Start,
     # 保留 Rust 调试符号（默认剥掉：APK 370MB → ~40MB，装得快、真机也友好）
-    [switch]$KeepSymbols
+    [switch]$KeepSymbols,
+    # ---- 发布：release 构建 + 正式签名 ----
+    # keystore 放项目外（默认 D:\deepseek-files\_keys\text-farm-release.jks），密码在同目录
+    # keystore.properties（都不入库）。第一次跑没有会自动生成——**这文件丢了就没法给老用户升级**。
+    [switch]$Release,
+    [string]$KeyDir = "D:\deepseek-files\_keys",
+    # 同时出 AAB（用 jarsigner 签，Google Play 上传那种）
+    [switch]$Aab
 )
 
 $ErrorActionPreference = "Stop"
@@ -44,6 +51,10 @@ $env:JAVA_HOME = $jdk
 $env:CARGO_TARGET_DIR = $TargetDir
 $env:PATH = "$env:PATH;$jdk\bin;$(Join-Path $sdk 'platform-tools')"
 
+$buildTools = Get-ChildItem (Join-Path $sdk "build-tools") -Directory -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
+$zipalign = if ($buildTools) { Join-Path $buildTools.FullName "zipalign.exe" } else { $null }
+$apksigner = if ($buildTools) { Join-Path $buildTools.FullName "apksigner.bat" } else { $null }
+
 # ---- 架构映射：rust target / gradle flavor / jniLibs ABI ----
 $map = @{
     x86_64  = @{ Rust = "x86_64-linux-android";    Clang = "x86_64-linux-android24-clang.cmd";    Flavor = "x86_64"; ABI = "x86_64" }
@@ -60,6 +71,33 @@ $rustEnv = $spec.Rust.ToUpper().Replace("-", "_")
 Set-Item -Path "Env:CC_$($spec.Rust.Replace('-', '_'))" -Value $clang
 Set-Item -Path "Env:AR_$($spec.Rust.Replace('-', '_'))" -Value (Join-Path $toolBin "llvm-ar.exe")
 Set-Item -Path "Env:CARGO_TARGET_$($rustEnv)_LINKER" -Value $clang
+
+$profile = if ($Release) { "release" } else { "debug" }
+$profileCap = if ($Release) { "Release" } else { "Debug" }
+
+# ---- release 签名用的 keystore（放项目外，不入库）----
+$keystoreProps = $null
+$ksFile = $null
+if ($Release) {
+    if (-not (Test-Path $KeyDir)) { New-Item -ItemType Directory -Force $KeyDir | Out-Null }
+    $propFile = Join-Path $KeyDir "keystore.properties"
+    $ksFile = Join-Path $KeyDir "text-farm-release.jks"
+    if (Test-Path $propFile) {
+        $keystoreProps = ConvertFrom-StringData (Get-Content $propFile -Raw)
+        if (-not (Test-Path $ksFile)) { throw "有密码文件却没有 keystore：$ksFile（无法签发布包）" }
+    } else {
+        $chars = [char[]]"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        $pass = -join (1..24 | ForEach-Object { $chars | Get-Random })
+        Write-Host "== 首次生成发布 keystore：$ksFile ==" -ForegroundColor Yellow
+        & keytool -genkeypair -v -keystore $ksFile -alias textfarm -keyalg RSA -keysize 2048 `
+            -validity 10000 -storetype PKCS12 -storepass $pass -keypass $pass `
+            -dname "CN=Text Farm, OU=Personal, O=Personal, L=Unknown, ST=Unknown, C=CN"
+        if ($LASTEXITCODE -ne 0) { throw "keytool 生成 keystore 失败" }
+        [IO.File]::WriteAllText($propFile, "storeFile=text-farm-release.jks`nstorePassword=$pass`nkeyAlias=textfarm`nkeyPassword=$pass`n", [Text.UTF8Encoding]::new($false))
+        $keystoreProps = ConvertFrom-StringData (Get-Content $propFile -Raw)
+        Write-Host "   密码写在 $propFile —— 自己备份好，丢了就没法给老用户升级" -ForegroundColor Yellow
+    }
+}
 
 # ---- 首次：生成 Android 工程 ----
 if (-not (Test-Path $genAndroid)) {
@@ -120,14 +158,16 @@ try {
 } finally { Pop-Location }
 
 # ---- 编 Rust 动态库 ----
-Write-Host "== 编 libtext_farm_lib.so（$Arch）==" -ForegroundColor Cyan
+Write-Host "== 编 libtext_farm_lib.so（$Arch / $profile）==" -ForegroundColor Cyan
 Push-Location $appDir
 try {
-    cargo build --package text-farm --target $spec.Rust --features tauri/custom-protocol --lib
+    $cargoArgs = @("build", "--package", "text-farm", "--target", $spec.Rust, "--features", "tauri/custom-protocol", "--lib")
+    if ($Release) { $cargoArgs += "--release" }
+    & cargo @cargoArgs
     if ($LASTEXITCODE -ne 0) { throw "cargo build 失败" }
 } finally { Pop-Location }
 
-$so = Join-Path $TargetDir (Join-Path $spec.Rust "debug\libtext_farm_lib.so")
+$so = Join-Path $TargetDir (Join-Path $spec.Rust "$profile\libtext_farm_lib.so")
 if (-not (Test-Path $so)) { throw "找不到 .so：$so" }
 $jniDir = Join-Path $genAndroid "app\src\main\jniLibs\$($spec.ABI)"
 New-Item -ItemType Directory -Force $jniDir | Out-Null
@@ -150,14 +190,54 @@ $props = Join-Path $genAndroid "app\tauri.properties"
 Write-Host "== APK 版本 $ver（versionCode $code）==" -ForegroundColor Cyan
 
 # ---- gradle 打包（跳过它自己的 rust 任务，.so 已经手动放好）----
-Write-Host "== gradle assemble$($spec.Flavor)Debug ==" -ForegroundColor Cyan
+$gradleTask = ":app:assemble$($spec.Flavor)$profileCap"
+$rustTask = ":app:rustBuild$($spec.Flavor)$profileCap"
+Write-Host "== gradle $gradleTask ==" -ForegroundColor Cyan
 Push-Location $genAndroid
 try {
-    & .\gradlew.bat ":app:assemble$($spec.Flavor)Debug" "-x" ":app:rustBuild$($spec.Flavor)Debug" --console=plain
+    & .\gradlew.bat $gradleTask "-x" $rustTask --console=plain
     if ($LASTEXITCODE -ne 0) { throw "gradle 打包失败" }
 } finally { Pop-Location }
 
-$apk = Join-Path $genAndroid "app\build\outputs\apk\$($spec.Flavor)\debug\app-$($spec.Flavor)-debug.apk"
+if ($Release) {
+    # 没配 signingConfig，gradle 出的是 unsigned；自己 zipalign + apksigner
+    $unsigned = Join-Path $genAndroid "app\build\outputs\apk\$($spec.Flavor)\release\app-$($spec.Flavor)-release-unsigned.apk"
+    if (-not (Test-Path $unsigned)) { throw "找不到 unsigned APK：$unsigned" }
+    if (-not $zipalign -or -not (Test-Path $zipalign)) { throw "找不到 zipalign（build-tools）" }
+    if (-not $apksigner -or -not (Test-Path $apksigner)) { throw "找不到 apksigner（build-tools）" }
+    $dist = Join-Path $root "dist"
+    New-Item -ItemType Directory -Force $dist | Out-Null
+    $aligned = Join-Path ([IO.Path]::GetTempPath()) "tf-$($spec.Flavor)-aligned.apk"
+    & $zipalign -p -f 4 $unsigned $aligned
+    if ($LASTEXITCODE -ne 0) { throw "zipalign 失败" }
+    $apk = Join-Path $dist "文字农场-$ver-$($spec.Flavor)-release.apk"
+    if (Test-Path $apk) { Remove-Item $apk -Force }
+    & $apksigner sign --ks $ksFile --ks-pass "pass:$($keystoreProps.storePassword)" --ks-key-alias $($keystoreProps.keyAlias) --key-pass "pass:$($keystoreProps.keyPassword)" --out $apk $aligned
+    if ($LASTEXITCODE -ne 0) { throw "apksigner 签名失败" }
+    Write-Host "== 验签 ==" -ForegroundColor Cyan
+    & $apksigner verify --print-certs $apk
+    if ($LASTEXITCODE -ne 0) { throw "签名校验失败" }
+
+    if ($Aab) {
+        Write-Host "== gradle bundle$($spec.Flavor)$profileCap ==" -ForegroundColor Cyan
+        Push-Location $genAndroid
+        try {
+            & .\gradlew.bat ":app:bundle$($spec.Flavor)$profileCap" "-x" $rustTask --console=plain
+            if ($LASTEXITCODE -ne 0) { throw "AAB 打包失败" }
+        } finally { Pop-Location }
+        $aabDir = Join-Path $genAndroid "app\build\outputs\bundle"
+        $unsignedAab = Get-ChildItem $aabDir -Recurse -Filter "*.aab" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if (-not $unsignedAab) { throw "找不到 AAB（$aabDir）" }
+        # 注意：PowerShell 变量不区分大小写，$aab 会和参数 [switch]$Aab 撞名 → 用 $aabPath
+        $aabPath = Join-Path $dist "文字农场-$ver-$($spec.Flavor)-release.aab"
+        if (Test-Path $aabPath) { Remove-Item $aabPath -Force }
+        & jarsigner -keystore $ksFile -storepass $($keystoreProps.storePassword) -keypass $($keystoreProps.keyPassword) -signedjar $aabPath $unsignedAab.FullName $($keystoreProps.keyAlias)
+        if ($LASTEXITCODE -ne 0) { throw "AAB 签名失败" }
+        Write-Host "== AAB：$aabPath ==" -ForegroundColor Green
+    }
+} else {
+    $apk = Join-Path $genAndroid "app\build\outputs\apk\$($spec.Flavor)\debug\app-$($spec.Flavor)-debug.apk"
+}
 if (-not (Test-Path $apk)) { throw "找不到 APK：$apk" }
 Write-Host ("== APK：{0}（{1:N1} MB）" -f $apk, ((Get-Item $apk).Length / 1MB)) -ForegroundColor Green
 
