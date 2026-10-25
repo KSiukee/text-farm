@@ -2574,6 +2574,71 @@ footer {
   color: var(--faint);
 }
 
+.ws-today {
+  border-left-color: var(--accent-text);
+  background: var(--accent-soft);
+}
+
+.ws-today-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 3px 0;
+  font-size: 13px;
+}
+
+.ws-today-tag {
+  min-width: 44px;
+  color: var(--muted);
+}
+
+.ws-recipe-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 4px 0 6px;
+  font-size: 13px;
+}
+
+.ws-recipe-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.ws-recipe-tab {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ws-recipe-tab.on {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.ws-stock-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.ws-stock-summary::-webkit-details-marker {
+  display: none;
+}
+
 .ws-subgroup {
   margin-top: 6px;
 }

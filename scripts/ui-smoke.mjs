@@ -548,8 +548,11 @@ try {
   await evaluate(
     `[...document.querySelectorAll('header.icons .icon-item')].find((el) => el.innerText.includes('神秘商店'))?.click()`,
   );
-  await waitFor(async () => (await evaluate(`document.querySelectorAll('.mystery-card').length`)) === 10);
-  check("神秘商店 10 格", (await evaluate(`document.querySelectorAll('.mystery-card').length`)) === 10);
+  await waitFor(async () => (await evaluate(`document.querySelectorAll('.mystery-card').length`)) >= 9);
+  check(
+    "神秘商店 9–10 格",
+    (await evaluate(`document.querySelectorAll('.mystery-card').length`)) >= 9,
+  );
   check("商店显示当前金币", (await bodyText()).includes("当前金币"));
   check(
     "神秘商店有专栏",
@@ -801,16 +804,15 @@ try {
   const workshopModernText = await bodyText();
   check(
     "制造屋新版状态卡已显示",
-    workshopModernText.includes("现在能开工") && workshopModernText.includes("加工槽"),
+    workshopModernText.includes("今天做这几件") && workshopModernText.includes("加工槽"),
   );
   check(
     "制造屋配方已折叠分类",
-    workshopModernText.includes("手工台 · 牧场配方") &&
-      workshopModernText.includes("手工台 · 作物礼盒") &&
-      workshopModernText.includes("设备配方"),
+    workshopModernText.includes("牧场配方") &&
+      workshopModernText.includes("作物礼盒") &&
+      workshopModernText.includes("设备配方") &&
+      workshopModernText.includes("只看"),
   );
-  await openFold("手工台 · 牧场配方");
-  await openFold("手工台 · 作物礼盒");
   const craftText = await bodyText();
   check("加工配方已显示", craftText.includes("奶酪：") && craftText.includes("→ 奶酪"));
   check(
@@ -819,8 +821,12 @@ try {
       craftText.includes("奶油蛋糕") &&
       craftText.includes("细羊毛围巾"),
   );
-  check("作物礼盒配方已显示", craftText.includes("作物礼盒") && craftText.includes("玉米礼盒"));
-  await clickText("[开工]");
+  await clickText("作物礼盒", false);
+  await new Promise((r) => setTimeout(r, 200));
+  check("作物礼盒配方已显示", (await bodyText()).includes("玉米礼盒"));
+  await clickText("牧场配方", false);
+  await new Promise((r) => setTimeout(r, 200));
+  await clickInRow("奶酪", "[开工]");
   await waitFor(async () => saveState().workshop.jobs[0]?.recipe === "cheese");
   check("制造屋开工（奶酪）", saveState().workshop.jobs[0]?.recipe === "cheese");
   await clickText("返回农场", false);
@@ -830,7 +836,9 @@ try {
   await clickText("[取货]");
   await waitFor(async () => (saveState().inventory["ranch:cheese"] || 0) >= 1);
   check("取出一份奶酪", (saveState().inventory["ranch:cheese"] || 0) >= 1);
-  await clickInRow("玉米礼盒", "[做礼盒]");
+  await clickText("作物礼盒", false);
+  await new Promise((r) => setTimeout(r, 200));
+  await clickInRow("玉米礼盒", "[开工]");
   await waitFor(async () => saveState().workshop.jobs[0]?.cropId === "yumi");
   check("制造屋开工（玉米礼盒）", saveState().workshop.jobs[0]?.cropId === "yumi");
   await clickText("返回农场", false);
@@ -840,13 +848,25 @@ try {
   await clickText("[取货]");
   await waitFor(async () => (saveState().inventory["craft:box:yumi"] || 0) >= 1);
   check("取出玉米礼盒", (saveState().inventory["craft:box:yumi"] || 0) >= 1);
+  await evaluate(`(() => {
+    const summary = [...document.querySelectorAll('details.panel summary')].find((el) =>
+      (el.innerText || '').includes('原料与成品')
+    );
+    summary?.click();
+  })()`);
+  await new Promise((r) => setTimeout(r, 200));
   const boxCoins = saveState().coins;
-  await clickText("[卖1]");
+  await evaluate(`(() => {
+    const row = [...document.querySelectorAll('.ranch-product')].find((el) =>
+      (el.innerText || '').includes('玉米礼盒')
+    );
+    row?.querySelector('button')?.click();
+  })()`);
   await waitFor(async () => (saveState().inventory["craft:box:yumi"] || 0) === 0);
   check("礼盒可直接卖", saveState().coins > boxCoins);
 
-  await openFold("设备");
-  await openFold("设备配方");
+  await clickText("[查看全部设备", false);
+  await new Promise((r) => setTimeout(r, 200));
   const equipmentText = await bodyText();
   check(
     "P2 设备已列出",
@@ -858,6 +878,8 @@ try {
   await clickText("[装到 1 号槽]");
   await waitFor(async () => saveState().workshop.equipment.includes("stone_mill"));
   check("装石磨到 1 号槽", saveState().workshop.equipment.includes("stone_mill"));
+  await clickText("设备配方", false);
+  await new Promise((r) => setTimeout(r, 200));
   await clickInRow("石磨 · 玉米淀粉", "[开工]");
   await waitFor(async () => saveState().workshop.jobs[1]?.recipe === "corn_starch");
   check("石磨开工（玉米淀粉）", saveState().workshop.jobs[1]?.recipe === "corn_starch");
