@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::orders::add_days;
+use crate::orders::{add_days, is_favorite, npc_id_by_name};
 use crate::ranch::{item_def, price_of, quality_name, with_quality};
 
 pub const RANCH_ORDER_OFFERS: usize = 2;
@@ -36,6 +36,9 @@ pub struct RanchOrder {
     pub reward_coins: u64,
     pub reward_exp: u64,
     pub reward_feed: u32,
+    /// 是否是这位村民偏爱的东西；偏爱订单给更高回礼。
+    #[serde(default)]
+    pub favorite: bool,
 }
 
 impl RanchOrder {
@@ -108,13 +111,19 @@ fn generate_offers(today: &str, level: u32) -> Vec<RanchOrder> {
             let processed = level >= 8 && roll % 100 < 30;
             let pool: &[&str] = if processed { &PROCESSED } else { &RAW };
             let base = pool[((roll >> 8) as usize) % pool.len()];
-            let quality = if level >= 12 && (roll >> 16) % 100 < 25 {
+            let npc_name = NPCS[((roll >> 40) as usize) % NPCS.len()].to_string();
+            let npc_id = npc_id_by_name(&npc_name).unwrap_or("");
+            let favorite = is_favorite(npc_id, base);
+            let mut quality = if level >= 12 && (roll >> 16) % 100 < 25 {
                 3
             } else if level >= 5 && (roll >> 16) % 100 < 55 {
                 2
             } else {
                 1
             };
+            if favorite && quality < 2 {
+                quality = 2;
+            }
             let qty = if processed {
                 1 + ((roll >> 24) % 2) as u32
             } else {
@@ -122,17 +131,20 @@ fn generate_offers(today: &str, level: u32) -> Vec<RanchOrder> {
             };
             let unit_price = price_of(&with_quality(base, quality)).unwrap_or(100);
             let premium = 140 + (roll >> 32) % 21;
-            let reward_coins = unit_price
+            let mut reward_coins = unit_price
                 .saturating_mul(u64::from(qty))
                 .saturating_mul(premium)
                 / 100;
+            if favorite {
+                reward_coins = reward_coins.saturating_mul(125) / 100;
+            }
             let name = item_def(base)
                 .map(|def| def.name)
                 .unwrap_or(base)
                 .to_string();
             RanchOrder {
                 id: format!("{today}-r{index}"),
-                npc_name: NPCS[((roll >> 40) as usize) % NPCS.len()].to_string(),
+                npc_name,
                 base_key: base.to_string(),
                 item_name: name,
                 quality,
@@ -141,6 +153,7 @@ fn generate_offers(today: &str, level: u32) -> Vec<RanchOrder> {
                 reward_coins,
                 reward_exp: 20 + u64::from(qty) * 6 + u64::from(quality) * 5,
                 reward_feed: 1,
+                favorite,
             }
         })
         .collect()

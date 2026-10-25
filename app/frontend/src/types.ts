@@ -304,6 +304,7 @@ export interface RanchOrderView {
   rewardFeed: number;
   have: number;
   canDeliver: boolean;
+  favorite: boolean;
 }
 
 export interface PondWaterView {
@@ -712,6 +713,7 @@ export interface FarmOrderView {
   rewardExp: number;
   have: number;
   canDeliver: boolean;
+  favorite: boolean;
   isCraft: boolean;
   craft: CraftOrderTrackView | null;
 }

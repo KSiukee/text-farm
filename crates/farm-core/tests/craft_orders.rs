@@ -38,6 +38,7 @@ fn craft_order() -> farm_core::FarmOrder {
         item_name: recipe.label().into(),
         recipe: Some(recipe),
         auto: false,
+        favorite: false,
     }
 }
 
@@ -148,6 +149,7 @@ fn auto_schedule_builds_intermediate_steps() {    let mut game = Game::new(0);
         item_name: recipe.label().into(),
         recipe: Some(recipe),
         auto: false,
+        favorite: false,
     });
 
     game.dispatch(
@@ -279,5 +281,6 @@ fn workshop_auto_task_reports_finished_product() {
     assert_eq!(report.product_name, "白糖");
     assert_eq!(report.qty, 1);
 }
+
 
 

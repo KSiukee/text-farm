@@ -487,6 +487,7 @@ pub struct RanchOrderView {
     pub reward_feed: u32,
     pub have: u32,
     pub can_deliver: bool,
+    pub favorite: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1167,6 +1168,7 @@ pub struct FarmOrderView {
     pub have: u32,
     pub can_deliver: bool,
     pub is_craft: bool,
+    pub favorite: bool,
     pub craft: Option<CraftOrderTrackView>,
 }
 
@@ -2827,6 +2829,7 @@ impl Game {
                 reward_feed: order.reward_feed,
                 have,
                 can_deliver: have >= order.qty,
+                favorite: order.favorite,
             }
         };
         let ranch_orders = RanchOrdersView {
@@ -3225,6 +3228,7 @@ impl Game {
                 have,
                 can_deliver: have >= order.qty,
                 is_craft: order.is_craft(),
+                favorite: order.favorite,
                 craft: order
                     .recipe
                     .map(|_| craft_order_track(self, order, now)),

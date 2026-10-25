@@ -18,6 +18,33 @@ const NPC_PROFILES: [(&str, &str); 5] = [
     ("liuyue", "六月"),
 ];
 
+const FAVORITES: [(&str, &[&str]); 5] = [
+    ("ahe", &["crop:xiaobaicai"]),
+    ("xiaoman", &["crop:caomei", "craft:strawberry_jam"]),
+    ("qingxing", &["crop:luobo", "ranch:milk"]),
+    ("laotao", &["ranch:wool", "craft:sweater"]),
+    ("liuyue", &["fish:crucian", "craft:fish_soup"]),
+];
+
+pub fn favorite_items(npc_id: &str) -> &'static [&'static str] {
+    FAVORITES
+        .iter()
+        .find(|(id, _)| *id == npc_id)
+        .map(|(_, items)| *items)
+        .unwrap_or(&[])
+}
+
+pub fn is_favorite(npc_id: &str, item_key: &str) -> bool {
+    favorite_items(npc_id).contains(&item_key)
+}
+
+pub fn npc_id_by_name(name: &str) -> Option<&'static str> {
+    NPC_PROFILES
+        .iter()
+        .find(|(_, npc_name)| *npc_name == name)
+        .map(|(id, _)| *id)
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct FarmOrder {
@@ -43,6 +70,9 @@ pub struct FarmOrder {
     /// 是否开启自动排程：缺半成品时逐级先做。
     #[serde(default)]
     pub auto: bool,
+    /// 是否是这位村民偏爱的东西；偏爱订单给更高回礼。
+    #[serde(default)]
+    pub favorite: bool,
 }
 
 impl FarmOrder {
@@ -171,6 +201,14 @@ fn crop_offer(
     let qty = (base + ((roll >> 16) % 4) as u64).min(max_qty) as u32;
     let premium = 135 + ((roll >> 24) % 21) as u64;
     let days = 3 + ((roll >> 32) % 2) as u32;
+    let item_key = format!("crop:{}", crop.id);
+    let favorite = is_favorite(npc_id, &item_key);
+    let reward_coins = crop
+        .sell_price
+        .saturating_mul(u64::from(qty))
+        .saturating_mul(premium)
+        .saturating_mul(if favorite { 125 } else { 100 })
+        / 10_000;
     FarmOrder {
         id: format!("{today}-{index}"),
         npc_id: npc_id.into(),
@@ -179,16 +217,13 @@ fn crop_offer(
         crop_name: crop.name.clone(),
         qty,
         expires_day: add_days(today, days),
-        reward_coins: crop
-            .sell_price
-            .saturating_mul(u64::from(qty))
-            .saturating_mul(premium)
-            / 100,
-        reward_exp: 10 + u64::from(qty) * 2,
-        item_key: format!("crop:{}", crop.id),
+        reward_coins,
+        reward_exp: 10 + u64::from(qty) * 2 + if favorite { 5 } else { 0 },
+        item_key,
         item_name: crop.name.clone(),
         recipe: None,
         auto: false,
+        favorite,
     }
 }
 
@@ -208,6 +243,11 @@ fn craft_offer(today: &str, level: u32) -> Option<FarmOrder> {
     let price = craft_item(recipe.output_key())?.price;
     let qty = 1;
     let days = 3 + ((roll >> 24) % 2) as u32;
+    let item_key = recipe.output_key().to_string();
+    let favorite = is_favorite(npc_id, &item_key);
+    let reward_coins = price.saturating_mul(3) / 2
+        + 100
+        + u64::from(level) * 5;
     Some(FarmOrder {
         id: format!("{today}-craft"),
         npc_id: npc_id.into(),
@@ -216,12 +256,13 @@ fn craft_offer(today: &str, level: u32) -> Option<FarmOrder> {
         crop_name: recipe.label().to_string(),
         qty,
         expires_day: add_days(today, days),
-        reward_coins: price.saturating_mul(3) / 2 + 100 + u64::from(level) * 5,
-        reward_exp: 20,
-        item_key: recipe.output_key().to_string(),
+        reward_coins: reward_coins.saturating_mul(if favorite { 125 } else { 100 }) / 100,
+        reward_exp: 20 + if favorite { 5 } else { 0 },
+        item_key,
         item_name: recipe.label().to_string(),
         recipe: Some(recipe),
         auto: false,
+        favorite,
     })
 }
 
@@ -349,6 +390,15 @@ mod tests {
         assert!(craft.item_key.starts_with("craft:"));
         let recipe = craft.recipe.unwrap();
         assert!(craft_item(recipe.output_key()).is_some());
+    }
+
+    #[test]
+    fn favorites_are_mapped_to_villagers() {
+        assert!(is_favorite("ahe", "crop:xiaobaicai"));
+        assert!(is_favorite("xiaoman", "craft:strawberry_jam"));
+        assert!(is_favorite("qingxing", "ranch:milk"));
+        assert!(!is_favorite("ahe", "crop:caomei"));
+        assert_eq!(npc_id_by_name("老陶"), Some("laotao"));
     }
 
     #[test]

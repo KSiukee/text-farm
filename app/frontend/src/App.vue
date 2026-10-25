@@ -2992,6 +2992,7 @@ onUnmounted(() => {
           <span class="farm-order-main">
             <b>{{ order.npcName }}</b> 收 {{ order.itemName }} ×{{ order.qty }}
             <span v-if="order.isCraft" class="npc-tag">加工</span>
+            <span v-if="order.favorite" class="npc-tag">偏爱</span>
           </span>
           <span class="muted">
             {{ order.expiresDay }} 前 · 仓库 {{ order.have }}/{{ order.qty }}
@@ -3037,6 +3038,7 @@ onUnmounted(() => {
           <span class="farm-order-main">
             <b>{{ order.npcName }}</b> 收 {{ order.itemName }} ×{{ order.qty }}
             <span v-if="order.isCraft" class="npc-tag">加工</span>
+            <span v-if="order.favorite" class="npc-tag">偏爱</span>
           </span>
           <span class="muted">{{ order.expiresDay }} 前 · 仓库 {{ order.have }}</span>
           <span v-if="order.craft" class="muted craft-order-status">
@@ -3865,11 +3867,13 @@ onUnmounted(() => {
             </div>
             <div v-for="order in ranch?.orders.offers ?? []" :key="order.id" class="ranch-order">
               <span>{{ order.npcName }} 收 {{ order.qualityLabel }}{{ order.itemName }} ×{{ order.qty }}</span>
+              <span v-if="order.favorite" class="npc-tag">偏爱</span>
               <span class="muted">截止 {{ order.expiresDay }} · {{ order.rewardCoins }} 金币 + {{ order.rewardExp }} 经验 + {{ order.rewardFeed }} 饲料</span>
               <button class="link" type="button" :disabled="acting" @click="acceptRanchOrder(order.id)">[接单]</button>
             </div>
             <div v-for="order in ranch?.orders.active ?? []" :key="order.id" class="ranch-order active">
               <span>进行中：{{ order.qualityLabel }}{{ order.itemName }} ×{{ order.qty }}</span>
+              <span v-if="order.favorite" class="npc-tag">偏爱</span>
               <span class="muted">仓库 {{ order.have }}/{{ order.qty }}</span>
               <button class="link" type="button" :disabled="acting || !order.canDeliver" @click="deliverRanchOrder(order.id)">[交付]</button>
             </div>
