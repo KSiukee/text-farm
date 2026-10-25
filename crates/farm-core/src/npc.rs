@@ -263,6 +263,7 @@ pub struct NpcBirthdayGiftView {
 #[serde(rename_all = "camelCase")]
 pub struct NpcRequestView {
     pub title: String,
+    pub item_key: String,
     pub item_name: String,
     pub qty: u32,
     pub have: u32,
@@ -475,6 +476,7 @@ pub fn view(
             let have = *inventory.get(request.item_key).unwrap_or(&0);
             NpcRequestView {
                 title: request.title.to_string(),
+                item_key: request.item_key.to_string(),
                 item_name: request.item_name.to_string(),
                 qty: request.qty,
                 have,

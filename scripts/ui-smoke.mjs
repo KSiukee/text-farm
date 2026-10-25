@@ -110,7 +110,14 @@ function seedSave() {
     ...npc,
     friendship: npc.id === "ahe" ? 30 : npc.friendship,
     seenEvents: [],
+    memories: [],
+    souvenirs: [],
+    requestWeek: -1,
+    requestDone: false,
     lastChatDay: "",
+    lastGiftDay: "",
+    lastHelpDay: "",
+    birthdayGiftYear: 0,
     pendingEvent: "",
     choices: {},
     ranch: (npc.ranch || []).map((animal) => ({
@@ -477,13 +484,17 @@ try {
   await startApp();
   const title = await evaluate("document.title");
   check("页面标题为文字农场", title.includes("文字农场"), title);
-  await clickText("说明", false);
+  await clickText("说明");
   await waitFor(async () => (await evaluate(`!!document.querySelector('.help-card')`)) === true);
   const helpText = await bodyText();
   check("游戏内玩法说明已打开", helpText.includes("先学会过日子"));
   check("玩法说明包含第一天", helpText.includes("第一天：先把四块地种上"));
+  const helpBg = await evaluate(
+    `getComputedStyle(document.querySelector('.help-card')).backgroundColor`,
+  );
+  check("说明卡底色不透明", !helpBg.includes("rgba"));
   await screenshot("docs/help-card-v0111.png");
-  await clickText("[知道了]");
+  await clickDom(".help-card .link", "[知道了]");
   await waitFor(async () => (await evaluate(`!!document.querySelector('.help-card')`)) === false);
   check("第一周手册已显示", (await bodyText()).includes("农场手册 · 第一周"));
   check(

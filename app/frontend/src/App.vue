@@ -745,6 +745,34 @@ function openCodex() {
   return openFarmSection("farm-codex");
 }
 
+function npcRequestJumpLabel(key: string): string {
+  if (key.startsWith("crop:")) return "去种植";
+  if (key.startsWith("seed:")) return "去种子铺";
+  if (key.startsWith("craft:")) return "去制造屋";
+  if (key.startsWith("ranch:")) return "去畜牧场";
+  if (key.startsWith("fish:")) return "去鱼塘";
+  if (key.startsWith("bait:")) return "去钓鱼";
+  return "去仓库";
+}
+
+function npcRequestJump(key: string) {
+  if (key.startsWith("crop:")) {
+    void openFarmSection("farm-plots");
+  } else if (key.startsWith("seed:")) {
+    void openFarmSection("farm-shop");
+  } else if (key.startsWith("craft:")) {
+    selectTab("制造屋");
+  } else if (key.startsWith("ranch:")) {
+    selectTab("畜牧场");
+  } else if (key.startsWith("fish:")) {
+    selectTab("鱼塘");
+  } else if (key.startsWith("bait:")) {
+    selectTab("钓鱼");
+  } else {
+    void openFarmSection("farm-warehouse");
+  }
+}
+
 function openPlayerSection(id: string) {
   playerMode.value = true;
   activeTab.value = "我的农场";
@@ -2570,7 +2598,7 @@ onUnmounted(() => {
       </div>
       <div class="rule"></div>
 
-      <section class="plots">
+      <section class="plots" id="farm-plots">
         <div v-for="plot in snapshot?.plots ?? []" :key="plot.index" class="plot-line">
           <template v-if="!plot.unlocked">
             <span class="muted">[{{ plot.label }}]{{ plot.unlockLevel }}级可开垦.</span>
@@ -3964,6 +3992,14 @@ onUnmounted(() => {
                 @click="helpNpcRequest(npc)"
               >
                 [帮这个忙]
+              </button>
+              <button
+                v-if="!npc.request.canHelp"
+                class="link npc-request-jump"
+                type="button"
+                @click="npcRequestJump(npc.request.itemKey)"
+              >
+                [{{ npcRequestJumpLabel(npc.request.itemKey) }}]
               </button>
             </div>
             <div v-else-if="npc.requestDone" class="muted npc-request-done">

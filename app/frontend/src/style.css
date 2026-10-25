@@ -207,7 +207,7 @@ textarea {
   z-index: 80;
   display: grid;
   place-items: center;
-  background: rgba(20, 16, 10, 0.55);
+  background: rgba(0, 0, 0, 0.72);
 }
 
 .specimen-result-card {
@@ -2495,15 +2495,17 @@ textarea {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.78);
 }
 
 .npc-scene-card {
   width: min(520px, 100%);
+  max-height: 84vh;
+  overflow: auto;
   padding: 16px 18px;
   border: 1px solid var(--line);
-  background: var(--panel);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  background: rgb(var(--panel-rgb));
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
 }
 
 .npc-scene-title {
@@ -4560,7 +4562,7 @@ footer {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--overlay);
+  background: rgba(0, 0, 0, 0.72);
 }
 
 .catch-card {
@@ -4699,7 +4701,7 @@ footer {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--overlay);
+  background: rgba(0, 0, 0, 0.72);
 }
 
 .fish-modal {
@@ -4796,7 +4798,7 @@ footer {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--overlay);
+  background: rgba(0, 0, 0, 0.72);
 }
 
 .auto-report-card {

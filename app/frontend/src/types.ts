@@ -974,6 +974,7 @@ export interface NpcBirthdayGiftView {
 
 export interface NpcRequestView {
   title: string;
+  itemKey: string;
   itemName: string;
   qty: number;
   have: number;
