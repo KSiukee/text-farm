@@ -1252,6 +1252,44 @@ pub fn migrate_save(mut value: Value) -> Result<Value, SaveError> {
         value["schema"] = json!(56);
     }
 
+    if schema < 57 {
+        let state = value
+            .get_mut("state")
+            .and_then(Value::as_object_mut)
+            .ok_or(SaveError::Unknown(schema))?;
+        if let Some(pets) = state.get_mut("pets").and_then(Value::as_array_mut) {
+            for pet in pets {
+                if let Some(pet) = pet.as_object_mut() {
+                    pet.entry("pondJob").or_insert_with(|| json!({"level": 1, "exp": 0}));
+                }
+            }
+        }
+        if let Some(codex) = state
+            .get_mut("fishing")
+            .and_then(Value::as_object_mut)
+            .and_then(|fishing| fishing.get_mut("codex"))
+            .and_then(Value::as_object_mut)
+        {
+            for entry in codex.values_mut() {
+                let Some(entry) = entry.as_object_mut() else {
+                    continue;
+                };
+                let count = entry.get("count").and_then(Value::as_u64).unwrap_or(0);
+                if count == 0 || entry.get("sizeTiers").and_then(Value::as_u64).unwrap_or(0) != 0 {
+                    continue;
+                }
+                let weight = entry
+                    .get("bestWeightTenths")
+                    .and_then(Value::as_u64)
+                    .unwrap_or(0) as u32;
+                let bit = crate::fishing::size_tier(weight).bit();
+                entry.insert("sizeTiers".into(), json!(bit));
+            }
+        }
+        state.insert("schema".into(), json!(57));
+        value["schema"] = json!(57);
+    }
+
     Ok(value)
 }
 

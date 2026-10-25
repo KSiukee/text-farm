@@ -535,6 +535,9 @@ export interface PetView {
   fishingJobLevel: number;
   fishingJobExp: number;
   fishingJobNeed: number;
+  pondJobLevel: number;
+  pondJobExp: number;
+  pondJobNeed: number;
   talentTiers: PetTalentTierView[];
   canFeed: boolean;
   canTouch: boolean;
@@ -1173,6 +1176,13 @@ export interface AutoReportView {
   totalCaught: number;
 }
 
+export interface FishSizeTierView {
+  tier: string;
+  label: string;
+  rangeLabel: string;
+  caught: boolean;
+}
+
 export interface FishCodexView {
   id: string;
   name: string;
@@ -1188,6 +1198,7 @@ export interface FishCodexView {
   bestQuality: number;
   bestQualityLabel: string;
   bestPrice: number;
+  sizeTiers: FishSizeTierView[];
   golden: boolean;
   goldenCount: number;
   manualCount: number;
@@ -1360,6 +1371,8 @@ export interface FishingView {
   codex: FishCodexView[];
   codexCaught: number;
   codexTotal: number;
+  codexTierCaught: number;
+  codexTierTotal: number;
   spotProgress: SpotProgressView[];
   goldenCaught: number;
   goldenTotal: number;

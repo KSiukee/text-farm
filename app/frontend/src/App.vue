@@ -5270,7 +5270,8 @@ onUnmounted(() => {
             <div class="fish-codex-title">
               鱼类图鉴 <b>{{ fishing.codexCaught }} / {{ fishing.codexTotal }}</b>
               <span class="muted">
-                · 金色 {{ fishing.goldenCaught }}/{{ fishing.goldenTotal }} · 鱼王
+                · 重量档 {{ fishing.codexTierCaught }}/{{ fishing.codexTierTotal }} · 金色
+                {{ fishing.goldenCaught }}/{{ fishing.goldenTotal }} · 鱼王
                 {{ kingCaught }}/{{ fishing.kingTrophies.length }}
                 <span v-if="fishing.fullCodexClaimed">· 全图鉴奖励已领</span>
               </span>
@@ -5316,6 +5317,15 @@ onUnmounted(() => {
               <span v-if="item.conditionHint" class="muted">{{ item.conditionHint }}</span>
               <span v-if="item.caught" class="muted">
                 最大 {{ (item.bestWeightTenths / 10).toFixed(1) }}kg · {{ item.bestQualityLabel }}
+              </span>
+              <span class="fish-size-tiers">
+                <span
+                  v-for="tier in item.sizeTiers"
+                  :key="tier.tier"
+                  class="fish-size-tier"
+                  :class="{ caught: tier.caught }"
+                  :title="tier.rangeLabel"
+                >{{ tier.label }}</span>
               </span>
               <span v-if="item.caught" class="muted">×{{ item.count }}</span>
               <span v-if="item.golden" class="golden-badge">金色 ×{{ item.goldenCount }}</span>
@@ -5702,20 +5712,32 @@ onUnmounted(() => {
                     <div class="row pet-actions">
                       <button class="rate-btn" :class="{ active: pet.location === 'farm' }" type="button" :disabled="acting" @click="setPetLocation(pet.id, 'farm')">农场</button>
                       <button class="rate-btn" :class="{ active: pet.location === 'ranch' }" type="button" :disabled="acting" @click="setPetLocation(pet.id, 'ranch')">牧场</button>
+                      <button
+                        class="rate-btn"
+                        :class="{ active: pet.location === 'pond' }"
+                        type="button"
+                        :disabled="acting || !snapshot?.pond?.built"
+                        @click="setPetLocation(pet.id, 'pond')"
+                      >
+                        鱼塘
+                      </button>
                       <button class="rate-btn" :class="{ active: pet.location === 'fishing' }" type="button" :disabled="acting" @click="setPetLocation(pet.id, 'fishing')">钓鱼地</button>
-                      <span class="muted">鱼塘岗位以后再加</span>
                     </div>
                     <div class="pet-job-line">
                       <template v-if="pet.location === 'ranch'">
                         牧场岗位 Lv{{ pet.jobLevel }}
                         <span class="muted">（{{ pet.jobExp }}/{{ pet.jobNeed }}）· 每天结算一次看护收益</span>
                       </template>
+                      <template v-else-if="pet.location === 'pond'">
+                        鱼塘岗位 Lv{{ pet.pondJobLevel }}
+                        <span class="muted">（{{ pet.pondJobExp }}/{{ pet.pondJobNeed }}）· 每天结算一次看塘收益</span>
+                      </template>
                       <template v-else-if="pet.location === 'fishing'">
                         钓鱼地岗位 Lv{{ pet.fishingJobLevel }}
                         <span class="muted">（{{ pet.fishingJobExp }}/{{ pet.fishingJobNeed }}）· 每天结算一次岸边收益</span>
                       </template>
                       <template v-else>
-                        牧场岗位 Lv{{ pet.jobLevel }} · 钓鱼地岗位 Lv{{ pet.fishingJobLevel }}
+                        牧场 Lv{{ pet.jobLevel }} · 鱼塘 Lv{{ pet.pondJobLevel }} · 钓鱼地 Lv{{ pet.fishingJobLevel }}
                         <span class="muted">· 派去对应地点后每天有收益</span>
                       </template>
                     </div>
@@ -5723,6 +5745,7 @@ onUnmounted(() => {
                       <summary>岗位说明</summary>
                       <p class="muted">
                         挖到的种子直接进仓库；守卫会减少偷菜损失，狗狗有低概率把偷菜贼吓跑。
+                        鱼塘岗位：猫在岸边赶鸟，有概率保住一条鱼苗；狗绕塘巡逻，常能叼回一点金币。
                         钓鱼地岗位：猫有概率叼回一条已点亮图鉴的鱼，狗会找鱼饵；每天只结算一个岗位。
                       </p>
                     </details>

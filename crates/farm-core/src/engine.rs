@@ -154,6 +154,12 @@ enum FishingJobReward {
     Fish(&'static fishing::FishDef, u32, u64),
 }
 
+/// 宠物鱼塘看护的日结：猫赶鸟保鱼苗，狗巡塘叼回一点钱。
+enum PondJobReward {
+    Coins(u64),
+    Fry,
+}
+
 impl Game {
     pub fn dispatch(&mut self, action: Action, now: i64) -> Result<Outcome, GameError> {
         let effects = match action {
@@ -4357,8 +4363,85 @@ impl Game {
         changed
     }
 
-    fn ranch_tick(&mut self, now: i64) -> bool {
-        let guarded = self
+    fn pond_job_tick(&mut self, now: i64, today: &str) -> bool {
+        if !self.state.pond.built() || self.state.pets.is_empty() {
+            return false;
+        }
+        let has_fish = self
+            .state
+            .pond
+            .pond()
+            .map(|pond| pond.fish.iter().any(|fish| fish.count > 0))
+            .unwrap_or(false);
+        let mut rewards: Vec<(String, Option<PondJobReward>)> = Vec::new();
+        for pet in &mut self.state.pets {
+            if pet.boarded || pet.location != PetLocation::Pond || pet.sickness.is_some() {
+                continue;
+            }
+            if pet.last_job_day == today {
+                continue;
+            }
+            pet.last_job_day = today.to_string();
+            let before = pet.pond_job.level;
+            pet.pond_job.gain(pet.talent_job_exp());
+            let job_level = pet.pond_job.level;
+            pet.bond = (pet.bond + 1).min(100);
+            pet.mood = (pet.mood + 1).min(100);
+            let name = pet.name.clone();
+            let roll = job_roll(day_seed(today) as i64 ^ 0x504F_4E44, &name);
+            match pet.species {
+                PetSpecies::Cat => {
+                    let chance = 40 + (job_level - 1) * 6;
+                    if has_fish && roll % 100 < u64::from(chance) {
+                        let text = format!("{name}蹲在塘边赶了一天鸟，鱼苗多活下来一条");
+                        rewards.push((text, Some(PondJobReward::Fry)));
+                    } else {
+                        let text = format!("{name}在塘边守了一天，水面一直很静");
+                        rewards.push((text, None));
+                    }
+                }
+                PetSpecies::Dog => {
+                    let chance = 55 + (job_level - 1) * 5;
+                    if roll % 100 < u64::from(chance) {
+                        let coins = 30 + u64::from(job_level) * 8;
+                        let text = format!("{name}绕着鱼塘巡了一圈，叼回一个 {coins} 金币的小布袋");
+                        rewards.push((text, Some(PondJobReward::Coins(coins))));
+                    } else {
+                        let text = format!("{name}在塘边跑来跑去，把野猫赶走了");
+                        rewards.push((text, None));
+                    }
+                }
+            }
+            if job_level > before {
+                let text = format!("{name}的鱼塘岗位升到 {job_level} 级");
+                rewards.push((text, None));
+            }
+        }
+        let changed = !rewards.is_empty();
+        for (text, reward) in rewards {
+            match reward {
+                Some(PondJobReward::Coins(coins)) => {
+                    self.state.coins = self.state.coins.saturating_add(coins);
+                    self.state.stats.coins_earned =
+                        self.state.stats.coins_earned.saturating_add(coins);
+                }
+                Some(PondJobReward::Fry) => {
+                    if let Some(pond) = self.state.pond.pond_mut() {
+                        if pond.total_count() < crate::pond::POND_CAPACITY {
+                            if let Some(fish) = pond.fish.iter_mut().find(|fish| fish.count > 0) {
+                                fish.count = fish.count.saturating_add(1);
+                            }
+                        }
+                    }
+                }
+                None => {}
+            }
+            self.push_log(now, text);
+        }
+        changed
+    }
+
+    fn ranch_tick(&mut self, now: i64) -> bool {        let guarded = self
             .state
             .pets
             .iter()
@@ -6807,6 +6890,9 @@ impl Game {
             changed = true;
         }
         if !self.state.pets.is_empty() && self.fishing_job_tick(now, today) {
+            changed = true;
+        }
+        if !self.state.pets.is_empty() && self.pond_job_tick(now, today) {
             changed = true;
         }
         if self.boarding_charge(now, today) {

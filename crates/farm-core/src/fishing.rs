@@ -510,6 +510,56 @@ pub fn apply_manual_bonus(quality: u32, weight_tenths: u32) -> (u32, u32) {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+pub enum FishSizeTier {
+    Small,
+    Medium,
+    Large,
+    Giant,
+}
+
+impl FishSizeTier {
+    pub const ALL: [FishSizeTier; 4] = [
+        FishSizeTier::Small,
+        FishSizeTier::Medium,
+        FishSizeTier::Large,
+        FishSizeTier::Giant,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            FishSizeTier::Small => "小",
+            FishSizeTier::Medium => "中",
+            FishSizeTier::Large => "大",
+            FishSizeTier::Giant => "巨物",
+        }
+    }
+
+    pub fn range_label(self) -> &'static str {
+        match self {
+            FishSizeTier::Small => "≤1.0kg",
+            FishSizeTier::Medium => "1.1–1.3kg",
+            FishSizeTier::Large => "1.4–1.6kg",
+            FishSizeTier::Giant => "≥1.7kg",
+        }
+    }
+
+    pub fn bit(self) -> u8 {
+        1 << (self as u8)
+    }
+}
+
+/// 重量档：按 0.1kg 分小/中/大/巨物。
+pub fn size_tier(weight_tenths: u32) -> FishSizeTier {
+    match weight_tenths {
+        0..=10 => FishSizeTier::Small,
+        11..=13 => FishSizeTier::Medium,
+        14..=16 => FishSizeTier::Large,
+        _ => FishSizeTier::Giant,
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum FishRarity {
     Common,
     Uncommon,
@@ -1364,6 +1414,9 @@ pub struct FishCodexEntry {
     pub auto_best_quality: u32,
     #[serde(default)]
     pub auto_best_price: u64,
+    /// 已捕获的重量档位图（4 位：小/中/大/巨物）。
+    #[serde(default)]
+    pub size_tiers: u8,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1700,8 +1753,10 @@ impl FishingState {
                 auto_best_weight_tenths: 0,
                 auto_best_quality: 0,
                 auto_best_price: 0,
+                size_tiers: 0,
             });
         entry.count = entry.count.saturating_add(1);
+        entry.size_tiers |= size_tier(weight_tenths).bit();
         entry.best_weight_tenths = entry.best_weight_tenths.max(weight_tenths);
         entry.best_quality = entry.best_quality.max(quality);
         entry.best_price = entry.best_price.max(price);

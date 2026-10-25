@@ -862,7 +862,7 @@ impl PetLocation {
     pub fn available(self) -> bool {
         matches!(
             self,
-            PetLocation::Farm | PetLocation::Ranch | PetLocation::Fishing
+            PetLocation::Farm | PetLocation::Ranch | PetLocation::Pond | PetLocation::Fishing
         )
     }
 }
@@ -1418,6 +1418,9 @@ pub struct PetState {
     /// 钓鱼地岗位熟练度；与牧场岗位各记各的。
     #[serde(default)]
     pub fishing_job: PetJob,
+    /// 鱼塘看护岗位；与牧场/钓鱼地各记各的。
+    #[serde(default)]
+    pub pond_job: PetJob,
     #[serde(default)]
     pub last_job_day: String,
 }
@@ -1459,6 +1462,7 @@ impl Default for PetState {
             last_skill_at: 0,
             job: PetJob::default(),
             fishing_job: PetJob::default(),
+            pond_job: PetJob::default(),
             last_job_day: String::new(),
         }
     }

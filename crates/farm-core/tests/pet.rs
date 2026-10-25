@@ -545,35 +545,51 @@ fn dog_digs_a_seed_and_has_cooldown() {
 }
 
 #[test]
-fn ranch_and_fishing_are_available_but_pond_is_locked() {
+fn ranch_fishing_and_pond_are_available() {
     let mut game = game_with_pet(PetSpecies::Dog);
-    game.dispatch(
-        Action::SetPetLocation {
-            pet_id: "pet_1".into(),
-            location: PetLocation::Ranch,
-        },
-        0,
-    )
-    .unwrap();
-    game.dispatch(
-        Action::SetPetLocation {
-            pet_id: "pet_1".into(),
-            location: PetLocation::Fishing,
-        },
-        0,
-    )
-    .unwrap();
-    assert_eq!(game.state().pets[0].location, PetLocation::Fishing);
-    assert!(matches!(
+    for location in [PetLocation::Ranch, PetLocation::Fishing, PetLocation::Pond] {
         game.dispatch(
             Action::SetPetLocation {
                 pet_id: "pet_1".into(),
-                location: PetLocation::Pond,
+                location,
             },
-            0
-        ),
-        Err(GameError::PetLocationLocked)
-    ));
+            0,
+        )
+        .unwrap();
+        assert_eq!(game.state().pets[0].location, location);
+    }
+}
+
+#[test]
+fn pet_pond_job_settles_once_per_day_and_levels_up() {
+    let mut game = game_with_pet(PetSpecies::Cat);
+    game.state_mut().level = 20;
+    game.state_mut().coins = 100_000;
+    game.dispatch(Action::BuildPond, 0).unwrap();
+    game.state_mut()
+        .inventory
+        .insert("fish:white_bait".into(), 1);
+    game.dispatch(
+        Action::StockPond {
+            fish_id: "white_bait".into(),
+            qty: 1,
+        },
+        0,
+    )
+    .unwrap();
+    game.state_mut().pets[0].location = PetLocation::Pond;
+    game.state_mut().pets[0].pond_job.exp = 32;
+
+    game.sync(1_000_000, "2026-10-19");
+    let pet = &game.state().pets[0];
+    assert_eq!(pet.last_job_day, "2026-10-19");
+    // 32 + 8 = 40，正好升到 2 级并清零
+    assert_eq!(pet.pond_job.level, 2);
+    assert_eq!(pet.pond_job.exp, 0);
+
+    let level = game.state().pets[0].pond_job.level;
+    game.sync(2_000_000, "2026-10-19");
+    assert_eq!(game.state().pets[0].pond_job.level, level);
 }
 
 #[test]

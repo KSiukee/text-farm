@@ -3702,6 +3702,27 @@ footer {
   color: var(--accent-text);
 }
 
+.fish-size-tiers {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.fish-size-tier {
+  min-width: 17px;
+  padding: 0 3px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+}
+
+.fish-size-tier.caught {
+  border-color: var(--accent-text);
+  color: var(--accent-text);
+  background: var(--panel-warm);
+}
+
 .fish-codex-head {
   margin-bottom: 8px;
 }

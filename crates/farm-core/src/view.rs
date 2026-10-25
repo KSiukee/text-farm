@@ -243,6 +243,9 @@ pub struct PetView {
     pub fishing_job_level: u32,
     pub fishing_job_exp: u64,
     pub fishing_job_need: u64,
+    pub pond_job_level: u32,
+    pub pond_job_exp: u64,
+    pub pond_job_need: u64,
     pub can_feed: bool,
     pub can_touch: bool,
     pub can_play: bool,
@@ -902,6 +905,7 @@ pub struct FishCodexView {
     pub best_quality: u32,
     pub best_quality_label: String,
     pub best_price: u64,
+    pub size_tiers: Vec<FishSizeTierView>,
     pub golden: bool,
     pub golden_count: u64,
     pub manual_count: u64,
@@ -944,6 +948,15 @@ pub struct SpotProgressView {
     pub reward_bait_label: String,
     pub claimed: bool,
     pub complete: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FishSizeTierView {
+    pub tier: crate::fishing::FishSizeTier,
+    pub label: String,
+    pub range_label: String,
+    pub caught: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1039,6 +1052,8 @@ pub struct FishingView {
     pub codex: Vec<FishCodexView>,
     pub codex_caught: usize,
     pub codex_total: usize,
+    pub codex_tier_caught: usize,
+    pub codex_tier_total: usize,
     pub spot_progress: Vec<SpotProgressView>,
     pub golden_caught: usize,
     pub golden_total: usize,
@@ -2600,6 +2615,8 @@ impl Game {
                     || fishing_state.auto.enabled),
         };
         let mut codex_caught = 0usize;
+        let mut codex_tier_caught = 0usize;
+        let codex_tier_total = fishing::fish_list().len() * fishing::FishSizeTier::ALL.len();
         let fish_codex: Vec<FishCodexView> = fishing::fish_list()
             .iter()
             .map(|def| {
@@ -2608,6 +2625,23 @@ impl Game {
                 if caught {
                     codex_caught += 1;
                 }
+                let size_tiers = fishing::FishSizeTier::ALL
+                    .iter()
+                    .map(|tier| {
+                        let tier_caught = entry
+                            .map(|e| e.size_tiers & tier.bit() != 0)
+                            .unwrap_or(false);
+                        if tier_caught {
+                            codex_tier_caught += 1;
+                        }
+                        FishSizeTierView {
+                            tier: *tier,
+                            label: tier.label().into(),
+                            range_label: tier.range_label().into(),
+                            caught: tier_caught,
+                        }
+                    })
+                    .collect();
                 FishCodexView {
                     id: def.id.to_string(),
                     name: def.name.to_string(),
@@ -2626,6 +2660,7 @@ impl Game {
                     )
                     .into(),
                     best_price: entry.map(|e| e.best_price).unwrap_or(0),
+                    size_tiers,
                     golden: fishing_state
                         .golden_codex
                         .get(def.id)
@@ -2838,6 +2873,8 @@ impl Game {
             codex: fish_codex,
             codex_caught,
             codex_total: fishing::FISH.len(),
+            codex_tier_caught,
+            codex_tier_total,
             spot_progress,
             golden_caught,
             golden_total: fishing::FISH.len(),
@@ -3723,6 +3760,9 @@ fn pet_view(pet: &PetState, now: i64) -> PetView {
         fishing_job_level: pet.fishing_job.level,
         fishing_job_exp: pet.fishing_job.exp,
         fishing_job_need: PetJob::need(pet.fishing_job.level),
+        pond_job_level: pet.pond_job.level,
+        pond_job_exp: pet.pond_job.exp,
+        pond_job_need: PetJob::need(pet.pond_job.level),
         can_feed: !pet.boarded,
         can_touch: !pet.boarded && touch_remaining == 0,
         can_play: !pet.boarded && play_remaining == 0 && pet.sickness.is_none() && pet.energy >= 15,

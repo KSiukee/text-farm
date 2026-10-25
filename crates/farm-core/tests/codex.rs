@@ -34,6 +34,21 @@ fn fill_spot(game: &mut Game, spot: FishingSpot) {
 }
 
 #[test]
+fn catch_records_weight_tier_and_view_totals() {
+    let mut game = Game::new(0);
+    catch(&mut game, 0, "white_bait", FishingSpot::Creek);
+    let fishing = game.snapshot(0).fishing;
+    let fish = fishing
+        .codex
+        .iter()
+        .find(|fish| fish.id == "white_bait")
+        .unwrap();
+    assert_eq!(fish.size_tiers.iter().filter(|tier| tier.caught).count(), 1);
+    assert_eq!(fishing.codex_tier_total, 35 * 4);
+    assert_eq!(fishing.codex_tier_caught, 1);
+}
+
+#[test]
 fn spot_completion_reward_is_granted_once() {
     let mut game = Game::new(0);
     fill_spot(&mut game, FishingSpot::Creek);
