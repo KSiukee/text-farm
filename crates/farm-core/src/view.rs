@@ -1402,13 +1402,17 @@ fn craft_order_track(
         if job_ready {
             (
                 "可收取".to_string(),
-                format!("加工好了，去 {slot} 号槽取货"),
+                if order.auto {
+                    "加工好了，下次同步会自动收取".to_string()
+                } else {
+                    format!("加工好了，去 {slot} 号槽取货")
+                },
                 false,
             )
         } else if order.auto {
             (
                 "自动排程中".to_string(),
-                format!("{slot} 号槽正在做，取货后自动接下一道"),
+                format!("{slot} 号槽正在做，做完自动收取并接下一道"),
                 false,
             )
         } else {

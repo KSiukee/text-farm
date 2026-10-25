@@ -3654,6 +3654,15 @@ impl Game {
         recipe: EquipmentRecipe,
         now: i64,
     ) -> Result<Vec<Effect>, GameError> {
+        self.start_equipment_craft_for(recipe, now, String::new())
+    }
+
+    fn start_equipment_craft_for(
+        &mut self,
+        recipe: EquipmentRecipe,
+        now: i64,
+        auto_order: String,
+    ) -> Result<Vec<Effect>, GameError> {
         if !self.state.workshop.built {
             return Err(GameError::RanchWorkshopMissing);
         }
@@ -3700,6 +3709,7 @@ impl Game {
                 recipe,
                 started_at: now,
                 ready_at: now + duration,
+                auto_order,
             });
         }
         let note = if saved {
@@ -5519,7 +5529,7 @@ impl Game {
         }
         let recipe = order.recipe.ok_or(GameError::FarmOrderInvalid)?;
         let mut started = Vec::new();
-        self.plan_recipe(recipe, now, 0, &mut started)?;
+        self.plan_recipe(recipe, now, 0, id, &mut started)?;
         if started.is_empty() {
             let text = "自动排程没找到能开工的步骤：先看看缺原料还是缺设备".to_string();
             self.push_log(now, text.clone());
@@ -5549,6 +5559,7 @@ impl Game {
         recipe: EquipmentRecipe,
         now: i64,
         depth: u8,
+        order_id: &str,
         started: &mut Vec<String>,
     ) -> Result<bool, GameError> {
         if depth > 4 || self.equipment_job_active(recipe) {
@@ -5573,7 +5584,7 @@ impl Game {
                 .first_idle_slot(recipe.equipment())
                 .is_some()
             {
-                self.start_equipment_craft(recipe, now)?;
+                self.start_equipment_craft_for(recipe, now, order_id.to_string())?;
                 started.push(recipe.label().to_string());
                 return Ok(true);
             }
@@ -5588,7 +5599,7 @@ impl Game {
             else {
                 continue;
             };
-            if self.plan_recipe(sub, now, depth + 1, started)? {
+            if self.plan_recipe(sub, now, depth + 1, order_id, started)? {
                 any = true;
             }
         }
@@ -5650,7 +5661,7 @@ impl Game {
                 continue;
             };
             let mut started = Vec::new();
-            if self.plan_recipe(recipe, now, 0, &mut started).is_ok() && !started.is_empty() {
+            if self.plan_recipe(recipe, now, 0, &id, &mut started).is_ok() && !started.is_empty() {
                 let text = format!(
                     "自动排程继续：{} → {}",
                     order.item_name_or_crop(),
@@ -5876,6 +5887,25 @@ impl Game {
     pub fn sync(&mut self, now: i64, today: &str) -> Outcome {
         let mut effects = Vec::new();
         let mut changed = false;
+
+        let auto_ready: Vec<u8> = (0..self.state.workshop.slots)
+            .filter(|slot| {
+                matches!(
+                    self.state.workshop.job(*slot),
+                    Some(WorkshopJob::Equipment {
+                        ready_at,
+                        auto_order,
+                        ..
+                    }) if !auto_order.is_empty() && now >= *ready_at
+                )
+            })
+            .collect();
+        for slot in auto_ready {
+            if let Ok(mut extra) = self.collect_craft(slot, now) {
+                effects.append(&mut extra);
+                changed = true;
+            }
+        }
 
         self.state.room.ensure_defaults();
         if self.state.room.ensure_decor_shop(today) {

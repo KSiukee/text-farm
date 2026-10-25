@@ -171,16 +171,20 @@ fn auto_schedule_builds_intermediate_steps() {
     assert_eq!(craft.status, "自动排程中");
     assert_eq!(craft.job_slot, Some(1));
 
-    let finish_and_collect = |game: &mut Game, slot: u8| {
+    let finish_ready = |game: &mut Game, slot: u8| {
         if let Some(Some(job)) = game.state_mut().workshop.job_mut(slot) {
             if let WorkshopJob::Equipment { ready_at, .. } = job {
                 *ready_at = 0;
             }
         }
-        game.dispatch(Action::CollectCraft { slot }, 0).unwrap();
     };
 
-    finish_and_collect(&mut game, 1);
+    finish_ready(&mut game, 1);
+    game.sync(0, "2026-10-24");
+    assert_eq!(
+        game.state().inventory.get("craft:cane_juice").copied(),
+        Some(1)
+    );
     assert!(matches!(
         game.state().workshop.job(1),
         Some(WorkshopJob::Equipment {
@@ -188,7 +192,8 @@ fn auto_schedule_builds_intermediate_steps() {
             ..
         })
     ));
-    finish_and_collect(&mut game, 1);
+    finish_ready(&mut game, 1);
+    game.sync(0, "2026-10-24");
     assert!(matches!(
         game.state().workshop.job(2),
         Some(WorkshopJob::Equipment {
@@ -196,7 +201,8 @@ fn auto_schedule_builds_intermediate_steps() {
             ..
         })
     ));
-    finish_and_collect(&mut game, 2);
+    finish_ready(&mut game, 2);
+    game.sync(0, "2026-10-24");
     assert!(game.state().inventory.contains_key("craft:sugar"));
     assert!(!game.state().orders.active[0].auto);
 }

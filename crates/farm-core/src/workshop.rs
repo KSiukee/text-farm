@@ -597,6 +597,9 @@ pub enum WorkshopJob {
         recipe: EquipmentRecipe,
         started_at: i64,
         ready_at: i64,
+        /// 由哪笔自动排程订单启动；空 = 玩家手动开工。
+        #[serde(default)]
+        auto_order: String,
     },
     Bait {
         recipe: BaitRecipe,
