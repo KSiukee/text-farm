@@ -614,6 +614,7 @@ const nextBoardingMonth = computed(() => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 });
 const showAdopt = ref(false);
+const showPetAlbum = ref(false);
 const adoptBoard = ref(false);
 const petName = ref("豆豆");
 const petBreed = ref<PetBreed>("corgi");
@@ -1814,6 +1815,15 @@ function setPetLocation(petId: string, location: PetLocation) {
 
 function sendPetToRanch(petId: string) {
   setPetLocation(petId, "ranch");
+}
+
+function petAdoptedLabel(at: number): string {
+  if (!at) return "很久以前";
+  return new Date(at).toLocaleDateString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
 }
 
 function callPetHome(petId: string) {
@@ -5416,6 +5426,7 @@ onUnmounted(() => {
           <div class="panel-title">
             宠物
             <span class="muted">狗狗/猫猫 · 像素侧视，待机与互动有小动作</span>
+            <button class="link" type="button" @click="showPetAlbum = true">[纪念册]</button>
           </div>
 
           <div class="boarding-panel">
@@ -6391,6 +6402,56 @@ onUnmounted(() => {
         <div class="npc-scene-title">{{ marketTalk.name }}</div>
         <p class="festival-story-text">{{ marketTalk.text }}</p>
         <button class="link" type="button" @click="marketTalk = null">[知道了]</button>
+      </div>
+    </div>
+
+    <div
+      v-if="showPetAlbum"
+      class="npc-scene-overlay story-overlay"
+      @click.self="showPetAlbum = false"
+    >
+      <div class="npc-scene-card pet-album">
+        <div class="npc-scene-title">宠物纪念册</div>
+        <p class="muted pet-album-lead">
+          一起走过的日子、学会的本事，还有最近的小事。
+        </p>
+        <div v-if="!pets.length" class="muted">还没有领养宠物。</div>
+        <div v-else class="pet-album-grid">
+          <article v-for="albumPet in pets" :key="albumPet.id" class="pet-album-card">
+            <img :src="albumPet.image" :alt="albumPet.name" />
+            <div class="pet-album-main">
+              <div class="pet-album-name">
+                <b>{{ albumPet.name }}</b>
+                <span class="muted">{{ albumPet.breedLabel }} · Lv{{ albumPet.level }}</span>
+              </div>
+              <div class="muted">
+                相伴 {{ albumPet.ageDays }} 天 · 领养 {{ petAdoptedLabel(albumPet.adoptedAt) }}
+              </div>
+              <div class="muted">
+                亲密 {{ albumPet.bond }} · 牧场 Lv{{ albumPet.jobLevel }} · 鱼塘 Lv{{
+                  albumPet.pondJobLevel
+                }} · 钓鱼地 Lv{{ albumPet.fishingJobLevel }}
+              </div>
+              <div v-if="albumPet.milestones.length" class="pet-milestones">
+                <span
+                  v-for="milestone in albumPet.milestones"
+                  :key="milestone"
+                  class="pet-chip milestone"
+                >
+                  {{ milestone }}
+                </span>
+              </div>
+              <div v-else class="muted">还没有纪念，慢慢来。</div>
+              <div v-if="albumPet.lastEvent" class="pet-last-event">
+                最近：{{ albumPet.lastEvent }}
+              </div>
+              <div v-if="albumPet.lastCompanion" class="pet-last-event">
+                搭子：{{ albumPet.lastCompanion }}
+              </div>
+            </div>
+          </article>
+        </div>
+        <button class="link" type="button" @click="showPetAlbum = false">[合上]</button>
       </div>
     </div>
 

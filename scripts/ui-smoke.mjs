@@ -1077,6 +1077,15 @@ try {
   check("行为树当前活动已显示", personalityText.includes("正在："));
   check("宠物最近小事已显示", personalityText.includes("最近："));
   check("牧场岗位已显示", personalityText.includes("牧场岗位"));
+  await clickText("[纪念册]");
+  await waitFor(async () => (await evaluate(`!!document.querySelector('.pet-album-card')`)) === true);
+  check(
+    "宠物纪念册已打开",
+    (await evaluate(`document.querySelectorAll('.pet-album-card').length`)) ===
+      saveState().pets.length,
+  );
+  await clickDom(".pet-album .link", "[合上]");
+  await waitFor(async () => (await evaluate(`!!document.querySelector('.pet-album-card')`)) === false);
   await clickText("钓鱼地", true);
   await waitFor(async () => saveState().pets.some((pet) => pet.location === "fishing"));
   check("宠物可派去钓鱼地", saveState().pets.some((pet) => pet.location === "fishing"));

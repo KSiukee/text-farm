@@ -723,6 +723,50 @@ textarea {
   background: var(--panel-soft);
 }
 
+.pet-album {
+  width: min(820px, 92vw);
+}
+
+.pet-album-lead {
+  margin: 0 0 14px;
+}
+
+.pet-album-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.pet-album-card {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel-soft);
+}
+
+.pet-album-card > img {
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.pet-album-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.pet-album-name {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
 .pet-milestones {
   display: flex;
   flex-wrap: wrap;

@@ -529,6 +529,7 @@ export interface PetView {
   stage: PetStage;
   stageLabel: string;
   ageDays: number;
+  adoptedAt: number;
   level: number;
   exp: number;
   expNeed: number;
