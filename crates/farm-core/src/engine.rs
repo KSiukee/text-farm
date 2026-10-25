@@ -246,6 +246,7 @@ impl Game {
             Action::ClaimDaily { id } => self.claim_daily(id, now)?,
             Action::AcceptFarmOrder { id } => self.accept_farm_order(&id, now)?,
             Action::DeliverFarmOrder { id } => self.deliver_farm_order(&id, now)?,
+            Action::StartOrderCraft { id } => self.start_order_craft(&id, now)?,
             Action::BuyMysteryOffer { id } => self.buy_mystery_offer(&id, now)?,
             Action::BuyFurniture { def } => self.buy_furniture(&def, now)?,
             Action::BuyDecor { id } => self.buy_decor(&id, now)?,
@@ -3385,6 +3386,14 @@ impl Game {
         self.state.coins -= WORKSHOP_COST;
         self.state.workshop.built = true;
         self.state.workshop.ensure();
+        let today = self.state.daily.day.clone();
+        self.state.orders.day.clear();
+        self.state.orders.ensure_day(
+            &today,
+            self.state.level,
+            true,
+            &self.content,
+        );
         let text = format!("你在牧场边搭起一间制造屋，花费 {WORKSHOP_COST}");
         self.push_log(now, text.clone());
         Ok(vec![Effect::Log { text }])
@@ -5432,7 +5441,10 @@ impl Game {
         }
         let text = format!(
             "接下 {} 的订单：{}×{}，{} 前交付",
-            order.npc_name, order.crop_name, order.qty, order.expires_day
+            order.npc_name,
+            order.item_name_or_crop(),
+            order.qty,
+            order.expires_day
         );
         self.push_log(now, text.clone());
         Ok(vec![Effect::Log { text }])
@@ -5445,7 +5457,7 @@ impl Game {
         if order.expires_day.as_str() < self.state.daily.day.as_str() {
             return Err(GameError::FarmOrderExpired);
         }
-        let key = format!("crop:{}", order.crop_id);
+        let key = order.delivery_key();
         let have = self.state.inventory.get(&key).copied().unwrap_or(0);
         if have < order.qty {
             return Err(GameError::FarmOrderNotEnough);
@@ -5468,12 +5480,27 @@ impl Game {
         self.state.orders.remove_active(id);
         let text = format!(
             "交付 {} 的订单：{}×{}，金币+{}，{} 友好度+2",
-            order.npc_name, order.crop_name, order.qty, order.reward_coins, order.npc_name
+            order.npc_name,
+            order.item_name_or_crop(),
+            order.qty,
+            order.reward_coins,
+            order.npc_name
         );
         self.push_log(now, text.clone());
         let mut effects = vec![Effect::Log { text }];
         effects.extend(self.add_exp(order.reward_exp as u32, now));
         Ok(effects)
+    }
+
+    fn start_order_craft(&mut self, id: &str, now: i64) -> Result<Vec<Effect>, GameError> {
+        let Some(order) = self.state.orders.find_active(id).cloned() else {
+            return Err(GameError::FarmOrderInvalid);
+        };
+        if order.expires_day.as_str() < self.state.daily.day.as_str() {
+            return Err(GameError::FarmOrderExpired);
+        }
+        let recipe = order.recipe.ok_or(GameError::FarmOrderInvalid)?;
+        self.start_equipment_craft(recipe, now)
     }
 
     fn use_farm_card(&mut self, now: i64) -> Result<Vec<Effect>, GameError> {
@@ -5798,6 +5825,7 @@ impl Game {
         let expired_orders = self.state.orders.ensure_day(
             today,
             self.state.level,
+            self.state.workshop.built,
             &self.content,
         );
         for order in &expired_orders {

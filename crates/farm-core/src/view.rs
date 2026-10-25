@@ -1138,12 +1138,38 @@ pub struct FarmOrderView {
     pub npc_name: String,
     pub crop_id: String,
     pub crop_name: String,
+    pub item_key: String,
+    pub item_name: String,
     pub qty: u32,
     pub expires_day: String,
     pub reward_coins: u64,
     pub reward_exp: u64,
     pub have: u32,
     pub can_deliver: bool,
+    pub is_craft: bool,
+    pub craft: Option<CraftOrderTrackView>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CraftOrderTrackView {
+    pub status: String,
+    pub detail: String,
+    pub can_start: bool,
+    pub equipment_label: String,
+    pub equipment_installed: bool,
+    pub job_slot: Option<u8>,
+    pub remaining_ms: i64,
+    pub inputs: Vec<CraftInputView>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CraftInputView {
+    pub name: String,
+    pub need: u32,
+    pub have: u32,
+    pub is_craft: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1239,12 +1265,168 @@ pub struct Snapshot {
     pub content_crops: usize,
 }
 
+fn order_item_count(game: &Game, key: &str) -> u32 {
+    if key.starts_with("ranch:") {
+        (1..=3u8)
+            .map(|quality| {
+                game.state
+                    .inventory
+                    .get(&crate::ranch::with_quality(key, quality))
+                    .copied()
+                    .unwrap_or(0)
+            })
+            .sum()
+    } else {
+        game.state.inventory.get(key).copied().unwrap_or(0)
+    }
+}
+
+fn order_ingredient_name(game: &Game, key: &str) -> String {
+    if let Some(id) = key.strip_prefix("crop:") {
+        return game
+            .content
+            .crop(id)
+            .map(|crop| crop.name.clone())
+            .unwrap_or_else(|| id.to_string());
+    }
+    if key.starts_with("ranch:") {
+        return crate::ranch::display_name(key).unwrap_or_else(|| key.to_string());
+    }
+    if key.starts_with("craft:") {
+        return craft_item(key)
+            .map(|item| item.name.to_string())
+            .unwrap_or_else(|| key.to_string());
+    }
+    key.to_string()
+}
+
+fn craft_order_track(
+    game: &Game,
+    order: &crate::orders::FarmOrder,
+    now: i64,
+) -> CraftOrderTrackView {
+    let Some(recipe) = order.recipe else {
+        return CraftOrderTrackView {
+            status: "不可加工".into(),
+            detail: String::new(),
+            can_start: false,
+            equipment_label: String::new(),
+            equipment_installed: false,
+            job_slot: None,
+            remaining_ms: 0,
+            inputs: Vec::new(),
+        };
+    };
+    let equipment = recipe.equipment();
+    let installed = game
+        .state
+        .workshop
+        .equipment
+        .iter()
+        .flatten()
+        .any(|kind| *kind == equipment);
+    let mut job_slot = None;
+    let mut remaining_ms = 0;
+    let mut job_ready = false;
+    for slot in 0..game.state.workshop.slots {
+        if let Some(WorkshopJob::Equipment {
+            recipe: active_recipe,
+            ready_at,
+            ..
+        }) = game.state.workshop.job(slot)
+        {
+            if *active_recipe == recipe {
+                job_slot = Some(slot);
+                remaining_ms = (*ready_at - now).max(0);
+                job_ready = now >= *ready_at;
+                break;
+            }
+        }
+    }
+    let inputs: Vec<CraftInputView> = recipe
+        .inputs()
+        .iter()
+        .map(|(key, need)| {
+            let have = order_item_count(game, key);
+            CraftInputView {
+                name: order_ingredient_name(game, key),
+                need: *need,
+                have,
+                is_craft: key.starts_with("craft:"),
+            }
+        })
+        .collect();
+    let missing: Vec<String> = inputs
+        .iter()
+        .filter(|input| input.have < input.need)
+        .map(|input| format!("{}×{}", input.name, input.need - input.have))
+        .collect();
+    let output_have = order_item_count(game, &order.delivery_key());
+    let equipment_label = equipment.label().to_string();
+    let (status, detail, can_start) = if output_have >= order.qty {
+        (
+            "可交付".to_string(),
+            "仓库里已有成品，去村庄订单交付".to_string(),
+            false,
+        )
+    } else if let Some(slot) = job_slot {
+        if job_ready {
+            (
+                "可收取".to_string(),
+                format!("加工好了，去 {slot} 号槽取货"),
+                false,
+            )
+        } else {
+            (
+                "加工中".to_string(),
+                format!("{slot} 号槽正在做，到时间取货"),
+                false,
+            )
+        }
+    } else if !game.state.workshop.built {
+        ("未建制造屋".to_string(), "先去制造屋建一座".to_string(), false)
+    } else if !installed {
+        (
+            "缺设备".to_string(),
+            format!("需要先装一台{equipment_label}"),
+            false,
+        )
+    } else if !missing.is_empty() {
+        (
+            "缺原料".to_string(),
+            format!("还缺 {}", missing.join("、")),
+            false,
+        )
+    } else if game.state.workshop.first_idle_slot(equipment).is_none() {
+        (
+            "加工槽忙".to_string(),
+            format!("{equipment_label}槽都在忙，等一会儿"),
+            false,
+        )
+    } else {
+        (
+            "可加工".to_string(),
+            "原料齐了，点「一键送去做」".to_string(),
+            true,
+        )
+    };
+    CraftOrderTrackView {
+        status,
+        detail,
+        can_start,
+        equipment_label,
+        equipment_installed: installed,
+        job_slot,
+        remaining_ms,
+        inputs,
+    }
+}
+
 fn style_views(
     styles: &[(&'static str, &'static str)],
     owned: &std::collections::BTreeSet<String>,
     kind: crate::decor::DecorKind,
-) -> Vec<RoomStyleView> {
-    styles
+) -> Vec<RoomStyleView> {    styles
         .iter()
         .map(|(id, name)| {
             let price = match kind {
@@ -2917,23 +3099,25 @@ impl Game {
         };
 
         let to_order_view = |order: &crate::orders::FarmOrder| {
-            let have = self
-                .state
-                .inventory
-                .get(&format!("crop:{}", order.crop_id))
-                .copied()
-                .unwrap_or(0);
+            let key = order.delivery_key();
+            let have = self.state.inventory.get(&key).copied().unwrap_or(0);
             FarmOrderView {
                 id: order.id.clone(),
                 npc_name: order.npc_name.clone(),
                 crop_id: order.crop_id.clone(),
                 crop_name: order.crop_name.clone(),
+                item_key: key,
+                item_name: order.item_name_or_crop().to_string(),
                 qty: order.qty,
                 expires_day: order.expires_day.clone(),
                 reward_coins: order.reward_coins,
                 reward_exp: order.reward_exp,
                 have,
                 can_deliver: have >= order.qty,
+                is_craft: order.is_craft(),
+                craft: order
+                    .recipe
+                    .map(|_| craft_order_track(self, order, now)),
             }
         };
         let orders = FarmOrdersView {

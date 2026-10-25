@@ -906,6 +906,29 @@ try {
       workshopModernText.includes("设备配方") &&
       workshopModernText.includes("只看"),
   );
+  await waitFor(async () => saveState().orders.offers.some((order) => order.recipe));
+  check("村庄加工订单已生成", saveState().orders.offers.some((order) => order.recipe));
+  await clickText("返回农场", false);
+  await waitFor(async () => (await bodyText()).includes("加工"));
+  await evaluate(`(() => {
+    const row = [...document.querySelectorAll('.farm-order')].find((el) =>
+      (el.innerText || '').includes('加工')
+    );
+    row?.querySelector('button')?.click();
+  })()`);
+  await waitFor(async () => saveState().orders.active.some((order) => order.recipe));
+  check("接取村庄加工订单", saveState().orders.active.some((order) => order.recipe));
+  await clickText("制造屋", false);
+  await waitFor(async () => (await evaluate(`document.querySelectorAll('.craft-track').length`)) >= 1);
+  const craftTrackText = await bodyText();
+  check("制造屋自动跟进加工订单", craftTrackText.includes("村庄加工订单"));
+  check(
+    "加工订单显示缺什么/状态",
+    craftTrackText.includes("缺原料") ||
+      craftTrackText.includes("缺设备") ||
+      craftTrackText.includes("可加工") ||
+      craftTrackText.includes("加工中"),
+  );
   const craftText = await bodyText();
   check("加工配方已显示", craftText.includes("奶酪：") && craftText.includes("→ 奶酪"));
   check(
@@ -1447,4 +1470,5 @@ try {
 } finally {
   await stopApp();
 }
+
 

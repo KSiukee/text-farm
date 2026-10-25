@@ -381,6 +381,10 @@ pub enum Action {
     DeliverFarmOrder {
         id: String,
     },
+    /// 把一笔加工订单直接送进对应的制造屋设备。
+    StartOrderCraft {
+        id: String,
+    },
     BuyMysteryOffer {
         id: String,
     },

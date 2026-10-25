@@ -672,12 +672,34 @@ export interface FarmOrderView {
   npcName: string;
   cropId: string;
   cropName: string;
+  itemKey: string;
+  itemName: string;
   qty: number;
   expiresDay: string;
   rewardCoins: number;
   rewardExp: number;
   have: number;
   canDeliver: boolean;
+  isCraft: boolean;
+  craft: CraftOrderTrackView | null;
+}
+
+export interface CraftOrderTrackView {
+  status: string;
+  detail: string;
+  canStart: boolean;
+  equipmentLabel: string;
+  equipmentInstalled: boolean;
+  jobSlot: number | null;
+  remainingMs: number;
+  inputs: CraftInputView[];
+}
+
+export interface CraftInputView {
+  name: string;
+  need: number;
+  have: number;
+  isCraft: boolean;
 }
 
 export interface FarmOrdersView {
@@ -1500,6 +1522,7 @@ export type Action =
   | { type: "claimDaily"; id: number }
   | { type: "acceptFarmOrder"; id: string }
   | { type: "deliverFarmOrder"; id: string }
+  | { type: "startOrderCraft"; id: string }
   | { type: "buyMysteryOffer"; id: string }
   | { type: "buyFurniture"; def: string }
   | { type: "buyDecor"; id: string }

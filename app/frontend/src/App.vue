@@ -338,6 +338,9 @@ const workshopInstalled = computed(
   () =>
     workshop.value?.slotViews.filter((slot) => slot.index > 0 && slot.equipment).length ?? 0,
 );
+const craftOrders = computed(
+  () => snapshot.value?.orders?.active.filter((order) => order.isCraft) ?? [],
+);
 const onlyReadyRecipes = ref(true);
 const recipeGroup = ref("ranch");
 const showAllEquipment = ref(false);
@@ -1170,6 +1173,10 @@ function acceptFarmOrder(id: string) {
 
 function deliverFarmOrder(id: string) {
   void act({ type: "deliverFarmOrder", id });
+}
+
+function startOrderCraft(id: string) {
+  void act({ type: "startOrderCraft", id });
 }
 
 function claimLevelReward(level: number) {
@@ -2952,10 +2959,14 @@ onUnmounted(() => {
           class="row farm-order"
         >
           <span class="farm-order-main">
-            <b>{{ order.npcName }}</b> 收 {{ order.cropName }} ×{{ order.qty }}
+            <b>{{ order.npcName }}</b> 收 {{ order.itemName }} ×{{ order.qty }}
+            <span v-if="order.isCraft" class="npc-tag">加工</span>
           </span>
           <span class="muted">
             {{ order.expiresDay }} 前 · 仓库 {{ order.have }}/{{ order.qty }}
+          </span>
+          <span v-if="order.craft" class="muted craft-order-status">
+            {{ order.craft.status }} · {{ order.craft.detail }}
           </span>
           <button
             v-if="order.canDeliver"
@@ -2966,7 +2977,16 @@ onUnmounted(() => {
           >
             [交付 +{{ order.rewardCoins }}]
           </button>
-          <span v-else class="muted">还差 {{ order.qty - order.have }}</span>
+          <button
+            v-else-if="order.craft?.canStart"
+            class="link"
+            type="button"
+            :disabled="acting"
+            @click="startOrderCraft(order.id)"
+          >
+            [一键送去做]
+          </button>
+          <span v-else-if="!order.isCraft" class="muted">还差 {{ order.qty - order.have }}</span>
         </div>
         <div v-if="snapshot.orders.offers.length" class="muted farm-orders-sub">可接</div>
         <div
@@ -2975,9 +2995,13 @@ onUnmounted(() => {
           class="row farm-order"
         >
           <span class="farm-order-main">
-            <b>{{ order.npcName }}</b> 收 {{ order.cropName }} ×{{ order.qty }}
+            <b>{{ order.npcName }}</b> 收 {{ order.itemName }} ×{{ order.qty }}
+            <span v-if="order.isCraft" class="npc-tag">加工</span>
           </span>
           <span class="muted">{{ order.expiresDay }} 前 · 仓库 {{ order.have }}</span>
+          <span v-if="order.craft" class="muted craft-order-status">
+            {{ order.craft.status }} · {{ order.craft.detail }}
+          </span>
           <button
             class="link"
             type="button"
@@ -2992,7 +3016,7 @@ onUnmounted(() => {
           今天没有订单，明天再来。
         </div>
         <div class="muted farm-orders-hint">
-          每天 3 条，最多接 2 条；交付扣仓库作物；过期只掉 NPC 友好度，不扣金币。
+          每天 3 条，最多接 2 条；交付扣仓库物品；加工订单接单后，去制造屋看缺什么/能不能开工。
         </div>
       </section>
 
@@ -4022,6 +4046,62 @@ onUnmounted(() => {
             </div>
           </section>
           <template v-else>
+            <section v-if="craftOrders.length" class="panel ws-order-track">
+              <div class="panel-title">
+                村庄加工订单
+                <span class="muted">接单后自动跟进：缺什么、能不能做、做到哪了</span>
+              </div>
+              <div v-for="order in craftOrders" :key="`track-${order.id}`" class="craft-track">
+                <div class="craft-track-head">
+                  <span>
+                    <b>{{ order.npcName }}</b> 要 {{ order.itemName }} ×{{ order.qty }}
+                  </span>
+                  <span v-if="order.craft" class="npc-tag">{{ order.craft.status }}</span>
+                  <span class="muted">{{ order.expiresDay }} 前</span>
+                </div>
+                <div v-if="order.craft" class="muted craft-track-detail">
+                  {{ order.craft.detail }}
+                  <template v-if="order.craft.remainingMs > 0">
+                    · 还要 {{ formatRemain(order.craft.remainingMs) }}
+                  </template>
+                </div>
+                <div v-if="order.craft" class="craft-inputs">
+                  <span
+                    v-for="input in order.craft.inputs"
+                    :key="input.name"
+                    class="craft-input"
+                    :class="{ missing: input.have < input.need }"
+                  >
+                    {{ input.name }} {{ input.have }}/{{ input.need }}
+                    <span v-if="input.isCraft" class="muted">半成品</span>
+                  </span>
+                </div>
+                <div class="craft-track-actions">
+                  <button
+                    v-if="order.craft?.canStart"
+                    class="link"
+                    type="button"
+                    :disabled="acting"
+                    @click="startOrderCraft(order.id)"
+                  >
+                    [一键送去做]
+                  </button>
+                  <button
+                    v-else-if="order.canDeliver"
+                    class="link"
+                    type="button"
+                    :disabled="acting"
+                    @click="deliverFarmOrder(order.id)"
+                  >
+                    [交付 +{{ order.rewardCoins }}]
+                  </button>
+                  <span v-else-if="order.craft?.status === '可收取'" class="muted">
+                    去 {{ order.craft.jobSlot }} 号槽取货
+                  </span>
+                  <span v-else class="muted">不用盯着，状态会自动变</span>
+                </div>
+              </div>
+            </section>
             <div class="ws-body" :class="{ panel: classicLayout }">
               <div class="panel-title ws-classic-title">
                 制造屋
