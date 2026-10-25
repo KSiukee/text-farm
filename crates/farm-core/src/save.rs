@@ -1290,6 +1290,24 @@ pub fn migrate_save(mut value: Value) -> Result<Value, SaveError> {
         value["schema"] = json!(57);
     }
 
+    if schema < 58 {
+        let state = value
+            .get_mut("state")
+            .and_then(Value::as_object_mut)
+            .ok_or(SaveError::Unknown(schema))?;
+        if let Some(pets) = state.get_mut("pets").and_then(Value::as_array_mut) {
+            for pet in pets {
+                if let Some(pet) = pet.as_object_mut() {
+                    pet.entry("milestones").or_insert_with(|| json!([]));
+                    pet.entry("lastEventDay").or_insert_with(|| json!(""));
+                    pet.entry("lastEvent").or_insert_with(|| json!(""));
+                }
+            }
+        }
+        state.insert("schema".into(), json!(58));
+        value["schema"] = json!(58);
+    }
+
     Ok(value)
 }
 

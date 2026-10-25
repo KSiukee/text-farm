@@ -590,6 +590,17 @@ fn pet_pond_job_settles_once_per_day_and_levels_up() {
     let level = game.state().pets[0].pond_job.level;
     game.sync(2_000_000, "2026-10-19");
     assert_eq!(game.state().pets[0].pond_job.level, level);
+    assert!(game.state().pets[0].milestones.contains("first_pond"));
+}
+
+#[test]
+fn pet_daily_event_is_recorded_once_per_day() {
+    let mut game = game_with_pet(PetSpecies::Cat);
+    game.sync(1_000_000, "2026-10-19");
+    let event = game.state().pets[0].last_event.clone();
+    assert!(!event.is_empty());
+    game.sync(2_000_000, "2026-10-19");
+    assert_eq!(game.state().pets[0].last_event, event);
 }
 
 #[test]

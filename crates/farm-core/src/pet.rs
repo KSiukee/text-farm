@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 
 pub const PET_TOUCH_COOLDOWN_MS: i64 = 60 * 60 * 1000;
 pub const PET_PLAY_COOLDOWN_MS: i64 = 30 * 60 * 1000;
@@ -8,6 +9,23 @@ pub const PET_ACTIVE_LIMIT: usize = 3;
 pub const PET_BOARD_FEE_PER_MONTH: u64 = 3_000;
 pub const PET_SKILL_MAX: u32 = 5;
 pub const PET_DIG_SKILL_STEP_MS: i64 = 30 * 60 * 1000;
+
+pub const PET_MILESTONE_FIRST_RANCH: &str = "first_ranch";
+pub const PET_MILESTONE_FIRST_FISHING: &str = "first_fishing";
+pub const PET_MILESTONE_FIRST_POND: &str = "first_pond";
+pub const PET_MILESTONE_JOB_MASTER: &str = "job_master";
+pub const PET_MILESTONE_OLD_FRIEND: &str = "old_friend";
+
+pub fn milestone_label(key: &str) -> &'static str {
+    match key {
+        PET_MILESTONE_FIRST_RANCH => "第一次看牧场",
+        PET_MILESTONE_FIRST_FISHING => "第一次去钓鱼地",
+        PET_MILESTONE_FIRST_POND => "第一次看鱼塘",
+        PET_MILESTONE_JOB_MASTER => "岗位满级",
+        PET_MILESTONE_OLD_FRIEND => "相伴 100 天",
+        _ => "小小的纪念",
+    }
+}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
@@ -1423,6 +1441,13 @@ pub struct PetState {
     pub pond_job: PetJob,
     #[serde(default)]
     pub last_job_day: String,
+    /// 第一次看塘/巡塘/钓鱼这类小纪念。
+    #[serde(default)]
+    pub milestones: BTreeSet<String>,
+    #[serde(default)]
+    pub last_event_day: String,
+    #[serde(default)]
+    pub last_event: String,
 }
 
 impl Default for PetState {
@@ -1464,6 +1489,9 @@ impl Default for PetState {
             fishing_job: PetJob::default(),
             pond_job: PetJob::default(),
             last_job_day: String::new(),
+            milestones: BTreeSet::new(),
+            last_event_day: String::new(),
+            last_event: String::new(),
         }
     }
 }
@@ -1672,8 +1700,59 @@ impl PetState {
         leveled
     }
 
-    pub fn age_days(&self, now: i64) -> u64 {
-        (now.saturating_sub(self.adopted_at) / 86_400_000).max(0) as u64
+    /// 记录一次小纪念；返回是否是第一次。
+    pub fn note_milestone(&mut self, key: &str) -> bool {
+        self.milestones.insert(key.to_string())
+    }
+
+    /// 每天一条随地点变化的小事件，roll 由日期和宠物名确定。
+    pub fn daily_event(&self, roll: u64) -> &'static str {
+        let index = (roll % 3) as usize;
+        match (self.location, self.species) {
+            (PetLocation::Farm, PetSpecies::Dog) => [
+                "在田埂上追了一只蝴蝶，鼻尖沾着草籽",
+                "把一根树枝叼回来，放在你脚边",
+                "在院子里挖了个小坑，自己躺进去",
+            ][index],
+            (PetLocation::Farm, PetSpecies::Cat) => [
+                "在窗台上晒了一下午太阳",
+                "追着一只蛾子撞到了门框",
+                "在草垛上睡醒，胡须上沾着草屑",
+            ][index],
+            (PetLocation::Ranch, PetSpecies::Dog) => [
+                "绕着畜栏跑了一圈，把麻雀赶走了",
+                "趴在饲料桶边守了半天",
+                "在草堆里打了个滚，沾了一身干草",
+            ][index],
+            (PetLocation::Ranch, PetSpecies::Cat) => [
+                "蹲在牛栏顶上，谁叫都不下来",
+                "在干草堆里睡了一觉，只露出尾巴",
+                "盯着挤奶桶看了很久，最后走开了",
+            ][index],
+            (PetLocation::Pond, PetSpecies::Dog) => [
+                "绕着鱼塘跑了一圈，把野猫赶走了",
+                "在塘边刨了个浅坑，趴进去看水",
+                "对着水面上的倒影叫了两声",
+            ][index],
+            (PetLocation::Pond, PetSpecies::Cat) => [
+                "蹲在鱼塘边看水纹，尾巴一下一下拍着地",
+                "伸爪碰了碰水面，又很快收回来",
+                "在塘边芦苇里蹲了半天，没让人发现",
+            ][index],
+            (PetLocation::Fishing, PetSpecies::Dog) => [
+                "在岸边叼回一根别人落下的鱼线",
+                "对着水里的鱼影叫了两声",
+                "把鼻子凑近鱼护，被腥味呛得打了个喷嚏",
+            ][index],
+            (PetLocation::Fishing, PetSpecies::Cat) => [
+                "在钓鱼佬脚边蹲了一下午，等一条小鱼",
+                "盯着浮漂看，比钓鱼的人还认真",
+                "在岸边石头上磨爪子，磨完就睡",
+            ][index],
+        }
+    }
+
+    pub fn age_days(&self, now: i64) -> u64 {        (now.saturating_sub(self.adopted_at) / 86_400_000).max(0) as u64
     }
 
     pub fn stage(&self, now: i64) -> PetStage {

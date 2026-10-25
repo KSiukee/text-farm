@@ -4187,6 +4187,12 @@ impl Game {
             let level = pet.job.level;
             pet.bond = (pet.bond + 1).min(100);
             pet.mood = (pet.mood + 1).min(100);
+            if pet.note_milestone(crate::pet::PET_MILESTONE_FIRST_RANCH) {
+                rewards.push((format!("{}第一次看牧场", pet.name), None));
+            }
+            if level >= 5 && pet.note_milestone(crate::pet::PET_MILESTONE_JOB_MASTER) {
+                rewards.push((format!("{}的岗位满级了", pet.name), None));
+            }
             let name = pet.name.clone();
             let roll = job_roll(day_seed(today) as i64, &name);
             let chance = match pet.species {
@@ -4270,6 +4276,12 @@ impl Game {
             let job_level = pet.fishing_job.level;
             pet.bond = (pet.bond + 1).min(100);
             pet.mood = (pet.mood + 1).min(100);
+            if pet.note_milestone(crate::pet::PET_MILESTONE_FIRST_FISHING) {
+                rewards.push((format!("{}第一次去钓鱼地", pet.name), None));
+            }
+            if job_level >= 5 && pet.note_milestone(crate::pet::PET_MILESTONE_JOB_MASTER) {
+                rewards.push((format!("{}的岗位满级了", pet.name), None));
+            }
             let name = pet.name.clone();
             // 牧场岗位用当天同一个种子；这里加盐，免得同一只宠物在两个岗位摇出同样结果。
             let roll = job_roll(day_seed(today) as i64 ^ 0x4649_5348, &name);
@@ -4387,6 +4399,12 @@ impl Game {
             let job_level = pet.pond_job.level;
             pet.bond = (pet.bond + 1).min(100);
             pet.mood = (pet.mood + 1).min(100);
+            if pet.note_milestone(crate::pet::PET_MILESTONE_FIRST_POND) {
+                rewards.push((format!("{}第一次看鱼塘", pet.name), None));
+            }
+            if job_level >= 5 && pet.note_milestone(crate::pet::PET_MILESTONE_JOB_MASTER) {
+                rewards.push((format!("{}的岗位满级了", pet.name), None));
+            }
             let name = pet.name.clone();
             let roll = job_roll(day_seed(today) as i64 ^ 0x504F_4E44, &name);
             match pet.species {
@@ -4581,6 +4599,21 @@ impl Game {
                 let streak = pet.activity_streak;
                 if let Some(text) = pet.daily_activity_bonus(activity, streak) {
                     activity_logs.push(format!("{}{}", pet.name, text));
+                }
+                if pet.last_event_day != today {
+                    pet.last_event_day = today.to_string();
+                    let event_roll =
+                        job_roll(day_seed(today) as i64 ^ 0x5045_5421, &pet.name);
+                    let event = pet.daily_event(event_roll);
+                    pet.last_event = event.to_string();
+                    pet.bond = (pet.bond + 1).min(100);
+                    pet.mood = (pet.mood + 1).min(100);
+                    activity_logs.push(format!("{}{}", pet.name, event));
+                }
+                if pet.age_days(now) >= 100
+                    && pet.note_milestone(crate::pet::PET_MILESTONE_OLD_FRIEND)
+                {
+                    activity_logs.push(format!("{}已经陪你 100 天了", pet.name));
                 }
                 changed = true;
             }

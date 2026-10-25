@@ -1065,6 +1065,7 @@ try {
   );
   check("主动技能按钮已显示", personalityText.includes("[主动 ·"));
   check("行为树当前活动已显示", personalityText.includes("正在："));
+  check("宠物最近小事已显示", personalityText.includes("最近："));
   check("牧场岗位已显示", personalityText.includes("牧场岗位"));
   await clickText("钓鱼地", true);
   await waitFor(async () => saveState().pets.some((pet) => pet.location === "fishing"));

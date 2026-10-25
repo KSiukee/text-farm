@@ -723,6 +723,24 @@ textarea {
   background: var(--panel-soft);
 }
 
+.pet-milestones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.pet-chip.milestone {
+  border-color: var(--accent-text);
+  color: var(--accent-text);
+}
+
+.pet-last-event {
+  margin: 4px 0 2px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .pet-card-head {
   display: flex;
   flex-wrap: wrap;

@@ -246,6 +246,8 @@ pub struct PetView {
     pub pond_job_level: u32,
     pub pond_job_exp: u64,
     pub pond_job_need: u64,
+    pub milestones: Vec<String>,
+    pub last_event: String,
     pub can_feed: bool,
     pub can_touch: bool,
     pub can_play: bool,
@@ -3763,6 +3765,12 @@ fn pet_view(pet: &PetState, now: i64) -> PetView {
         pond_job_level: pet.pond_job.level,
         pond_job_exp: pet.pond_job.exp,
         pond_job_need: PetJob::need(pet.pond_job.level),
+        milestones: pet
+            .milestones
+            .iter()
+            .map(|key| crate::pet::milestone_label(key).to_string())
+            .collect(),
+        last_event: pet.last_event.clone(),
         can_feed: !pet.boarded,
         can_touch: !pet.boarded && touch_remaining == 0,
         can_play: !pet.boarded && play_remaining == 0 && pet.sickness.is_none() && pet.energy >= 15,
