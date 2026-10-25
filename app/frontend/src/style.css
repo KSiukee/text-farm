@@ -493,8 +493,8 @@ textarea {
 
 .pet-layout {
   display: grid;
-  grid-template-columns: minmax(180px, 260px) 1fr;
-  gap: 18px;
+  grid-template-columns: minmax(200px, 230px) 1fr;
+  gap: 16px;
   align-items: start;
 }
 
@@ -509,7 +509,7 @@ textarea {
 }
 
 .pet-portrait-img {
-  width: min(240px, 100%);
+  width: min(210px, 100%);
   height: auto;
   image-rendering: pixelated;
   background: transparent;
@@ -710,6 +710,18 @@ textarea {
   align-items: baseline;
   gap: 4px 10px;
   margin-bottom: 4px;
+}
+
+.pet-portrait .pet-card {
+  text-align: left;
+}
+
+.pet-portrait .pet-card .pet-bar {
+  grid-template-columns: 64px 1fr;
+}
+
+.pet-portrait .pet-skills .pet-bar {
+  grid-template-columns: 72px 1fr 36px;
 }
 
 .pet-card-head b {
@@ -1172,6 +1184,16 @@ textarea {
     position: static;
     width: 100%;
     margin: -6px 0 12px;
+  }
+}
+
+@media (max-width: 760px) {
+  .pet-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .pet-portrait-img {
+    width: min(180px, 100%);
   }
 }
 

@@ -4826,36 +4826,6 @@ onUnmounted(() => {
                   <span class="pet-chip">第 {{ pet.ageDays }} 天</span>
                   <span class="pet-chip">{{ pet.moodLabel }}</span>
                 </div>
-              </div>
-
-              <div class="pet-info">
-                <div v-if="pet.boarded" class="warn pet-note">
-                  {{ pet.name }}在宠物院子寄养中，每月自动扣 {{ pet.boardingFee }} 金币。
-                  <button
-                    class="link"
-                    type="button"
-                    :disabled="acting || activePets.length >= 3"
-                    @click="setPetBoarded(pet.id, false)"
-                  >
-                    [接回]
-                  </button>
-                </div>
-                <div v-if="pet.sickness" class="warn pet-note">
-                  {{ pet.name }}生病了：{{ pet.sickness }}
-                  <button class="link" type="button" :disabled="acting" @click="petAction('healPet')">
-                    [看兽医 500]
-                  </button>
-                  <button
-                    v-if="petCare && petCare.medicine > 0"
-                    class="link"
-                    type="button"
-                    :disabled="acting"
-                    @click="usePetMedicine"
-                  >
-                    [用药品 ×{{ petCare.medicine }}]
-                  </button>
-                </div>
-
                 <section class="pet-card">
                   <div class="pet-card-head">
                     <b>状态</b>
@@ -4896,6 +4866,36 @@ onUnmounted(() => {
                     </div>
                   </div>
                 </section>
+
+              </div>
+
+              <div class="pet-info">
+                <div v-if="pet.boarded" class="warn pet-note">
+                  {{ pet.name }}在宠物院子寄养中，每月自动扣 {{ pet.boardingFee }} 金币。
+                  <button
+                    class="link"
+                    type="button"
+                    :disabled="acting || activePets.length >= 3"
+                    @click="setPetBoarded(pet.id, false)"
+                  >
+                    [接回]
+                  </button>
+                </div>
+                <div v-if="pet.sickness" class="warn pet-note">
+                  {{ pet.name }}生病了：{{ pet.sickness }}
+                  <button class="link" type="button" :disabled="acting" @click="petAction('healPet')">
+                    [看兽医 500]
+                  </button>
+                  <button
+                    v-if="petCare && petCare.medicine > 0"
+                    class="link"
+                    type="button"
+                    :disabled="acting"
+                    @click="usePetMedicine"
+                  >
+                    [用药品 ×{{ petCare.medicine }}]
+                  </button>
+                </div>
 
                 <template v-if="!pet.boarded">
                   <section class="pet-card">
