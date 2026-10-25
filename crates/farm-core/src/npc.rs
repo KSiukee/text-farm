@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use std::collections::BTreeMap;
+
 use crate::content::{ContentPack, CropDef};
 use crate::model::DailyState;
 use crate::ranch::RanchAnimalKind;
@@ -81,6 +83,12 @@ pub struct NpcState {
     /// 小请求完成后留下的小屋纪念物。
     #[serde(default)]
     pub souvenirs: Vec<String>,
+    /// 已触发但还没做选择的故事。
+    #[serde(default)]
+    pub pending_event: String,
+    /// 每个故事选过的选项（event id -> choice id）。
+    #[serde(default)]
+    pub choices: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -125,6 +133,7 @@ pub struct NpcView {
     pub level: u32,
     pub friendship: i32,
     pub relation: String,
+    pub address: String,
     pub emoji: String,
     pub role: String,
     pub tags: Vec<String>,
@@ -161,6 +170,14 @@ pub struct NpcMemoryView {
     pub title: String,
     pub summary: String,
     pub season: String,
+    pub choice: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NpcChoiceView {
+    pub id: String,
+    pub label: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -264,6 +281,8 @@ pub fn starter(now: i64, content: &ContentPack) -> Vec<NpcState> {
                 request_week: -1,
                 request_done: false,
                 souvenirs: Vec::new(),
+                pending_event: String::new(),
+                choices: BTreeMap::new(),
             }
         })
         .collect()
@@ -294,11 +313,18 @@ pub fn view(
     inventory: &std::collections::BTreeMap<String, u32>,
     today: &str,
     farm_days: u32,
+    owner_name: &str,
     now: i64,
 ) -> NpcView {
     let profile = crate::npc_story::profile(&npc.id);
-    let (today_line, today_note) =
-        crate::npc_story::line_for(&npc.id, npc.friendship, now / 86_400_000, today, farm_days);
+    let (today_line, today_note) = crate::npc_story::line_for(
+        &npc.id,
+        npc.friendship,
+        now / 86_400_000,
+        today,
+        farm_days,
+        owner_name,
+    );
     let next_event = crate::npc_story::upcoming_event(&npc.id, &npc.seen_events)
         .map(|event| format!("{} 好感 · {}", event.threshold, event.title));
     let week = now / 86_400_000 / 7;
@@ -329,6 +355,13 @@ pub fn view(
                 title: event.title.to_string(),
                 summary: crate::npc_story::summary(&memory.event_id).to_string(),
                 season: memory.season.clone(),
+                choice: npc
+                    .choices
+                    .get(&memory.event_id)
+                    .and_then(|choice_id| {
+                        crate::npc_story::choice_label(&memory.event_id, choice_id)
+                    })
+                    .map(|label| label.to_string()),
             })
         })
         .collect();
@@ -392,6 +425,7 @@ pub fn view(
         level: npc.level,
         friendship: npc.friendship,
         relation: relation(npc.friendship).into(),
+        address: crate::npc_story::address_for(npc.friendship, owner_name),
         emoji: profile.map(|profile| profile.emoji.to_string()).unwrap_or_default(),
         role: profile.map(|profile| profile.role.to_string()).unwrap_or_default(),
         tags: profile

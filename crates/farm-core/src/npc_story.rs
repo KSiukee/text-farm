@@ -266,6 +266,146 @@ pub fn events(id: &str) -> &'static [NpcEvent] {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct NpcChoice {
+    pub id: &'static str,
+    pub label: &'static str,
+    pub reply: &'static str,
+}
+
+pub fn choices(event_id: &str) -> &'static [NpcChoice] {
+    match event_id {
+        "ahe_hoe" => &[
+            NpcChoice {
+                id: "steady",
+                label: "帮他扶稳",
+                reply: "阿禾把木柄楔紧，试了试：「行了。你这人，手比嘴稳。」",
+            },
+            NpcChoice {
+                id: "try",
+                label: "让我来试试",
+                reply: "你接过锄头敲了两下，阿禾在旁边看着：「轻点，它比我老。」",
+            },
+        ],
+        "ahe_field" => &[
+            NpcChoice {
+                id: "stay",
+                label: "陪他坐一会儿",
+                reply: "你没接话，只在他旁边坐下。田埂上的风把两个人的影子吹得很近。",
+            },
+            NpcChoice {
+                id: "field",
+                label: "说这块地会种好",
+                reply: "阿禾低头笑了一下：「嗯。那就一起种着看。」",
+            },
+        ],
+        "xiaoman_jam" => &[
+            NpcChoice {
+                id: "taste",
+                label: "先尝一口",
+                reply: "小满盯着你的表情，等你点头才松了口气：「这回真没糊。」",
+            },
+            NpcChoice {
+                id: "ask",
+                label: "问她为什么留着",
+                reply: "她把罐子往回一收：「留着提醒自己，别怕重来。」",
+            },
+        ],
+        "xiaoman_bees" => &[
+            NpcChoice {
+                id: "listen",
+                label: "跟她一起听",
+                reply: "两个人蹲在蜂箱前听了一会儿，小满小声说：「它们好像不打算搬了。」",
+            },
+            NpcChoice {
+                id: "gloves",
+                label: "帮她递手套",
+                reply: "她接过去，笑得眼睛弯起来：「你还挺会照顾人。」",
+            },
+        ],
+        "qingxing_lamp" => &[
+            NpcChoice {
+                id: "take",
+                label: "收下灯",
+                reply: "青杏把灯芯拨亮：「路黑就点上。别硬撑。」",
+            },
+            NpcChoice {
+                id: "leave",
+                label: "让她自己留着",
+                reply: "她愣了一下，把灯收回柜子里：「那我夜里出诊用。你也是，别硬撑。」",
+            },
+        ],
+        "qingxing_cabinet" => &[
+            NpcChoice {
+                id: "watch",
+                label: "答应盯着老陶",
+                reply: "青杏点点头，在药柜上贴了一张小纸条：「那就说定了。」",
+            },
+            NpcChoice {
+                id: "herself",
+                label: "劝她先顾自己",
+                reply: "她沉默了一会儿，轻声说：「你倒是第一个这么说的人。」",
+            },
+        ],
+        "laotao_chair" => &[
+            NpcChoice {
+                id: "sit",
+                label: "坐下试试",
+                reply: "椅子很稳。老陶在旁边看着，嘴上嫌弃：「坐就坐，别夸我。」",
+            },
+            NpcChoice {
+                id: "send",
+                label: "劝他给闺女送去",
+                reply: "他摆摆手，过了会儿又说：「……下回她回来，我自己给她。」",
+            },
+        ],
+        "laotao_apprentice" => &[
+            NpcChoice {
+                id: "plane",
+                label: "接过刨子",
+                reply: "老陶握着你的手推了第一下：「慢点，木头会告诉你往哪走。」",
+            },
+            NpcChoice {
+                id: "clumsy",
+                label: "说自己手笨",
+                reply: "他哼了一声：「手笨才要多练。明儿还来。」",
+            },
+        ],
+        "liuyue_boat" => &[
+            NpcChoice {
+                id: "hold",
+                label: "扶住船板",
+                reply: "六月把最后一颗钉子敲进去，抬头说：「稳了。下次你来，我载你出去。」",
+            },
+            NpcChoice {
+                id: "ask",
+                label: "问她为什么修这么多次",
+                reply: "她擦了擦手：「船旧了，修修补补还能走。人也一样。」",
+            },
+        ],
+        "liuyue_moon" => &[
+            NpcChoice {
+                id: "watch",
+                label: "陪她看一会儿",
+                reply: "两个人在河心坐了很久。六月没再说话，只把船桨轻轻横在膝上。",
+            },
+            NpcChoice {
+                id: "father",
+                label: "问她父亲的事",
+                reply: "她看着月亮：「他教我认鱼，也教我认路。现在换我教别人了。」",
+            },
+        ],
+        _ => &[],
+    }
+}
+
+pub fn choice_label(event_id: &str, choice_id: &str) -> Option<&'static str> {
+    choices(event_id)
+        .iter()
+        .find(|choice| choice.id == choice_id)
+        .map(|choice| choice.label)
+}
+
 pub fn event_by_id(event_id: &str) -> Option<&'static NpcEvent> {
     PROFILES
         .iter()
@@ -543,6 +683,30 @@ pub fn special_note(id: &str, day: &str, farm_days: u32) -> Option<(String, Stri
     None
 }
 
+/// 现在怎么称呼玩家：陌生人叫“你”，熟一点叫名字，老友叫“老朋友”。
+pub fn address_for(friendship: i32, owner_name: &str) -> String {
+    if friendship >= 70 {
+        "老朋友".to_string()
+    } else if friendship >= 15 && !owner_name.is_empty() {
+        owner_name.to_string()
+    } else {
+        "你".to_string()
+    }
+}
+
+fn address_prefix(friendship: i32, owner_name: &str, day: i64) -> Option<String> {
+    if owner_name.is_empty() || day <= 0 || day.rem_euclid(4) != 0 {
+        return None;
+    }
+    if friendship >= 70 {
+        Some("老朋友".to_string())
+    } else if friendship >= 15 {
+        Some(owner_name.to_string())
+    } else {
+        None
+    }
+}
+
 /// 卡片与聊天共用的一句话：特别日子 > 偶尔提起别人 > 日常台词。
 pub fn line_for(
     id: &str,
@@ -550,15 +714,20 @@ pub fn line_for(
     day: i64,
     today: &str,
     farm_days: u32,
+    owner_name: &str,
 ) -> (String, Option<String>) {
-    if let Some((tag, line)) = special_note(id, today, farm_days) {
-        return (line, Some(tag));
-    }
-    if day > 0 && day.rem_euclid(5) == 0 {
+    let (mut line, tag) = if let Some((tag, line)) = special_note(id, today, farm_days) {
+        (line, Some(tag))
+    } else if day > 0 && day.rem_euclid(5) == 0 {
         let (other, line) = cross_line(id, day);
-        return (line.to_string(), Some(format!("提到{other}")));
+        (line.to_string(), Some(format!("提到{other}")))
+    } else {
+        (daily_line(id, friendship, day).to_string(), None)
+    };
+    if let Some(prefix) = address_prefix(friendship, owner_name, day) {
+        line = format!("{prefix}，{line}");
     }
-    (daily_line(id, friendship, day).to_string(), None)
+    (line, tag)
 }
 
 pub fn next_event(
@@ -633,8 +802,17 @@ mod tests {
 
     #[test]
     fn line_for_mentions_other_villagers_on_some_days() {
-        let (line, tag) = line_for("ahe", 35, 10, "2026-10-25", 1);
+        let (line, tag) = line_for("ahe", 35, 10, "2026-10-25", 1, "阿测");
         assert_eq!(tag.as_deref(), Some("提到青杏"));
         assert!(line.contains("青杏"));
+    }
+
+    #[test]
+    fn address_changes_with_friendship() {
+        assert_eq!(address_for(5, "阿测"), "你");
+        assert_eq!(address_for(20, "阿测"), "阿测");
+        assert_eq!(address_for(75, "阿测"), "老朋友");
+        let (line, _) = line_for("ahe", 35, 8, "2026-10-25", 1, "阿测");
+        assert!(line.starts_with("阿测，"), "{line}");
     }
 }

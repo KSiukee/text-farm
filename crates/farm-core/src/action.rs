@@ -346,6 +346,15 @@ pub enum Action {
         #[serde(rename = "npcId")]
         npc_id: String,
     },
+    /// 给已触发的故事做二选一。
+    NpcStoryChoice {
+        #[serde(rename = "npcId")]
+        npc_id: String,
+        #[serde(rename = "eventId")]
+        event_id: String,
+        #[serde(rename = "choiceId")]
+        choice_id: String,
+    },
     ClaimSignIn,
     UpdateProfile {
         #[serde(rename = "ownerName")]

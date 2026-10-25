@@ -41,6 +41,7 @@ import type {
   FishingSpot,
   ItemStack,
   NpcTalkEffect,
+  NpcChoiceView,
   NpcView,
   PetBreed,
   PetFoodKind,
@@ -1063,6 +1064,16 @@ function greetNpc(npc: NpcView) {
 
 function chatWithNpc(npc: NpcView) {
   void act({ type: "chatWithNpc", npcId: npc.id });
+}
+
+function chooseNpcStory(choice: NpcChoiceView) {
+  if (!npcTalk.value?.eventId) return;
+  void act({
+    type: "npcStoryChoice",
+    npcId: npcTalk.value.npcId,
+    eventId: npcTalk.value.eventId,
+    choiceId: choice.id,
+  });
 }
 
 function openNpcJournal(npc: NpcView) {
@@ -3559,6 +3570,7 @@ onUnmounted(() => {
             </div>
             <p class="npc-today">“{{ npc.todayLine }}”</p>
             <div class="npc-meta">
+              <span class="muted">称呼：{{ npc.address }}</span>
               <span class="muted">{{ npc.routine }}</span>
               <span v-if="npc.nextEvent" class="muted">· 下一段故事：{{ npc.nextEvent }}</span>
             </div>
@@ -5491,11 +5503,23 @@ onUnmounted(() => {
             {{ npcTalk.npcName }} · {{ npcTalk.title }}
           </div>
           <p class="npc-scene-text">{{ npcTalk.text }}</p>
+          <div v-if="npcTalk.choices.length" class="npc-choices">
+            <button
+              v-for="choice in npcTalk.choices"
+              :key="choice.id"
+              class="link"
+              type="button"
+              :disabled="acting"
+              @click="chooseNpcStory(choice)"
+            >
+              [{{ choice.label }}]
+            </button>
+          </div>
           <div v-if="npcTalk.reward || npcTalk.favor" class="npc-scene-reward">
             <span v-if="npcTalk.reward">收下：{{ npcTalk.reward }}</span>
             <span v-if="npcTalk.favor">好感 +{{ npcTalk.favor }}</span>
           </div>
-          <button class="link" type="button" @click="npcTalk = null">[收下]</button>
+          <button v-if="!npcTalk.choices.length" class="link" type="button" @click="npcTalk = null">[收下]</button>
         </div>
       </div>
 
@@ -5506,6 +5530,7 @@ onUnmounted(() => {
             <span class="npc-tag">{{ memory.season }}</span>
             <strong>{{ memory.title }}</strong>
             <span class="muted">{{ memory.summary }}</span>
+            <span v-if="memory.choice" class="muted">· 你选了「{{ memory.choice }}」</span>
           </div>
           <button class="link" type="button" @click="npcJournal = null">[合上]</button>
         </div>

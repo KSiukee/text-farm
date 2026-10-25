@@ -23,15 +23,49 @@ fn talk(game: &mut Game) -> (String, i32, u64) {
     (title, favor, game.state().coins - before)
 }
 
+fn choose(game: &mut Game, event_id: &str, choice_id: &str) -> (String, i32, u64) {
+    let before = game.state().coins;
+    let outcome = game
+        .dispatch(
+            Action::NpcStoryChoice {
+                npc_id: "ahe".into(),
+                event_id: event_id.into(),
+                choice_id: choice_id.into(),
+            },
+            0,
+        )
+        .unwrap();
+    let Effect::NpcTalk {
+        text, favor, tag, ..
+    } = outcome.effects[0].clone()
+    else {
+        panic!("expected npc talk effect");
+    };
+    assert_eq!(tag, "选择");
+    (text, favor, game.state().coins - before)
+}
+
 #[test]
 fn chat_once_per_day_and_unlocks_first_story() {
     let mut game = setup();
     let (title, favor, coins) = talk(&mut game);
     assert_eq!(title, "老锄头");
+    assert_eq!(favor, 0);
+    assert_eq!(coins, 0);
+    assert_eq!(game.state().npcs[0].friendship, 31);
+    assert!(game.state().npcs[0].seen_events.contains(&"ahe_hoe".into()));
+    assert_eq!(game.state().npcs[0].pending_event, "ahe_hoe");
+
+    let (reply, favor, coins) = choose(&mut game, "ahe_hoe", "steady");
+    assert!(reply.contains("手比嘴稳"));
     assert_eq!(favor, 4);
     assert_eq!(coins, 300);
     assert_eq!(game.state().npcs[0].friendship, 35);
-    assert!(game.state().npcs[0].seen_events.contains(&"ahe_hoe".into()));
+    assert_eq!(game.state().npcs[0].pending_event, "");
+    assert_eq!(
+        game.state().npcs[0].choices.get("ahe_hoe").map(String::as_str),
+        Some("steady")
+    );
 
     let (title, favor, coins) = talk(&mut game);
     assert_eq!(title, "闲聊");
@@ -54,6 +88,12 @@ fn second_story_unlocks_at_sixty_and_never_repeats() {
     game.state_mut().npcs[0].seen_events = vec!["ahe_hoe".into()];
     let (title, favor, coins) = talk(&mut game);
     assert_eq!(title, "田埂上的话");
+    assert_eq!(favor, 0);
+    assert_eq!(coins, 0);
+    assert_eq!(game.state().npcs[0].friendship, 61);
+
+    let (reply, favor, coins) = choose(&mut game, "ahe_field", "stay");
+    assert!(reply.contains("影子吹得很近"));
     assert_eq!(favor, 5);
     assert_eq!(coins, 600);
     assert_eq!(game.state().npcs[0].friendship, 66);

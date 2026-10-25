@@ -2111,6 +2111,14 @@ textarea {
   font-size: 13px;
 }
 
+.npc-choices {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
 .npc-plot {
   padding: 2px 0;
   font-family: var(--font-ui);

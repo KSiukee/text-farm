@@ -1754,6 +1754,7 @@ impl Game {
                     &self.state.inventory,
                     &self.state.daily.day,
                     farm_days,
+                    &self.state.owner_name,
                     now,
                 )
             })

@@ -111,6 +111,8 @@ function seedSave() {
     friendship: npc.id === "ahe" ? 30 : npc.friendship,
     seenEvents: [],
     lastChatDay: "",
+    pendingEvent: "",
+    choices: {},
     ranch: (npc.ranch || []).map((animal) => ({
       ...animal,
       helped: false,
@@ -570,6 +572,14 @@ try {
   await waitFor(async () => (await evaluate(`!!document.querySelector('.npc-scene-card')`)) === true);
   const sceneText = await bodyText();
   check("NPC 好感故事已打开", sceneText.includes("老锄头") && sceneText.includes("我爹留下的"));
+  check(
+    "NPC 故事有选择",
+    (await evaluate(`document.querySelectorAll('.npc-choices button').length`)) === 2,
+  );
+  await clickText("[帮他扶稳]");
+  await waitFor(async () => saveState().npcs[0].pendingEvent === "");
+  const choiceText = await bodyText();
+  check("NPC 故事选择已生效", choiceText.includes("手比嘴稳"));
   check("NPC 好感故事给奖励", saveState().coins === neighborCoins + 300);
   check("NPC 好感已增加", saveState().npcs[0].friendship === 35);
   await clickText("[收下]");
@@ -582,6 +592,7 @@ try {
   await waitFor(async () => (await evaluate(`document.querySelectorAll('.npc-memory').length`)) === 1);
   const journalText = await bodyText();
   check("NPC 人物志已打开", journalText.includes("老锄头") && journalText.includes("你帮他修好了父亲留下的旧锄头"));
+  check("NPC 人物志记住选择", journalText.includes("你选了「帮他扶稳」"));
   await clickText("[合上]");
   await waitFor(async () => (await evaluate(`!!document.querySelector('.npc-memory')`)) === false);
   const requestCoins = saveState().coins;

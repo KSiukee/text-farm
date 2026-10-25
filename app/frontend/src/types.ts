@@ -768,6 +768,7 @@ export interface NpcView {
   level: number;
   friendship: number;
   relation: string;
+  address: string;
   emoji: string;
   role: string;
   tags: string[];
@@ -800,6 +801,12 @@ export interface NpcMemoryView {
   title: string;
   summary: string;
   season: string;
+  choice: string | null;
+}
+
+export interface NpcChoiceView {
+  id: string;
+  label: string;
 }
 
 export interface NpcRoomView {
@@ -1338,12 +1345,15 @@ export interface SpecimenResultEffect {
 
 export interface NpcTalkEffect {
   kind: "npcTalk";
+  npcId: string;
   npcName: string;
   title: string;
   text: string;
   reward: string;
   favor: number;
   tag: string;
+  eventId: string;
+  choices: NpcChoiceView[];
 }
 
 export type Effect =
@@ -1452,6 +1462,7 @@ export type Action =
   | { type: "npcGreeting"; npcId: string }
   | { type: "chatWithNpc"; npcId: string }
   | { type: "helpNpcRequest"; npcId: string }
+  | { type: "npcStoryChoice"; npcId: string; eventId: string; choiceId: string }
   | { type: "claimSignIn" }
   | { type: "updateProfile"; ownerName: string }
   | { type: "claimDaily"; id: number }

@@ -62,12 +62,15 @@ pub enum Effect {
     },
     #[serde(rename_all = "camelCase")]
     NpcTalk {
+        npc_id: String,
         npc_name: String,
         title: String,
         text: String,
         reward: String,
         favor: i32,
         tag: String,
+        event_id: String,
+        choices: Vec<crate::npc::NpcChoiceView>,
     },
 }
 
@@ -77,6 +80,16 @@ pub struct Outcome {
     pub rev: u64,
     pub changed: bool,
     pub effects: Vec<Effect>,
+}
+
+fn npc_choice_views(event_id: &str) -> Vec<crate::npc::NpcChoiceView> {
+    crate::npc_story::choices(event_id)
+        .iter()
+        .map(|choice| crate::npc::NpcChoiceView {
+            id: choice.id.to_string(),
+            label: choice.label.to_string(),
+        })
+        .collect()
 }
 
 /// 宠物牧场岗位的日结奖励；先收集再统一入库，避免借用到一半改库存。
@@ -120,6 +133,11 @@ impl Game {
             Action::FeedPetFood { pet_id, kind } => self.feed_pet_food(&pet_id, kind, now)?,
             Action::ChatWithNpc { npc_id } => self.chat_with_npc(&npc_id, now)?,
             Action::HelpNpcRequest { npc_id } => self.help_npc_request(&npc_id, now)?,
+            Action::NpcStoryChoice {
+                npc_id,
+                event_id,
+                choice_id,
+            } => self.npc_story_choice(&npc_id, &event_id, &choice_id, now)?,
             Action::PetCompanion { pet_id } => self.touch_pet(&pet_id, now)?,
             Action::PlayWithPet { pet_id } => self.play_pet(&pet_id, now)?,
             Action::HealPet { pet_id } => self.heal_pet(&pet_id, now)?,
@@ -4903,111 +4921,176 @@ impl Game {
         } else {
             1
         };
+        let owner_name = self.state.owner_name.clone();
         let npc_name = self.state.npcs[pos].name.clone();
-        let mut coins_reward = 0;
-        let (title, text, favor, tag) = {
-            let npc = &mut self.state.npcs[pos];
-            if npc.last_chat_day == today {
-                let (line, note) = crate::npc_story::line_for(
-                    &npc.id,
-                    npc.friendship,
-                    day_index,
-                    &today,
-                    farm_days,
-                );
-                ("闲聊".to_string(), line, 0, note.unwrap_or_default())
-            } else {
-                npc.last_chat_day = today.clone();
-                npc.friendship = (npc.friendship + 1).min(100);
-                if let Some(event) =
-                    crate::npc_story::next_event(&npc.id, npc.friendship, &npc.seen_events)
-                {
-                    npc.seen_events.push(event.id.to_string());
-                    npc.memories.push(crate::npc::NpcMemory {
-                        event_id: event.id.to_string(),
-                        day: day_index,
-                        season: crate::npc_story::season_of(&today).to_string(),
-                        last_recall_day: 0,
-                    });
-                    npc.friendship = (npc.friendship + event.favor).min(100);
-                    coins_reward = event.reward;
-                    (
-                        event.title.to_string(),
-                        event.text.to_string(),
-                        event.favor,
-                        String::new(),
-                    )
-                } else {
-                    let current_season = crate::npc_story::season_of(&today);
-                    let recall_id = npc
-                        .memories
-                        .iter()
-                        .filter(|memory| {
-                            memory.season == current_season
-                                && day_index - memory.day >= 3
-                                && day_index - memory.last_recall_day >= 3
-                        })
-                        .filter_map(|memory| {
-                            crate::npc_story::event_by_id(&memory.event_id)
-                                .map(|event| (memory.event_id.clone(), event.threshold))
-                        })
-                        .max_by_key(|(_, threshold)| *threshold)
-                        .map(|(event_id, _)| event_id);
-                    if let Some(event_id) = recall_id {
-                        if let Some(memory) = npc
-                            .memories
-                            .iter_mut()
-                            .find(|memory| memory.event_id == event_id)
-                        {
-                            memory.last_recall_day = day_index;
-                        }
-                        (
-                            "旧事".to_string(),
-                            crate::npc_story::recall_line(&event_id).to_string(),
-                            1,
-                            "记得".to_string(),
-                        )
-                    } else {
-                        let (line, note) = crate::npc_story::line_for(
-                            &npc.id,
-                            npc.friendship,
-                            day_index,
-                            &today,
-                            farm_days,
-                        );
-                        (
-                            "闲聊".to_string(),
-                            line,
-                            1,
-                            note.unwrap_or_default(),
-                        )
-                    }
-                }
+
+        // 有一段故事已经触发但还没选：把选择再端上来，不重复加好感/金币。
+        let pending = self.state.npcs[pos].pending_event.clone();
+        if !pending.is_empty() {
+            if let Some(event) = crate::npc_story::event_by_id(&pending) {
+                return Ok(vec![Effect::NpcTalk {
+                    npc_id: npc_id.into(),
+                    npc_name,
+                    title: event.title.to_string(),
+                    text: event.text.to_string(),
+                    reward: String::new(),
+                    favor: 0,
+                    tag: String::new(),
+                    event_id: event.id.to_string(),
+                    choices: npc_choice_views(event.id),
+                }]);
             }
-        };
-        if coins_reward > 0 {
-            self.state.coins = self.state.coins.saturating_add(coins_reward);
+            self.state.npcs[pos].pending_event.clear();
         }
-        let reward = if coins_reward > 0 {
-            format!("{coins_reward} 金币")
-        } else {
-            String::new()
+
+        if self.state.npcs[pos].last_chat_day == today {
+            let npc = &self.state.npcs[pos];
+            let (line, note) = crate::npc_story::line_for(
+                &npc.id,
+                npc.friendship,
+                day_index,
+                &today,
+                farm_days,
+                &owner_name,
+            );
+            return Ok(vec![Effect::NpcTalk {
+                npc_id: npc_id.into(),
+                npc_name,
+                title: "闲聊".to_string(),
+                text: line,
+                reward: String::new(),
+                favor: 0,
+                tag: note.unwrap_or_default(),
+                event_id: String::new(),
+                choices: Vec::new(),
+            }]);
+        }
+
+        self.state.npcs[pos].last_chat_day = today.clone();
+        self.state.npcs[pos].friendship = (self.state.npcs[pos].friendship + 1).min(100);
+
+        if let Some(event) =
+            crate::npc_story::next_event(npc_id, self.state.npcs[pos].friendship, &self.state.npcs[pos].seen_events)
+        {
+            let npc = &mut self.state.npcs[pos];
+            npc.seen_events.push(event.id.to_string());
+            npc.pending_event = event.id.to_string();
+            npc.memories.push(crate::npc::NpcMemory {
+                event_id: event.id.to_string(),
+                day: day_index,
+                season: crate::npc_story::season_of(&today).to_string(),
+                last_recall_day: 0,
+            });
+            self.push_log(now, format!("{npc_name}想跟你说件事"));
+            return Ok(vec![Effect::NpcTalk {
+                npc_id: npc_id.into(),
+                npc_name,
+                title: event.title.to_string(),
+                text: event.text.to_string(),
+                reward: String::new(),
+                favor: 0,
+                tag: String::new(),
+                event_id: event.id.to_string(),
+                choices: npc_choice_views(event.id),
+            }]);
+        }
+
+        let current_season = crate::npc_story::season_of(&today);
+        let recall_id = {
+            let npc = &self.state.npcs[pos];
+            npc.memories
+                .iter()
+                .filter(|memory| {
+                    memory.season == current_season
+                        && day_index - memory.day >= 3
+                        && day_index - memory.last_recall_day >= 3
+                })
+                .filter_map(|memory| {
+                    crate::npc_story::event_by_id(&memory.event_id)
+                        .map(|event| (memory.event_id.clone(), event.threshold))
+                })
+                .max_by_key(|(_, threshold)| *threshold)
+                .map(|(event_id, _)| event_id)
         };
-        let log = if title == "闲聊" {
-            format!("你和{npc_name}聊了几句")
-        } else if title == "旧事" {
-            format!("你和{npc_name}聊起一件旧事")
-        } else {
-            format!("{npc_name}跟你讲了「{title}」")
-        };
-        self.push_log(now, log);
+        if let Some(event_id) = recall_id {
+            if let Some(memory) = self.state.npcs[pos]
+                .memories
+                .iter_mut()
+                .find(|memory| memory.event_id == event_id)
+            {
+                memory.last_recall_day = day_index;
+            }
+            return Ok(vec![Effect::NpcTalk {
+                npc_id: npc_id.into(),
+                npc_name,
+                title: "旧事".to_string(),
+                text: crate::npc_story::recall_line(&event_id).to_string(),
+                reward: String::new(),
+                favor: 1,
+                tag: "记得".to_string(),
+                event_id: String::new(),
+                choices: Vec::new(),
+            }]);
+        }
+
+        let npc = &self.state.npcs[pos];
+        let (line, note) = crate::npc_story::line_for(
+            &npc.id,
+            npc.friendship,
+            day_index,
+            &today,
+            farm_days,
+            &owner_name,
+        );
+        self.push_log(now, format!("你和{npc_name}聊了几句"));
         Ok(vec![Effect::NpcTalk {
+            npc_id: npc_id.into(),
             npc_name,
-            title,
-            text,
-            reward,
-            favor,
-            tag,
+            title: "闲聊".to_string(),
+            text: line,
+            reward: String::new(),
+            favor: 1,
+            tag: note.unwrap_or_default(),
+            event_id: String::new(),
+            choices: Vec::new(),
+        }])
+    }
+
+    fn npc_story_choice(
+        &mut self,
+        npc_id: &str,
+        event_id: &str,
+        choice_id: &str,
+        now: i64,
+    ) -> Result<Vec<Effect>, GameError> {
+        let pos = self.npc_pos(npc_id)?;
+        if self.state.npcs[pos].pending_event != event_id {
+            return Err(GameError::NpcChoiceUnavailable);
+        }
+        let event = crate::npc_story::event_by_id(event_id).ok_or(GameError::NpcChoiceUnavailable)?;
+        let choice = crate::npc_story::choices(event_id)
+            .iter()
+            .find(|choice| choice.id == choice_id)
+            .ok_or(GameError::NpcChoiceUnavailable)?;
+        let npc = &mut self.state.npcs[pos];
+        npc.pending_event.clear();
+        npc.choices
+            .insert(event_id.to_string(), choice_id.to_string());
+        npc.friendship = (npc.friendship + event.favor).min(100);
+        let reward = event.reward;
+        self.state.coins = self.state.coins.saturating_add(reward);
+        let npc_name = npc.name.clone();
+        self.push_log(now, format!("{npc_name}跟你说完了「{}」", event.title));
+        Ok(vec![Effect::NpcTalk {
+            npc_id: npc_id.into(),
+            npc_name,
+            title: event.title.to_string(),
+            text: choice.reply.to_string(),
+            reward: format!("{reward} 金币"),
+            favor: event.favor,
+            tag: "选择".to_string(),
+            event_id: String::new(),
+            choices: Vec::new(),
         }])
     }
 
