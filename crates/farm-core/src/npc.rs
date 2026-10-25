@@ -159,6 +159,7 @@ pub struct NpcView {
     pub birthday_gift: Option<NpcBirthdayGiftView>,
     pub free_gift: Option<NpcFreeGiftView>,
     pub help: NpcHelpView,
+    pub perks: Vec<NpcPerkView>,
     pub plots: Vec<NpcPlotView>,
     pub ranch: Vec<NpcRanchAnimalView>,
 }
@@ -168,6 +169,77 @@ pub struct NpcView {
 pub struct NpcHelpView {
     pub can_help: bool,
     pub hint: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NpcPerkView {
+    pub threshold: u32,
+    pub title: String,
+    pub desc: String,
+    pub unlocked: bool,
+}
+
+pub fn perk_bonus(npcs: &[NpcState], id: &str) -> u32 {
+    npcs.iter()
+        .find(|npc| npc.id == id)
+        .map(|npc| {
+            if npc.friendship >= 70 {
+                4
+            } else if npc.friendship >= 40 {
+                2
+            } else {
+                0
+            }
+        })
+        .unwrap_or(0)
+}
+
+pub fn plant_yield_pct(npcs: &[NpcState]) -> u32 {
+    perk_bonus(npcs, "ahe")
+}
+
+pub fn craft_speed_pct(npcs: &[NpcState]) -> u32 {
+    perk_bonus(npcs, "xiaoman")
+}
+
+pub fn ranch_quality_pct(npcs: &[NpcState]) -> u32 {
+    perk_bonus(npcs, "qingxing")
+}
+
+pub fn coin_gain_pct(npcs: &[NpcState]) -> u32 {
+    perk_bonus(npcs, "laotao")
+}
+
+pub fn fishing_exp_pct(npcs: &[NpcState]) -> u32 {
+    perk_bonus(npcs, "liuyue")
+}
+
+fn perk_defs(id: &str) -> [(&'static str, &'static str); 2] {
+    match id {
+        "ahe" => [("厚土", "作物产量 +2%"), ("老把式", "作物产量 +4%")],
+        "xiaoman" => [("顺手", "加工速度 +2%"), ("一锅出", "加工速度 +4%")],
+        "qingxing" => [("看顾", "畜产品品质 +2%"), ("老方子", "畜产品品质 +4%")],
+        "laotao" => [("会算", "卖出收益 +2%"), ("老账本", "卖出收益 +4%")],
+        "liuyue" => [("看水", "钓鱼经验 +2%"), ("河路", "钓鱼经验 +4%")],
+        _ => [("搭把手", ""), ("老相识", "")],
+    }
+}
+
+pub fn perks(id: &str, friendship: i32) -> Vec<NpcPerkView> {
+    perk_defs(id)
+        .into_iter()
+        .enumerate()
+        .map(|(index, (title, desc))| {
+            let threshold = if index == 0 { 40 } else { 70 };
+            NpcPerkView {
+                threshold,
+                title: title.to_string(),
+                desc: desc.to_string(),
+                unlocked: friendship >= threshold as i32,
+            }
+        })
+        .collect()
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -542,6 +614,7 @@ pub fn view(
         birthday_gift,
         free_gift,
         help,
+        perks: perks(&npc.id, npc.friendship),
         plots,
         ranch,
     }

@@ -52,3 +52,17 @@ fn ahe_waters_growing_plots() {
     assert!(crop.watered);
     assert!(crop.ready_at < before);
 }
+
+#[test]
+fn neighbor_perks_unlock_at_forty_and_seventy() {
+    let mut game = Game::new(0);
+    game.state_mut().npcs[0].friendship = 40;
+    let perks = &game.snapshot(0).npcs[0].perks;
+    assert!(perks[0].unlocked);
+    assert!(!perks[1].unlocked);
+
+    game.state_mut().npcs[0].friendship = 70;
+    let perks = &game.snapshot(0).npcs[0].perks;
+    assert!(perks.iter().all(|perk| perk.unlocked));
+}
+

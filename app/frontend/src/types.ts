@@ -840,6 +840,7 @@ export interface NpcView {
   birthdayGift: NpcBirthdayGiftView | null;
   freeGift: NpcFreeGiftView | null;
   help: NpcHelpView;
+  perks: NpcPerkView[];
   plots: NpcPlotView[];
   ranch: NpcRanchAnimalView[];
 }
@@ -853,6 +854,13 @@ export interface NpcFreeGiftView {
 export interface NpcHelpView {
   canHelp: boolean;
   hint: string;
+}
+
+export interface NpcPerkView {
+  threshold: number;
+  title: string;
+  desc: string;
+  unlocked: boolean;
 }
 
 export interface NpcBirthdayGiftView {

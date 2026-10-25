@@ -570,7 +570,10 @@ impl Game {
             qty = (qty * (100 - off_penalty) / 100).max(1);
         }
         let buff_yield = buffs::plant_yield_pct(&self.state.buffs, now);
-        let total_yield_pct = (planting::yield_pct(plant_yield_level) + buff_yield).min(100);
+        let total_yield_pct = (planting::yield_pct(plant_yield_level)
+            + buff_yield
+            + crate::npc::plant_yield_pct(&self.state.npcs))
+        .min(100);
         let plant_yield_bonus = qty.saturating_mul(total_yield_pct) / 100;
         qty = qty.saturating_add(plant_yield_bonus);
         let exp_gain = u32::try_from(
@@ -1202,7 +1205,10 @@ impl Game {
                 .checked_mul(u64::from(qty))
                 .ok_or(GameError::Overflow)?
         };
-        let coin_pct = u64::from(crate::buffs::coin_gain_pct(&self.state.buffs, now));
+        let coin_pct = u64::from(
+            crate::buffs::coin_gain_pct(&self.state.buffs, now)
+                + crate::npc::coin_gain_pct(&self.state.npcs),
+        );
         let total = total.saturating_add(total.saturating_mul(coin_pct) / 100);
 
         if have == qty {
@@ -1324,7 +1330,10 @@ impl Game {
         if sold == 0 {
             return Err(GameError::NothingToSell);
         }
-        let coin_pct = u64::from(crate::buffs::coin_gain_pct(&self.state.buffs, now));
+        let coin_pct = u64::from(
+            crate::buffs::coin_gain_pct(&self.state.buffs, now)
+                + crate::npc::coin_gain_pct(&self.state.npcs),
+        );
         let total = total.saturating_add(total.saturating_mul(coin_pct) / 100);
         self.state.coins = self.state.coins.saturating_add(total);
         let text = format!("一键卖出 {sold} 条鱼，金币+{total}");
@@ -1569,7 +1578,8 @@ impl Game {
             fishing::catch_exp(def.rarity, quality, weight_tenths),
             rod,
         );
-        let pct = buffs::exp_pct(&self.state.buffs, now, DisciplineKind::Fishing);
+        let pct = buffs::exp_pct(&self.state.buffs, now, DisciplineKind::Fishing)
+            + crate::npc::fishing_exp_pct(&self.state.npcs);
         let levels = self
             .state
             .skills
@@ -2670,7 +2680,8 @@ impl Game {
         let product = kind.product_name();
         let quality_level =
             ranching::quality_chance(self.state.skills.ranching.skill_level("ranch_quality"))
-                + buffs::ranch_quality_pct(&self.state.buffs, now);
+                + buffs::ranch_quality_pct(&self.state.buffs, now)
+                + crate::npc::ranch_quality_pct(&self.state.npcs);
         let yield_level =
             ranching::yield_chance(self.state.skills.ranching.skill_level("ranch_yield"))
                 + trait_yield;
@@ -3561,7 +3572,8 @@ impl Game {
         }
         let speed =
             (processing::speed_pct(self.state.skills.processing.skill_level("craft_speed"))
-                + buffs::craft_speed_pct(&self.state.buffs, now))
+                + buffs::craft_speed_pct(&self.state.buffs, now)
+                    + crate::npc::craft_speed_pct(&self.state.npcs))
             .min(40);
         let quality_chance =
             processing::quality_chance(self.state.skills.processing.skill_level("craft_quality"));
@@ -3650,7 +3662,8 @@ impl Game {
         }
         let speed =
             (processing::speed_pct(self.state.skills.processing.skill_level("craft_speed"))
-                + buffs::craft_speed_pct(&self.state.buffs, now))
+                + buffs::craft_speed_pct(&self.state.buffs, now)
+                    + crate::npc::craft_speed_pct(&self.state.npcs))
             .min(40);
         let save_chance =
             processing::save_chance(self.state.skills.processing.skill_level("craft_save"));
@@ -3735,6 +3748,7 @@ impl Game {
         let speed = (processing::speed_pct(
             self.state.skills.processing.skill_level("craft_speed"),
         ) + buffs::craft_speed_pct(&self.state.buffs, now)
+                    + crate::npc::craft_speed_pct(&self.state.npcs)
             + self.state.workshop.equipment_speed_pct(slot))
         .min(50);
         let save_chance =
@@ -3842,7 +3856,8 @@ impl Game {
         }
         let speed =
             (processing::speed_pct(self.state.skills.processing.skill_level("craft_speed"))
-                + buffs::craft_speed_pct(&self.state.buffs, now))
+                + buffs::craft_speed_pct(&self.state.buffs, now)
+                    + crate::npc::craft_speed_pct(&self.state.npcs))
             .min(40);
         let duration = recipe.duration_ms() * (100 - i64::from(speed)) / 100;
         if let Some(job) = self.state.workshop.job_mut(0) {
@@ -3888,7 +3903,8 @@ impl Game {
         }
         let speed =
             (processing::speed_pct(self.state.skills.processing.skill_level("craft_speed"))
-                + buffs::craft_speed_pct(&self.state.buffs, now))
+                + buffs::craft_speed_pct(&self.state.buffs, now)
+                    + crate::npc::craft_speed_pct(&self.state.npcs))
             .min(40);
         let duration = recipe.duration_ms() * (100 - i64::from(speed)) / 100;
         if let Some(job) = self.state.workshop.job_mut(0) {

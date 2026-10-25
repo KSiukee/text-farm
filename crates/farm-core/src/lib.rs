@@ -89,7 +89,8 @@ pub use mystery::{
     MYSTERY_OFFERS,
 };
 pub use npc::{
-    NpcChoiceView, NpcHelpView, NpcMemory, NpcMemoryView, NpcMessage, NpcMessageView, NpcPlot,
+    NpcChoiceView, NpcHelpView, NpcMemory, NpcMemoryView, NpcMessage, NpcMessageView, NpcPerkView,
+    NpcPlot,
     NpcPlotView, NpcRequestView, NpcSouvenirView, NpcState, NpcView, HELP_DAILY_LIMIT,
     NPC_VISIT_CAP, STEAL_DAILY_LIMIT,
 };

@@ -3770,6 +3770,17 @@ onUnmounted(() => {
               </button>
               <span v-else class="muted">今天已经搭过手了</span>
             </div>
+            <div class="npc-perks">
+              <span class="muted">手艺</span>
+              <span
+                v-for="perk in npc.perks"
+                :key="perk.threshold"
+                class="npc-perk"
+                :class="{ on: perk.unlocked }"
+              >
+                {{ perk.threshold }} 好感 · {{ perk.title }}（{{ perk.desc }}）
+              </span>
+            </div>
             <div v-for="plot in npc.plots" :key="plot.index" class="npc-plot">
               <span>{{ plot.label }}[普通]:{{ plot.cropName }}</span>
               <span v-if="plot.status === 'growing'" class="muted">
