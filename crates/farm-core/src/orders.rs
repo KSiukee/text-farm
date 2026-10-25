@@ -40,6 +40,9 @@ pub struct FarmOrder {
     /// 加工订单的配方；None 表示普通作物订单。
     #[serde(default)]
     pub recipe: Option<EquipmentRecipe>,
+    /// 是否开启自动排程：缺半成品时逐级先做。
+    #[serde(default)]
+    pub auto: bool,
 }
 
 impl FarmOrder {
@@ -185,6 +188,7 @@ fn crop_offer(
         item_key: format!("crop:{}", crop.id),
         item_name: crop.name.clone(),
         recipe: None,
+        auto: false,
     }
 }
 
@@ -193,13 +197,7 @@ fn crop_offer(
 fn craft_offer(today: &str, level: u32) -> Option<FarmOrder> {
     let recipes: Vec<EquipmentRecipe> = EquipmentRecipe::ALL
         .into_iter()
-        .filter(|recipe| {
-            craft_item(recipe.output_key()).is_some()
-                && recipe
-                    .inputs()
-                    .iter()
-                    .all(|(key, _)| key.starts_with("crop:") || key.starts_with("ranch:"))
-        })
+        .filter(|recipe| craft_item(recipe.output_key()).is_some())
         .collect();
     if recipes.is_empty() {
         return None;
@@ -223,6 +221,7 @@ fn craft_offer(today: &str, level: u32) -> Option<FarmOrder> {
         item_key: recipe.output_key().to_string(),
         item_name: recipe.label().to_string(),
         recipe: Some(recipe),
+        auto: false,
     })
 }
 
@@ -349,10 +348,7 @@ mod tests {
             .expect("built workshop should add a craft order");
         assert!(craft.item_key.starts_with("craft:"));
         let recipe = craft.recipe.unwrap();
-        assert!(recipe
-            .inputs()
-            .iter()
-            .all(|(key, _)| key.starts_with("crop:") || key.starts_with("ranch:")));
+        assert!(craft_item(recipe.output_key()).is_some());
     }
 
     #[test]

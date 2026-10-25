@@ -1179,6 +1179,10 @@ function startOrderCraft(id: string) {
   void act({ type: "startOrderCraft", id });
 }
 
+function autoCraftOrder(id: string) {
+  void act({ type: "autoCraftOrder", id });
+}
+
 function claimLevelReward(level: number) {
   void act({ type: "claimLevelReward", level });
 }
@@ -2986,6 +2990,15 @@ onUnmounted(() => {
           >
             [一键送去做]
           </button>
+          <button
+            v-else-if="order.isCraft"
+            class="link"
+            type="button"
+            :disabled="acting"
+            @click="autoCraftOrder(order.id)"
+          >
+            [自动排程]
+          </button>
           <span v-else-if="!order.isCraft" class="muted">还差 {{ order.qty - order.have }}</span>
         </div>
         <div v-if="snapshot.orders.offers.length" class="muted farm-orders-sub">可接</div>
@@ -4085,6 +4098,15 @@ onUnmounted(() => {
                     @click="startOrderCraft(order.id)"
                   >
                     [一键送去做]
+                  </button>
+                  <button
+                    v-else-if="order.isCraft && !order.canDeliver && !order.craft?.auto"
+                    class="link"
+                    type="button"
+                    :disabled="acting"
+                    @click="autoCraftOrder(order.id)"
+                  >
+                    [自动排程]
                   </button>
                   <button
                     v-else-if="order.canDeliver"

@@ -247,6 +247,7 @@ impl Game {
             Action::AcceptFarmOrder { id } => self.accept_farm_order(&id, now)?,
             Action::DeliverFarmOrder { id } => self.deliver_farm_order(&id, now)?,
             Action::StartOrderCraft { id } => self.start_order_craft(&id, now)?,
+            Action::AutoCraftOrder { id } => self.auto_craft_order(&id, now)?,
             Action::BuyMysteryOffer { id } => self.buy_mystery_offer(&id, now)?,
             Action::BuyFurniture { def } => self.buy_furniture(&def, now)?,
             Action::BuyDecor { id } => self.buy_decor(&id, now)?,
@@ -3990,6 +3991,7 @@ impl Game {
             self.push_log(now, text.clone());
             effects.push(Effect::Log { text });
         }
+        self.advance_auto_orders(now, &mut effects);
         Ok(effects)
     }
 
@@ -5501,6 +5503,163 @@ impl Game {
         }
         let recipe = order.recipe.ok_or(GameError::FarmOrderInvalid)?;
         self.start_equipment_craft(recipe, now)
+    }
+
+    fn auto_craft_order(&mut self, id: &str, now: i64) -> Result<Vec<Effect>, GameError> {
+        let Some(order) = self.state.orders.find_active(id).cloned() else {
+            return Err(GameError::FarmOrderInvalid);
+        };
+        if order.expires_day.as_str() < self.state.daily.day.as_str() {
+            return Err(GameError::FarmOrderExpired);
+        }
+        if self.state.inventory.get(&order.delivery_key()).copied().unwrap_or(0) >= order.qty {
+            return Ok(vec![Effect::Log {
+                text: "仓库里已经有成品了，直接去交付吧".into(),
+            }]);
+        }
+        let recipe = order.recipe.ok_or(GameError::FarmOrderInvalid)?;
+        let mut started = Vec::new();
+        self.plan_recipe(recipe, now, 0, &mut started)?;
+        if started.is_empty() {
+            let text = "自动排程没找到能开工的步骤：先看看缺原料还是缺设备".to_string();
+            self.push_log(now, text.clone());
+            return Ok(vec![Effect::Log { text }]);
+        }
+        if let Some(active) = self
+            .state
+            .orders
+            .active
+            .iter_mut()
+            .find(|active| active.id == id)
+        {
+            active.auto = true;
+        }
+        let text = format!(
+            "{}的{}订单开始自动排程：先做{}",
+            order.npc_name,
+            order.item_name_or_crop(),
+            started.join("、")
+        );
+        self.push_log(now, text.clone());
+        Ok(vec![Effect::Log { text }])
+    }
+
+    fn plan_recipe(
+        &mut self,
+        recipe: EquipmentRecipe,
+        now: i64,
+        depth: u8,
+        started: &mut Vec<String>,
+    ) -> Result<bool, GameError> {
+        if depth > 4 || self.equipment_job_active(recipe) {
+            return Ok(false);
+        }
+        let mut missing_craft = Vec::new();
+        let mut missing_raw = false;
+        for (key, need) in recipe.inputs() {
+            if self.workshop_item_count(key) >= *need {
+                continue;
+            }
+            if key.starts_with("craft:") {
+                missing_craft.push(*key);
+            } else {
+                missing_raw = true;
+            }
+        }
+        if missing_craft.is_empty() && !missing_raw {
+            if self
+                .state
+                .workshop
+                .first_idle_slot(recipe.equipment())
+                .is_some()
+            {
+                self.start_equipment_craft(recipe, now)?;
+                started.push(recipe.label().to_string());
+                return Ok(true);
+            }
+            return Ok(false);
+        }
+        let mut any = false;
+        for key in missing_craft {
+            let Some(sub) = EquipmentRecipe::ALL
+                .iter()
+                .copied()
+                .find(|candidate| candidate.output_key() == key)
+            else {
+                continue;
+            };
+            if self.plan_recipe(sub, now, depth + 1, started)? {
+                any = true;
+            }
+        }
+        Ok(any)
+    }
+
+    fn equipment_job_active(&self, recipe: EquipmentRecipe) -> bool {
+        (0..self.state.workshop.slots).any(|slot| {
+            matches!(
+                self.state.workshop.job(slot),
+                Some(WorkshopJob::Equipment {
+                    recipe: active,
+                    ..
+                }) if *active == recipe
+            )
+        })
+    }
+
+    fn advance_auto_orders(&mut self, now: i64, effects: &mut Vec<Effect>) {
+        let ids: Vec<String> = self
+            .state
+            .orders
+            .active
+            .iter()
+            .filter(|order| order.auto && order.recipe.is_some())
+            .map(|order| order.id.clone())
+            .collect();
+        for id in ids {
+            let Some(order) = self
+                .state
+                .orders
+                .active
+                .iter()
+                .find(|order| order.id == id)
+                .cloned()
+            else {
+                continue;
+            };
+            if self
+                .state
+                .inventory
+                .get(&order.delivery_key())
+                .copied()
+                .unwrap_or(0)
+                >= order.qty
+            {
+                if let Some(active) = self
+                    .state
+                    .orders
+                    .active
+                    .iter_mut()
+                    .find(|active| active.id == id)
+                {
+                    active.auto = false;
+                }
+                continue;
+            }
+            let Some(recipe) = order.recipe else {
+                continue;
+            };
+            let mut started = Vec::new();
+            if self.plan_recipe(recipe, now, 0, &mut started).is_ok() && !started.is_empty() {
+                let text = format!(
+                    "自动排程继续：{} → {}",
+                    order.item_name_or_crop(),
+                    started.join("、")
+                );
+                self.push_log(now, text.clone());
+                effects.push(Effect::Log { text });
+            }
+        }
     }
 
     fn use_farm_card(&mut self, now: i64) -> Result<Vec<Effect>, GameError> {

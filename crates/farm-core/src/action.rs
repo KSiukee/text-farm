@@ -385,6 +385,10 @@ pub enum Action {
     StartOrderCraft {
         id: String,
     },
+    /// 自动排程：缺什么半成品就先逐级做，取货后继续。
+    AutoCraftOrder {
+        id: String,
+    },
     BuyMysteryOffer {
         id: String,
     },

@@ -1156,6 +1156,7 @@ pub struct CraftOrderTrackView {
     pub status: String,
     pub detail: String,
     pub can_start: bool,
+    pub auto: bool,
     pub equipment_label: String,
     pub equipment_installed: bool,
     pub job_slot: Option<u8>,
@@ -1300,6 +1301,31 @@ fn order_ingredient_name(game: &Game, key: &str) -> String {
     key.to_string()
 }
 
+fn recipe_in_plan(target: EquipmentRecipe, candidate: EquipmentRecipe, depth: u8) -> bool {
+    if target == candidate {
+        return true;
+    }
+    if depth >= 4 {
+        return false;
+    }
+    for (key, _) in target.inputs() {
+        if !key.starts_with("craft:") {
+            continue;
+        }
+        let Some(sub) = EquipmentRecipe::ALL
+            .iter()
+            .copied()
+            .find(|recipe| recipe.output_key() == *key)
+        else {
+            continue;
+        };
+        if recipe_in_plan(sub, candidate, depth + 1) {
+            return true;
+        }
+    }
+    false
+}
+
 fn craft_order_track(
     game: &Game,
     order: &crate::orders::FarmOrder,
@@ -1310,6 +1336,7 @@ fn craft_order_track(
             status: "不可加工".into(),
             detail: String::new(),
             can_start: false,
+            auto: false,
             equipment_label: String::new(),
             equipment_installed: false,
             job_slot: None,
@@ -1335,7 +1362,9 @@ fn craft_order_track(
             ..
         }) = game.state.workshop.job(slot)
         {
-            if *active_recipe == recipe {
+            let in_plan = *active_recipe == recipe
+                || (order.auto && recipe_in_plan(recipe, *active_recipe, 0));
+            if in_plan {
                 job_slot = Some(slot);
                 remaining_ms = (*ready_at - now).max(0);
                 job_ready = now >= *ready_at;
@@ -1376,6 +1405,12 @@ fn craft_order_track(
                 format!("加工好了，去 {slot} 号槽取货"),
                 false,
             )
+        } else if order.auto {
+            (
+                "自动排程中".to_string(),
+                format!("{slot} 号槽正在做，取货后自动接下一道"),
+                false,
+            )
         } else {
             (
                 "加工中".to_string(),
@@ -1414,6 +1449,7 @@ fn craft_order_track(
         status,
         detail,
         can_start,
+        auto: order.auto,
         equipment_label,
         equipment_installed: installed,
         job_slot,

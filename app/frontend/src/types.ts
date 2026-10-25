@@ -688,6 +688,7 @@ export interface CraftOrderTrackView {
   status: string;
   detail: string;
   canStart: boolean;
+  auto: boolean;
   equipmentLabel: string;
   equipmentInstalled: boolean;
   jobSlot: number | null;
@@ -1523,6 +1524,7 @@ export type Action =
   | { type: "acceptFarmOrder"; id: string }
   | { type: "deliverFarmOrder"; id: string }
   | { type: "startOrderCraft"; id: string }
+  | { type: "autoCraftOrder"; id: string }
   | { type: "buyMysteryOffer"; id: string }
   | { type: "buyFurniture"; def: string }
   | { type: "buyDecor"; id: string }

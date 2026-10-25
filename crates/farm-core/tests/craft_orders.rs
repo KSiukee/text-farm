@@ -37,6 +37,7 @@ fn craft_order() -> farm_core::FarmOrder {
         item_key: recipe.output_key().into(),
         item_name: recipe.label().into(),
         recipe: Some(recipe),
+        auto: false,
     }
 }
 
@@ -108,3 +109,95 @@ fn craft_order_can_be_sent_to_workshop_and_delivered() {
         .inventory
         .contains_key("craft:strawberry_juice"));
 }
+
+#[test]
+fn auto_schedule_builds_intermediate_steps() {
+    let mut game = Game::new(0);
+    game.state_mut().level = 14;
+    game.state_mut().coins = 50_000;
+    game.dispatch(Action::BuildWorkshop, 0).unwrap();
+    game.dispatch(
+        Action::InstallEquipment {
+            slot: 1,
+            kind: EquipmentKind::Juicer,
+        },
+        0,
+    )
+    .unwrap();
+    game.dispatch(
+        Action::InstallEquipment {
+            slot: 2,
+            kind: EquipmentKind::BoilingPot,
+        },
+        0,
+    )
+    .unwrap();
+    game.state_mut().daily.day = "2026-10-24".into();
+    game.state_mut().inventory.insert("crop:ganzhe".into(), 8);
+    let recipe = EquipmentRecipe::Sugar;
+    game.state_mut().orders.active.push(farm_core::FarmOrder {
+        id: "auto-sugar".into(),
+        npc_id: "xiaoman".into(),
+        npc_name: "小满".into(),
+        crop_id: String::new(),
+        crop_name: recipe.label().into(),
+        qty: 1,
+        expires_day: "2026-10-28".into(),
+        reward_coins: 800,
+        reward_exp: 20,
+        item_key: recipe.output_key().into(),
+        item_name: recipe.label().into(),
+        recipe: Some(recipe),
+        auto: false,
+    });
+
+    game.dispatch(
+        Action::AutoCraftOrder {
+            id: "auto-sugar".into(),
+        },
+        0,
+    )
+    .unwrap();
+    assert!(matches!(
+        game.state().workshop.job(1),
+        Some(WorkshopJob::Equipment {
+            recipe: EquipmentRecipe::CaneJuice,
+            ..
+        })
+    ));
+    assert!(game.state().orders.active[0].auto);
+    let tracked = game.snapshot(0);
+    let craft = tracked.orders.active[0].craft.as_ref().unwrap();
+    assert_eq!(craft.status, "自动排程中");
+    assert_eq!(craft.job_slot, Some(1));
+
+    let finish_and_collect = |game: &mut Game, slot: u8| {
+        if let Some(Some(job)) = game.state_mut().workshop.job_mut(slot) {
+            if let WorkshopJob::Equipment { ready_at, .. } = job {
+                *ready_at = 0;
+            }
+        }
+        game.dispatch(Action::CollectCraft { slot }, 0).unwrap();
+    };
+
+    finish_and_collect(&mut game, 1);
+    assert!(matches!(
+        game.state().workshop.job(1),
+        Some(WorkshopJob::Equipment {
+            recipe: EquipmentRecipe::CaneJuice,
+            ..
+        })
+    ));
+    finish_and_collect(&mut game, 1);
+    assert!(matches!(
+        game.state().workshop.job(2),
+        Some(WorkshopJob::Equipment {
+            recipe: EquipmentRecipe::Sugar,
+            ..
+        })
+    ));
+    finish_and_collect(&mut game, 2);
+    assert!(game.state().inventory.contains_key("craft:sugar"));
+    assert!(!game.state().orders.active[0].auto);
+}
+
