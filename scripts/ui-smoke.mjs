@@ -507,6 +507,10 @@ try {
   await waitFor(async () => (saveState().orders?.offers.length ?? 0) >= 1);
   check("村庄订单已生成", (saveState().orders?.offers.length ?? 0) >= 1);
   check("村庄订单面板已显示", (await bodyText()).includes("村庄订单"));
+  check(
+    "订单状态标签已显示",
+    (await evaluate(`document.querySelectorAll('.status-tag').length`)) >= 1,
+  );
   const orderCoins = saveState().coins;
   await clickText("[接单]");
   await waitFor(async () => saveState().orders.active.length === 1);

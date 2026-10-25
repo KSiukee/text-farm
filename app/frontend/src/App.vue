@@ -1821,7 +1821,7 @@ function callPetHome(petId: string) {
 }
 
 function placeholder(name: string) {
-  notice.value = `「${name}」还没开放；当前可玩：农场、牧村、邻居农场、畜牧场、制造屋、钓鱼、宠物、标本室。`;
+  notice.value = `「${name}」还没开放；当前可玩：农场、牧村、邻居农场、畜牧场、制造屋、鱼塘、钓鱼、宠物、标本室、图鉴、神秘商店。`;
 }
 
 function showHelp() {
@@ -2573,7 +2573,7 @@ onUnmounted(() => {
       <div v-if="activePets[0]" class="farm-pet-strip" @click="selectTab('宠物')">
         <img :src="activePets[0].image" :alt="activePets[0].species" />
         <span>
-          {{ activePets[0].speciesEmoji }} {{ activePets[0].name }} 在{{ activePets[0].location === 'ranch' ? '牧场' : '农场' }}陪着你
+          {{ activePets[0].speciesEmoji }} {{ activePets[0].name }} 在{{ activePets[0].locationLabel }}陪着你
           <template v-if="activePets.length > 1">（还有 {{ activePets.length - 1 }} 只）</template>
           · {{ activePets[0].moodLabel }}
         </span>
@@ -3062,12 +3062,16 @@ onUnmounted(() => {
           :key="`active-${order.id}`"
           class="row farm-order"
         >
-          <span class="farm-order-main">
+              <span class="farm-order-main">
             <b>{{ order.npcName }}</b> 收 {{ order.itemName }} ×{{ order.qty }}
             <span v-if="order.isCraft" class="npc-tag">加工</span>
             <span v-if="order.favorite" class="npc-tag">偏爱</span>
             <span v-if="order.fresh" class="npc-tag">当天摘</span>
             <span v-if="order.minQuality" class="npc-tag">{{ order.qualityLabel }}</span>
+            <span
+              class="status-tag"
+              :class="order.canDeliver ? 'ready' : 'wait'"
+            >{{ order.canDeliver ? "可交" : order.isCraft ? "待加工" : `差 ${order.qty - order.have}` }}</span>
           </span>
           <span class="muted">
             {{ order.expiresDay }} 前 · 仓库 {{ order.have }}/{{ order.qty }}
@@ -3121,6 +3125,7 @@ onUnmounted(() => {
             <span v-if="order.isCraft" class="npc-tag">加工</span>
             <span v-if="order.favorite" class="npc-tag">偏爱</span>
             <span v-if="order.fresh" class="npc-tag">当天摘</span>
+            <span class="status-tag open">可接</span>
           </span>
           <span class="muted">{{ order.expiresDay }} 前 · 仓库 {{ order.have }}</span>
           <span v-if="order.craft" class="muted craft-order-status">
@@ -3134,6 +3139,9 @@ onUnmounted(() => {
           >
             [接单]
           </button>
+          <span v-if="snapshot.orders.active.length >= snapshot.orders.maxActive" class="muted">
+            已接满 {{ snapshot.orders.maxActive }} 条，先交一单
+          </span>
           <span class="muted">金币+{{ order.rewardCoins }} · 经验+{{ order.rewardExp }}</span>
         </div>
         <div v-if="!snapshot.orders.active.length && !snapshot.orders.offers.length" class="muted">
@@ -4124,7 +4132,7 @@ onUnmounted(() => {
         <div v-if="activePets[0]" class="farm-pet-strip" @click="selectTab('宠物')">
           <img :src="activePets[0].image" :alt="activePets[0].species" />
           <span>
-            {{ activePets[0].speciesEmoji }} {{ activePets[0].name }} 在{{ activePets[0].location === 'ranch' ? '牧场' : '农场' }}陪着你
+            {{ activePets[0].speciesEmoji }} {{ activePets[0].name }} 在{{ activePets[0].locationLabel }}陪着你
             <template v-if="activePets.length > 1">（还有 {{ activePets.length - 1 }} 只）</template>
             · {{ activePets[0].moodLabel }}
           </span>
@@ -4166,14 +4174,21 @@ onUnmounted(() => {
             <div v-for="order in ranch?.orders.offers ?? []" :key="order.id" class="ranch-order">
               <span>{{ order.npcName }} 收 {{ order.qualityLabel }}{{ order.itemName }} ×{{ order.qty }}</span>
               <span v-if="order.favorite" class="npc-tag">偏爱</span>
+              <span class="status-tag open">可接</span>
               <span class="muted">截止 {{ order.expiresDay }} · {{ order.rewardCoins }} 金币 + {{ order.rewardExp }} 经验 + {{ order.rewardFeed }} 饲料</span>
               <button class="link" type="button" :disabled="acting" @click="acceptRanchOrder(order.id)">[接单]</button>
             </div>
             <div v-for="order in ranch?.orders.active ?? []" :key="order.id" class="ranch-order active">
               <span>进行中：{{ order.qualityLabel }}{{ order.itemName }} ×{{ order.qty }}</span>
               <span v-if="order.favorite" class="npc-tag">偏爱</span>
+              <span class="status-tag" :class="order.canDeliver ? 'ready' : 'wait'">
+                {{ order.canDeliver ? "可交" : `差 ${order.qty - order.have}` }}
+              </span>
               <span class="muted">仓库 {{ order.have }}/{{ order.qty }}</span>
               <button class="link" type="button" :disabled="acting || !order.canDeliver" @click="deliverRanchOrder(order.id)">[交付]</button>
+              <span v-if="!order.canDeliver" class="muted">
+                还差 {{ order.qty - order.have }} 份{{ order.itemName }}
+              </span>
             </div>
           </div>
           <div class="ranch-pens">
@@ -4778,16 +4793,26 @@ onUnmounted(() => {
         <template v-else>
           <section class="panel pond-order-panel">
             <div class="panel-title">今日鱼塘订单<span class="muted">每天一条，交付后明天再来</span></div>
-            <div v-if="pond?.orderDone" class="muted">今天的订单已经交付，明天再来。</div>
-            <div v-else-if="!pond?.order" class="muted">放几条鱼进塘，就会有订单。</div>
+            <div v-if="pond?.orderDone" class="muted">
+              <span class="status-tag ready">今日已交</span> 明天再来。
+            </div>
+            <div v-else-if="!pond?.order" class="muted">
+              <span class="status-tag wait">等鱼</span> 放几条鱼进塘，就会有订单。
+            </div>
             <div v-else class="pond-order">
               <div>
                 要 {{ pond.order.qty }} 条{{ pond.order.fishName }}（单条 ≥{{ pond.order.minWeightLabel }}）
                 <span class="muted">· 塘里 {{ pond.order.have }} 条</span>
+                <span class="status-tag" :class="pond.order.canDeliver ? 'ready' : 'wait'">
+                  {{ pond.order.canDeliver ? "可交" : `差 ${Math.max(0, pond.order.qty - pond.order.have)} 条` }}
+                </span>
               </div>
               <div class="row">
                 <span>{{ pond.order.rewardCoins }} 金币</span>
                 <button class="link" type="button" :disabled="acting || !pond.order.canDeliver" @click="deliverPondOrder">[交付订单]</button>
+                <span v-if="!pond.order.canDeliver" class="muted">
+                  还差 {{ Math.max(0, pond.order.qty - pond.order.have) }} 条，或单条重量不够
+                </span>
               </div>
             </div>
           </section>
@@ -5035,6 +5060,7 @@ onUnmounted(() => {
               <div v-for="offer in fishing.quests.offers" :key="offer.id" class="fishing-quest">
                 <span v-if="showSpotTag(offer)" class="fishing-spot-tag">{{ offer.spotLabel }}</span>
                 <span>{{ offer.title }}</span>
+                <span class="status-tag open">可接</span>
                 <span class="muted">
                   奖励 {{ offer.rewardCoins }} 金币 · 鱼饵×{{ offer.rewardBait }} · 经验 {{ offer.rewardExp }}
                 </span>
@@ -5046,6 +5072,9 @@ onUnmounted(() => {
                 >
                   [接委托]
                 </button>
+                <span v-if="fishing.quests.active.length >= 2" class="muted">
+                  已接满 2 条，先交一条
+                </span>
               </div>
               <div v-if="!fishing.quests.offers.length" class="muted">今天的委托都接完了，明天再来。</div>
             </div>
@@ -5057,6 +5086,9 @@ onUnmounted(() => {
               <div v-for="commission in fishing.quests.active" :key="commission.id" class="fishing-quest">
                 <span v-if="showSpotTag(commission)" class="fishing-spot-tag">{{ commission.spotLabel }}</span>
                 <span>{{ commission.title }}</span>
+                <span class="status-tag" :class="commission.complete ? 'ready' : 'wait'">
+                  {{ commission.complete ? "可交" : `差 ${commission.qty - commission.progress}` }}
+                </span>
                 <span class="muted">进度 {{ commission.progress }}/{{ commission.qty }}</span>
                 <button
                   v-if="commission.complete"
@@ -5722,6 +5754,7 @@ onUnmounted(() => {
                         鱼塘
                       </button>
                       <button class="rate-btn" :class="{ active: pet.location === 'fishing' }" type="button" :disabled="acting" @click="setPetLocation(pet.id, 'fishing')">钓鱼地</button>
+                      <span v-if="!snapshot?.pond?.built" class="muted">鱼塘要先去「鱼塘」页建好</span>
                     </div>
                     <div class="pet-job-line">
                       <template v-if="pet.location === 'ranch'">

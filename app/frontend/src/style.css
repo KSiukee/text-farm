@@ -2329,6 +2329,29 @@ textarea {
   font-size: 12px;
 }
 
+.status-tag {
+  display: inline-block;
+  margin: 0 3px;
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.status-tag.open,
+.status-tag.ready {
+  border-color: var(--accent-text);
+  color: var(--accent-text);
+  background: var(--panel-warm);
+}
+
+.status-tag.wait {
+  color: var(--muted);
+  background: var(--panel-soft);
+}
+
 .npc-request {
   display: flex;
   flex-wrap: wrap;

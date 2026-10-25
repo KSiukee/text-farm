@@ -1,10 +1,14 @@
 # 更新日志
 
 > 文字农场 · 版本历史。
-> 本文由 `.codex/state.json` 的 `recent_changes` 生成，共 **186 条 / 167 个版本**；早期记录按当时原文保留，同一版本多条按发生顺序排列。
+> 本文由 `.codex/state.json` 的 `recent_changes` 生成，共 **187 条 / 168 个版本**；早期记录按当时原文保留，同一版本多条按发生顺序排列。
 > 版本号以 `Cargo.toml`、`app/tauri.conf.json`、`app/frontend/package.json`、`README.md` 为准。
 
 ---
+
+## 0.127.1 · 2026-10-25
+
+- UI 小补（A156/#184）——村庄/牧场/鱼塘/钓鱼订单统一状态标签；宠物位置文案改用 locationLabel；灰按钮补原因；清理过期可玩列表。Rust 396、前端 53、UI 217/217；exe 0.127.1。
 
 ## 0.127.0 · 2026-10-25
 
