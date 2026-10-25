@@ -17,8 +17,13 @@ fn backups_dir(path: &Path) -> PathBuf {
 
 pub fn read_game(path: &Path) -> Result<Game, String> {
     let bytes = fs::read(path).map_err(|e| format!("读不了 {}：{e}", path.display()))?;
+    parse_game(&bytes)
+}
+
+/// 从字节解析存档。Android 上文件是 `content://` URI，由前端用 fs 插件读成文本后走这里。
+pub fn parse_game(bytes: &[u8]) -> Result<Game, String> {
     let value: serde_json::Value =
-        serde_json::from_slice(&bytes).map_err(|e| format!("JSON 解析失败：{e}"))?;
+        serde_json::from_slice(bytes).map_err(|e| format!("JSON 解析失败：{e}"))?;
     let value = migrate_save(value).map_err(|e| e.to_string())?;
     let save: SaveFile =
         serde_json::from_value(value).map_err(|e| format!("存档字段不完整：{e}"))?;
@@ -171,22 +176,36 @@ pub fn save_atomic(path: &Path, game: &Game, now: i64) -> Result<(), String> {
     })
 }
 
-pub fn export_save_to(path: &Path, game: &Game, now: i64) -> Result<(), String> {
+/// 存档序列化成 JSON 文本（Android 上由前端写进 content URI）。
+pub fn export_save_text(game: &Game, now: i64) -> Result<String, String> {
     let json = serde_json::to_vec_pretty(&game.to_save(now))
         .map_err(|e| format!("序列化存档失败：{e}"))?;
+    String::from_utf8(json).map_err(|e| format!("存档不是合法 UTF-8：{e}"))
+}
+
+pub fn export_save_to(path: &Path, game: &Game, now: i64) -> Result<(), String> {
+    let json = export_save_text(game, now)?;
     fs::write(path, json).map_err(|e| format!("写导出文件失败（{}）：{e}", path.display()))
 }
 
+/// 内容包序列化成 JSON 文本（同上）。
+pub fn export_content_text(game: &Game) -> Result<String, String> {
+    serde_json::to_string_pretty(game.content()).map_err(|e| format!("序列化内容包失败：{e}"))
+}
+
 pub fn export_content_to(path: &Path, game: &Game) -> Result<(), String> {
-    let json =
-        serde_json::to_vec_pretty(game.content()).map_err(|e| format!("序列化内容包失败：{e}"))?;
+    let json = export_content_text(game)?;
     fs::write(path, json).map_err(|e| format!("写内容包失败（{}）：{e}", path.display()))
 }
 
 pub fn import_content_from(path: &Path) -> Result<ContentPack, String> {
     let bytes = fs::read(path).map_err(|e| format!("读不了 {}：{e}", path.display()))?;
+    parse_content(&bytes)
+}
+
+pub fn parse_content(bytes: &[u8]) -> Result<ContentPack, String> {
     let pack: ContentPack =
-        serde_json::from_slice(&bytes).map_err(|e| format!("内容包 JSON 解析失败：{e}"))?;
+        serde_json::from_slice(bytes).map_err(|e| format!("内容包 JSON 解析失败：{e}"))?;
     let issues = pack.validate();
     if !issues.is_empty() {
         return Err(format!("内容包不合法：{}", issues.join("；")));

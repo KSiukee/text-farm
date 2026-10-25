@@ -160,6 +160,32 @@ pub fn import_save(path: String, state: State<'_, AppState>) -> Result<ImportRep
     })
 }
 
+/// 存档导出成文本（Android：前端拿到后写进 content URI）。
+#[tauri::command]
+pub fn export_save_text(state: State<'_, AppState>) -> Result<String, ApiError> {
+    let game = state.game.lock();
+    store::export_save_text(&game, now_ms()).map_err(|message| ApiError::new("export_failed", message))
+}
+
+/// 从文本导入存档（Android：前端用 fs 插件读 content URI 后传进来）。
+#[tauri::command]
+pub fn import_save_text(text: String, state: State<'_, AppState>) -> Result<ImportReply, ApiError> {
+    let imported =
+        store::parse_game(text.as_bytes()).map_err(|message| ApiError::new("import_failed", message))?;
+    let now = now_ms();
+    let mut game = state.game.lock();
+    *game = imported;
+    store::save_atomic(&state.save_path, &game, now)
+        .map_err(|message| ApiError::new("save_failed", message))?;
+    let snapshot = game.snapshot(now);
+    let content = game.content().clone();
+    Ok(ImportReply {
+        snapshot,
+        content,
+        warning: None,
+    })
+}
+
 #[tauri::command]
 pub fn export_content(path: String, state: State<'_, AppState>) -> Result<(), ApiError> {
     let game = state.game.lock();
@@ -171,6 +197,35 @@ pub fn export_content(path: String, state: State<'_, AppState>) -> Result<(), Ap
 pub fn import_content(path: String, state: State<'_, AppState>) -> Result<ImportReply, ApiError> {
     let pack = store::import_content_from(Path::new(&path))
         .map_err(|message| ApiError::new("import_failed", message))?;
+    let now = now_ms();
+    let mut game = state.game.lock();
+    game.apply_content(pack, now).map_err(game_error)?;
+    store::save_atomic(&state.save_path, &game, now)
+        .map_err(|message| ApiError::new("save_failed", message))?;
+    let snapshot = game.snapshot(now);
+    let content = game.content().clone();
+    Ok(ImportReply {
+        snapshot,
+        content,
+        warning: None,
+    })
+}
+
+/// 内容包导出成文本（Android：同上）。
+#[tauri::command]
+pub fn export_content_text(state: State<'_, AppState>) -> Result<String, ApiError> {
+    let game = state.game.lock();
+    store::export_content_text(&game).map_err(|message| ApiError::new("export_failed", message))
+}
+
+/// 从文本导入内容包（Android：同上）。
+#[tauri::command]
+pub fn import_content_text(
+    text: String,
+    state: State<'_, AppState>,
+) -> Result<ImportReply, ApiError> {
+    let pack =
+        store::parse_content(text.as_bytes()).map_err(|message| ApiError::new("import_failed", message))?;
     let now = now_ms();
     let mut game = state.game.lock();
     game.apply_content(pack, now).map_err(game_error)?;

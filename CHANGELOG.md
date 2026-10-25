@@ -1,10 +1,14 @@
 # 更新日志
 
 > 文字农场 · 版本历史。
-> 本文由 `.codex/state.json` 的 `recent_changes` 生成，共 **194 条 / 175 个版本**；早期记录按当时原文保留，同一版本多条按发生顺序排列。
+> 本文由 `.codex/state.json` 的 `recent_changes` 生成，共 **195 条 / 176 个版本**；早期记录按当时原文保留，同一版本多条按发生顺序排列。
 > 版本号以 `Cargo.toml`、`app/tauri.conf.json`、`app/frontend/package.json`、`README.md` 为准。
 
 ---
+
+## 0.135.0 · 2026-10-26
+
+- Android 文件导入导出与自定义资源（A165/#193）—— SAF 选出来的是 `content://` URI，`std::fs` 写不进去（实测只留 0 字节空文件）；改用 `tauri-plugin-fs` 读写 content URI，Rust 侧加"文本版"命令（`export_save_text`/`import_save_text` 等）。实测导出 40719 字节、导入成功、内容包 6681 字节；头像上传走系统相册选择器，落 `custom/avatars/avatar.png`。构建脚本补「把新插件同步进 gradle 工程」——否则 APK 里没有 `com.plugin.fs.FsPlugin`，启动直接 SIGABRT。详见 docs/android-文件与资源-20261026.md。
 
 ## 0.134.0 · 2026-10-26
 

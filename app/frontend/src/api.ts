@@ -26,10 +26,18 @@ export const saveNow = () => invoke<void>("save_now");
 export const exportSave = (path: string) => invoke<void>("export_save", { path });
 export const importSave = (path: string) =>
   invoke<ImportReply>("import_save", { path });
+// Android 上 dialog 选出来的是 content:// URI，std::fs 写不进去：
+// 所以多一对「文本版」命令，文件读写交给 fs 插件（它支持 content URI）。
+export const exportSaveText = () => invoke<string>("export_save_text");
+export const importSaveText = (text: string) =>
+  invoke<ImportReply>("import_save_text", { text });
 export const exportContent = (path: string) =>
   invoke<void>("export_content", { path });
 export const importContent = (path: string) =>
   invoke<ImportReply>("import_content", { path });
+export const exportContentText = () => invoke<string>("export_content_text");
+export const importContentText = (text: string) =>
+  invoke<ImportReply>("import_content_text", { text });
 export const applyContent = (pack: ContentPack) =>
   invoke<ImportReply>("apply_content", { pack });
 export const previewContent = (pack: ContentPack) =>

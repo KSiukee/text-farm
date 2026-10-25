@@ -68,6 +68,42 @@ if (-not (Test-Path $genAndroid)) {
     try { cargo tauri android init --ci } finally { Pop-Location }
 }
 
+# ---- 把 Tauri 插件同步进 gradle 工程 ----
+# `tauri android init` 只写它当时认得的那批插件；后加的（如 tauri-plugin-fs）要自己补，
+# 否则 APK 里没有对应的 Kotlin 类，启动直接崩：
+#   ClassNotFoundException: com.plugin.fs.FsPlugin → Rust 侧 panic → SIGABRT
+$cargoToml = Get-Content (Join-Path $appDir "Cargo.toml") -Raw
+$pluginNames = [regex]::Matches($cargoToml, '(?m)^(tauri-plugin-[\w-]+)\s*=') | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique
+if ($pluginNames) {
+    $cargoHomeDir = if ($env:CARGO_HOME) { $env:CARGO_HOME } else { Join-Path $env:USERPROFILE ".cargo" }
+    $registrySrc = Get-ChildItem (Join-Path $cargoHomeDir "registry\src") -Directory -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($registrySrc) {
+        $settingsPath = Join-Path $genAndroid "tauri.settings.gradle"
+        $settingsTxt = [IO.File]::ReadAllText($settingsPath)
+        $buildKtsPath = Join-Path $genAndroid "app\tauri.build.gradle.kts"
+        $buildKts = [IO.File]::ReadAllText($buildKtsPath)
+        $added = @()
+        foreach ($name in $pluginNames) {
+            $dir = Get-ChildItem $registrySrc.FullName -Directory -Filter "$name-*" | Select-Object -Last 1
+            if (-not $dir -or -not (Test-Path (Join-Path $dir.FullName "android"))) { continue }
+            if ($settingsTxt -notmatch [regex]::Escape("include ':$name'")) {
+                $p = (Join-Path $dir.FullName "android") -replace '\\', '/'
+                $settingsTxt = $settingsTxt.TrimEnd() + "`ninclude ':$name'`nproject(':$name').projectDir = new File(`"$p`")`n"
+                $added += $name
+            }
+            if ($buildKts -notmatch [regex]::Escape("project(`":$name`")")) {
+                $buildKts = $buildKts -replace '(implementation\(project\(":tauri-plugin-[\w-]+"\)\))', "`$1`n  implementation(project(`":$name`"))"
+                if ($added -notcontains $name) { $added += $name }
+            }
+        }
+        if ($added.Count -gt 0) {
+            [IO.File]::WriteAllText($settingsPath, $settingsTxt, [Text.UTF8Encoding]::new($false))
+            [IO.File]::WriteAllText($buildKtsPath, $buildKts, [Text.UTF8Encoding]::new($false))
+            Write-Host "== 补进 gradle 的插件：$($added -join ', ') ==" -ForegroundColor Cyan
+        }
+    }
+}
+
 # AGP 默认拒绝非 ASCII 项目路径；本机实测可用，补开关（gen/ 是生成物，重新 init 会丢，所以每次都补）
 $gradleProps = Join-Path $genAndroid "gradle.properties"
 if ((Get-Content $gradleProps -Raw) -notmatch "android.overridePathCheck") {

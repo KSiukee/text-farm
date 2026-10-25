@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { open as openFileDialog, save as saveFileDialog } from "@tauri-apps/plugin-dialog";
+import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import {
   advanceTime,
@@ -7,12 +8,16 @@ import {
   dispatch,
   errorText,
   exportContent,
+  exportContentText,
   exportSave,
+  exportSaveText,
   getAppInfo,
   getContent,
   getSnapshot,
   importContent,
+  importContentText,
   importSave,
+  importSaveText,
   previewContent,
   previewRanchBreeding,
   reviewSeeds,
@@ -1885,6 +1890,12 @@ function fileStamp(): string {
   )}`;
 }
 
+/// Android 的 SAF 对话框给出的是 content:// URI：Rust 侧的 std::fs 写不进去，
+/// 得改用 fs 插件读写（它内部走 ContentResolver）。桌面返回的是普通路径，走原来的直写。
+function isContentUri(path: string): boolean {
+  return path.startsWith("content://");
+}
+
 async function exportSaveFile() {
   try {
     const path = await saveFileDialog({
@@ -1892,6 +1903,11 @@ async function exportSaveFile() {
       filters: [{ name: "JSON", extensions: ["json"] }],
     });
     if (!path) return;
+    if (isContentUri(path)) {
+      await writeTextFile(path, await exportSaveText());
+      notice.value = "存档已导出到所选位置。";
+      return;
+    }
     await exportSave(path);
     notice.value = `存档已导出：${path}`;
   } catch (e) {
@@ -1907,7 +1923,9 @@ async function importSaveFile() {
       filters: [{ name: "JSON", extensions: ["json"] }],
     });
     if (typeof picked !== "string") return;
-    const reply = await importSave(picked);
+    const reply = isContentUri(picked)
+      ? await importSaveText(await readTextFile(picked))
+      : await importSave(picked);
     snapshot.value = reply.snapshot;
     content.value = reply.content;
     notice.value = reply.warning ? `存档已导入：${reply.warning}` : "存档已导入。";
@@ -1923,6 +1941,11 @@ async function exportContentFile() {
       filters: [{ name: "JSON", extensions: ["json"] }],
     });
     if (!path) return;
+    if (isContentUri(path)) {
+      await writeTextFile(path, await exportContentText());
+      notice.value = "内容包已导出到所选位置。";
+      return;
+    }
     await exportContent(path);
     notice.value = `内容包已导出：${path}`;
   } catch (e) {
@@ -1938,7 +1961,9 @@ async function importContentFile() {
       filters: [{ name: "JSON", extensions: ["json"] }],
     });
     if (typeof picked !== "string") return;
-    const reply = await importContent(picked);
+    const reply = isContentUri(picked)
+      ? await importContentText(await readTextFile(picked))
+      : await importContent(picked);
     snapshot.value = reply.snapshot;
     content.value = reply.content;
     resetEditor();

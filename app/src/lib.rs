@@ -35,6 +35,7 @@ fn ui_ready(app: tauri::AppHandle) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .setup(|app| {
             let save_path = paths::save_path(app.handle()).map_err(std::io::Error::other)?;
             let now = now_ms();
@@ -97,8 +98,12 @@ pub fn run() {
             commands::review_content_seeds,
             commands::export_save,
             commands::import_save,
+            commands::export_save_text,
+            commands::import_save_text,
             commands::export_content,
             commands::import_content,
+            commands::export_content_text,
+            commands::import_content_text,
             commands::apply_content,
             commands::app_info,
             commands::save_now,

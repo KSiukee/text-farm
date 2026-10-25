@@ -1,0 +1,14 @@
+{
+  "identifier": "android-fs",
+  "description": "Android：用 fs 插件读写 SAF 选出来的 content:// URI（存档/内容包导入导出）",
+  "platforms": ["android"],
+  "windows": ["main"],
+  "permissions": [
+    "fs:allow-read-text-file",
+    "fs:allow-write-text-file",
+    {
+      "identifier": "fs:scope",
+      "allow": [{ "path": "**" }]
+    }
+  ]
+}
