@@ -1738,11 +1738,25 @@ impl Game {
             .filter(|count| **count > 0)
             .count();
 
+        let farm_days = if self.state.created_at > 0 {
+            ((now - self.state.created_at) / 86_400_000 + 1).max(1) as u32
+        } else {
+            1
+        };
         let npcs: Vec<NpcView> = self
             .state
             .npcs
             .iter()
-            .map(|npc| npc::view(npc, &self.content, &self.state.inventory, now))
+            .map(|npc| {
+                npc::view(
+                    npc,
+                    &self.content,
+                    &self.state.inventory,
+                    &self.state.daily.day,
+                    farm_days,
+                    now,
+                )
+            })
             .collect();
         let npc_messages: Vec<NpcMessageView> = self
             .state

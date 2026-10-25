@@ -66,6 +66,28 @@ fn second_story_unlocks_at_sixty_and_never_repeats() {
 }
 
 #[test]
+fn anniversary_chat_uses_special_line() {
+    let mut game = setup();
+    let now = 1 + 29 * 86_400_000;
+    game.state_mut().created_at = 1;
+    game.state_mut().npcs[0].friendship = 35;
+    game.state_mut().npcs[0].seen_events = vec!["ahe_hoe".into()];
+    let outcome = game
+        .dispatch(
+            Action::ChatWithNpc {
+                npc_id: "ahe".into(),
+            },
+            now,
+        )
+        .unwrap();
+    let Effect::NpcTalk { text, tag, .. } = outcome.effects[0].clone() else {
+        panic!("expected npc talk effect");
+    };
+    assert_eq!(tag, "来农场第 30 天");
+    assert!(text.contains("第 30 天"));
+}
+
+#[test]
 fn weekly_request_consumes_items_and_leaves_souvenir() {
     let mut game = Game::new(0);
     game.state_mut().inventory.insert("crop:xiaobaicai".into(), 5);

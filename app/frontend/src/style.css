@@ -2012,6 +2012,11 @@ textarea {
   font-size: 11px;
 }
 
+.npc-special-tag {
+  border-color: var(--accent-text);
+  color: var(--accent-text);
+}
+
 .npc-today {
   margin: 4px 0;
   font-size: 15px;

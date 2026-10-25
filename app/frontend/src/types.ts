@@ -775,6 +775,7 @@ export interface NpcView {
   dislikes: string;
   routine: string;
   todayLine: string;
+  todayNote: string | null;
   nextEvent: string | null;
   memories: NpcMemoryView[];
   request: NpcRequestView | null;

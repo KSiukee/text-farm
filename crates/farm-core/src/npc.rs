@@ -132,6 +132,7 @@ pub struct NpcView {
     pub dislikes: String,
     pub routine: String,
     pub today_line: String,
+    pub today_note: Option<String>,
     pub next_event: Option<String>,
     pub memories: Vec<NpcMemoryView>,
     pub request: Option<NpcRequestView>,
@@ -291,10 +292,13 @@ pub fn view(
     npc: &NpcState,
     content: &ContentPack,
     inventory: &std::collections::BTreeMap<String, u32>,
+    today: &str,
+    farm_days: u32,
     now: i64,
 ) -> NpcView {
     let profile = crate::npc_story::profile(&npc.id);
-    let today_line = crate::npc_story::daily_line(&npc.id, npc.friendship, now / 86_400_000);
+    let (today_line, today_note) =
+        crate::npc_story::line_for(&npc.id, npc.friendship, now / 86_400_000, today, farm_days);
     let next_event = crate::npc_story::upcoming_event(&npc.id, &npc.seen_events)
         .map(|event| format!("{} 好感 · {}", event.threshold, event.title));
     let week = now / 86_400_000 / 7;
@@ -397,6 +401,7 @@ pub fn view(
         dislikes: profile.map(|profile| profile.dislikes.to_string()).unwrap_or_default(),
         routine: profile.map(|profile| profile.routine.to_string()).unwrap_or_default(),
         today_line: today_line.to_string(),
+        today_note,
         next_event,
         memories,
         request,

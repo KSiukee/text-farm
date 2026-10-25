@@ -4898,17 +4898,24 @@ impl Game {
             }
         };
         let day_index = now / 86_400_000;
+        let farm_days = if self.state.created_at > 0 {
+            ((now - self.state.created_at) / 86_400_000 + 1).max(1) as u32
+        } else {
+            1
+        };
         let npc_name = self.state.npcs[pos].name.clone();
         let mut coins_reward = 0;
         let (title, text, favor, tag) = {
             let npc = &mut self.state.npcs[pos];
             if npc.last_chat_day == today {
-                (
-                    "闲聊".to_string(),
-                    crate::npc_story::daily_line(&npc.id, npc.friendship, day_index).to_string(),
-                    0,
-                    String::new(),
-                )
+                let (line, note) = crate::npc_story::line_for(
+                    &npc.id,
+                    npc.friendship,
+                    day_index,
+                    &today,
+                    farm_days,
+                );
+                ("闲聊".to_string(), line, 0, note.unwrap_or_default())
             } else {
                 npc.last_chat_day = today.clone();
                 npc.friendship = (npc.friendship + 1).min(100);
@@ -4961,12 +4968,18 @@ impl Game {
                             "记得".to_string(),
                         )
                     } else {
+                        let (line, note) = crate::npc_story::line_for(
+                            &npc.id,
+                            npc.friendship,
+                            day_index,
+                            &today,
+                            farm_days,
+                        );
                         (
                             "闲聊".to_string(),
-                            crate::npc_story::daily_line(&npc.id, npc.friendship, day_index)
-                                .to_string(),
+                            line,
                             1,
-                            String::new(),
+                            note.unwrap_or_default(),
                         )
                     }
                 }

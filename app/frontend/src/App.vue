@@ -3537,6 +3537,7 @@ onUnmounted(() => {
             <div class="npc-head">
               <strong>{{ npc.emoji }} {{ npc.name }}</strong>
               <span class="muted">{{ npc.role }} · {{ npc.level }}级 · {{ npc.relation }}（{{ npc.friendship }}）</span>
+              <span v-if="npc.todayNote" class="npc-tag npc-special-tag">{{ npc.todayNote }}</span>
               <button class="link" type="button" :disabled="acting" @click="chatWithNpc(npc)">
                 [聊聊]
               </button>
