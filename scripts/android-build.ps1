@@ -74,6 +74,15 @@ if ((Get-Content $gradleProps -Raw) -notmatch "android.overridePathCheck") {
     Add-Content -Path $gradleProps -Value "`nandroid.overridePathCheck=true" -Encoding utf8
 }
 
+# ---- 前端产物 ----
+# 前端 dist 会被嵌进 .so 的 custom-protocol 资源里；不跑这步，改了前端也不会生效。
+Write-Host "== 构建前端 ==" -ForegroundColor Cyan
+Push-Location (Join-Path $appDir "frontend")
+try {
+    npm run build
+    if ($LASTEXITCODE -ne 0) { throw "npm run build 失败" }
+} finally { Pop-Location }
+
 # ---- 编 Rust 动态库 ----
 Write-Host "== 编 libtext_farm_lib.so（$Arch）==" -ForegroundColor Cyan
 Push-Location $appDir
@@ -93,6 +102,16 @@ if (-not $KeepSymbols) {
     if (Test-Path $strip) { & $strip --strip-debug --strip-unneeded $jniSo }
 }
 Write-Host ("   .so {0:N0} MB（进包 {1:N0} MB）→ {2}" -f ((Get-Item $so).Length / 1MB), ((Get-Item $jniSo).Length / 1MB), $jniDir)
+
+# ---- APK 版本号 ----
+# gradle 读的是 app/tauri.properties；这条平时由 tauri CLI 写，我们直接跑 gradle 就得自己写。
+$conf = Get-Content (Join-Path $appDir "tauri.conf.json") -Raw | ConvertFrom-Json
+$ver = $conf.version
+$nums = $ver.Split(".")
+$code = [int]$nums[0] * 1000000 + [int]$nums[1] * 1000 + [int]$nums[2]
+$props = Join-Path $genAndroid "app\tauri.properties"
+[IO.File]::WriteAllText($props, "tauri.android.versionName=$ver`ntauri.android.versionCode=$code`n", [Text.UTF8Encoding]::new($false))
+Write-Host "== APK 版本 $ver（versionCode $code）==" -ForegroundColor Cyan
 
 # ---- gradle 打包（跳过它自己的 rust 任务，.so 已经手动放好）----
 Write-Host "== gradle assemble$($spec.Flavor)Debug ==" -ForegroundColor Cyan

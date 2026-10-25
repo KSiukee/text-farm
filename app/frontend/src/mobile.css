@@ -1,0 +1,100 @@
+/* 手机竖屏适配层（A163 / #191）
+   只在窄屏生效：桌面窗口最小 900px，这里的规则不会碰到桌面。
+   判据：360/390/430 三种宽度下不横向溢出、可点元素 ≥40×40、首行不被状态栏压住。 */
+
+/* 顶部安全区用 env()：Android edge-to-edge 下 WebView 会报真实值
+   （390dp 模拟器实测 45px = 系统 nonDecorInsets 135px / dpr 3）；
+   底部 WebView 报 0，按 24px 兜底（手势条高度）。 */
+body {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+@media (max-width: 560px) {
+  body {
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 24px);
+  }
+
+  /* 桌面 24px 的左右留白在 390px 上太贵，收窄 */
+  .page {
+    padding: 10px 12px 24px;
+  }
+
+  /* ---- 横向溢出 ---- */
+
+  /* 输入框默认宽度（约 156px）会把整页顶宽：宠物页「给它起个名字」实测把
+     scrollWidth 撑到 457（390dp）。统一约束成不撑破容器。 */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  /* 农场手册每行是 nowrap flex，360dp 下最后一个「未完成」被挤出屏幕（实测 right 382）。 */
+  .handbook-goal {
+    flex-wrap: wrap;
+  }
+
+  /* 领养表单是「图 260px + 表单 1fr」两列，360dp 下表单一列只剩 34px，
+     品种卡片（78px 起）把页面顶到 379。窄屏改成上下堆叠。 */
+  .pet-adopt {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .pet-adopt .pet-portrait-img {
+    max-width: 160px;
+    margin: 0 auto;
+  }
+
+  /* 农场宠物条：「还没有宠物。」+ 链接挤一行会把前者压成竖排 */
+  .farm-pet-strip {
+    flex-wrap: wrap;
+  }
+
+  /* ---- 触摸目标 ≥ 40×40 ---- */
+
+  /* 顶部图标导航：原来 105×27 */
+  .icon-item {
+    min-height: 44px;
+    padding: 6px 0;
+  }
+
+  /* 文字页签：原来 60×22，窄屏下换行 */
+  .tabs {
+    gap: 2px 14px;
+  }
+
+  .tab {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 4px 6px;
+  }
+
+  /* 行内动作（[播种]/[收获]/[买1]/[全卖]/知道了…）：原来 ~36×20。
+     min-width 管住 [−]/[+] 这种单字按钮（原来只有 28 宽）。 */
+  .link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    min-height: 40px;
+    padding: 6px 6px;
+  }
+
+  /* 领养表单里的物种/领养按钮（原 69×28、90×28） */
+  .pet-adopt-form button {
+    min-height: 40px;
+    padding: 6px 8px;
+  }
+
+  /* 复选框行（如「放到宠物院子寄养」）：label 原来 147×23，点不准 */
+  label:has(input[type="checkbox"]) {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+  }
+}

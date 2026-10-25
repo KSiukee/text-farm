@@ -3,6 +3,7 @@ import { createApp } from "vue";
 import App from "./App.vue";
 import "./theme.css";
 import "./style.css";
+import "./mobile.css";
 import { applyBackgroundPrefs, readBackgroundPrefs } from "./background";
 import { applyFontPrefs, readFontPrefs } from "./font";
 import { applyStylePack, readStylePack } from "./style-pack";

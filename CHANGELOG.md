@@ -1,10 +1,14 @@
 # 更新日志
 
 > 文字农场 · 版本历史。
-> 本文由 `.codex/state.json` 的 `recent_changes` 生成，共 **192 条 / 173 个版本**；早期记录按当时原文保留，同一版本多条按发生顺序排列。
+> 本文由 `.codex/state.json` 的 `recent_changes` 生成，共 **193 条 / 174 个版本**；早期记录按当时原文保留，同一版本多条按发生顺序排列。
 > 版本号以 `Cargo.toml`、`app/tauri.conf.json`、`app/frontend/package.json`、`README.md` 为准。
 
 ---
+
+## 0.133.0 · 2026-10-26
+
+- Android 竖屏适配（A163/#191）—— 手机 360–430px 竖屏重排：状态栏安全区、可点元素 ≥40×40、横向零溢出；新增 `app/frontend/src/mobile.css`（全部关在 ≤560px，桌面零改动）与 `scripts/android-audit.mjs` 三宽度体检。360/390/430 × 13 页全绿。详见 docs/android-竖屏适配-20261026.md。
 
 ## 0.132.0 · 2026-10-26
 
