@@ -39,6 +39,10 @@ pub struct PetCare {
     pub cat_toy: bool,
     pub dog_toy_broken: bool,
     pub cat_toy_broken: bool,
+    /// 共用软垫：每天让当值宠物心情 +1。
+    pub soft_mat: bool,
+    /// 自动饮水器：每天让当值宠物健康 +1。
+    pub water_fountain: bool,
     pub medicine: u32,
     /// 猫粮/狗粮/狗骨头/猫罐头，买来存在家里。
     pub cat_food: u32,
@@ -181,6 +185,8 @@ pub enum PetSupplyKind {
     Bowl,
     DogToy,
     CatToy,
+    SoftMat,
+    WaterFountain,
     Medicine,
 }
 
@@ -192,6 +198,8 @@ impl PetSupplyKind {
             PetSupplyKind::Bowl => "食盆",
             PetSupplyKind::DogToy => "狗狗玩具",
             PetSupplyKind::CatToy => "猫猫玩具",
+            PetSupplyKind::SoftMat => "共用软垫",
+            PetSupplyKind::WaterFountain => "自动饮水器",
             PetSupplyKind::Medicine => "药品",
         }
     }
@@ -203,6 +211,8 @@ impl PetSupplyKind {
             PetSupplyKind::Bowl => 600,
             PetSupplyKind::DogToy => 800,
             PetSupplyKind::CatToy => 600,
+            PetSupplyKind::SoftMat => 1_200,
+            PetSupplyKind::WaterFountain => 1_800,
             PetSupplyKind::Medicine => 300,
         }
     }
@@ -214,6 +224,7 @@ impl PetSupplyKind {
             PetSupplyKind::Bowl => 0,
             PetSupplyKind::DogToy => 320,
             PetSupplyKind::CatToy => 240,
+            PetSupplyKind::SoftMat | PetSupplyKind::WaterFountain => 0,
             PetSupplyKind::Medicine => 0,
         }
     }

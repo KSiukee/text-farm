@@ -55,7 +55,15 @@ export interface PetTalentTierView {
   unlocked: boolean;
   options: PetTalentView[];
 }
-export type PetSupplyKind = "dog_bed" | "cat_bed" | "bowl" | "dog_toy" | "cat_toy" | "medicine";
+export type PetSupplyKind =
+  | "dog_bed"
+  | "cat_bed"
+  | "bowl"
+  | "dog_toy"
+  | "cat_toy"
+  | "soft_mat"
+  | "water_fountain"
+  | "medicine";
 export type PetTrainingKind = "guard" | "dig" | "mischief" | "companion";
 
 export interface Resistances {
@@ -452,6 +460,8 @@ export interface PetCareView {
   catToy: boolean;
   dogToyBroken: boolean;
   catToyBroken: boolean;
+  softMat: boolean;
+  waterFountain: boolean;
   medicine: number;
   catFood: number;
   dogFood: number;
@@ -466,6 +476,8 @@ export interface PetCareView {
   bowlCost: number;
   dogToyCost: number;
   catToyCost: number;
+  softMatCost: number;
+  waterFountainCost: number;
   medicineCost: number;
   dogBedRepair: number;
   catBedRepair: number;

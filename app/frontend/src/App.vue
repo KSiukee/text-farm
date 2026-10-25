@@ -1061,7 +1061,7 @@ function releasePet(petId: string, name: string) {
   void act({ type: "releasePet", petId });
 }
 
-function buyPetSupply(kind: "dog_bed" | "cat_bed" | "bowl" | "dog_toy" | "cat_toy" | "medicine") {
+function buyPetSupply(kind: "dog_bed" | "cat_bed" | "bowl" | "dog_toy" | "cat_toy" | "soft_mat" | "water_fountain" | "medicine") {
   void act({ type: "buyPetSupply", kind });
 }
 
@@ -5908,6 +5908,22 @@ onUnmounted(() => {
                 </button>
               </div>
               <div class="pet-care-card">
+                <strong>🛌 共用软垫</strong>
+                <span>{{ petCare.softMat ? "已购买" : `${petCare.softMatCost} 金币` }}</span>
+                <span class="muted">所有当值宠物每天心情 +1</span>
+                <button v-if="!petCare.softMat" class="link" type="button" :disabled="acting" @click="buyPetSupply('soft_mat')">
+                  [购买]
+                </button>
+              </div>
+              <div class="pet-care-card">
+                <strong>💧 自动饮水器</strong>
+                <span>{{ petCare.waterFountain ? "已购买" : `${petCare.waterFountainCost} 金币` }}</span>
+                <span class="muted">所有当值宠物每天健康 +1</span>
+                <button v-if="!petCare.waterFountain" class="link" type="button" :disabled="acting" @click="buyPetSupply('water_fountain')">
+                  [购买]
+                </button>
+              </div>
+              <div class="pet-care-card">
                 <strong>🧸 狗狗玩具</strong>
                 <span>{{ petCare.dogToy ? (petCare.dogToyBroken ? "已损坏" : "已购买") : `${petCare.dogToyCost} 金币` }}</span>
                 <span class="muted">狗狗玩耍心情 +25%</span>
@@ -5950,7 +5966,7 @@ onUnmounted(() => {
                 </button>
               </div>
             </div>
-            <p class="muted">狗窝/猫窝/玩具按物种生效；食盆全档共用，3 只宠物需要 3 个。拆家会咬坏窝/玩具，修补费为原价 40%。</p>
+            <p class="muted">狗窝/猫窝/玩具按物种生效；食盆、软垫、饮水器全档共用。拆家会咬坏窝/玩具，修补费为原价 40%。</p>
           </div>
 
           <details v-if="pet" class="pet-training pet-fold">

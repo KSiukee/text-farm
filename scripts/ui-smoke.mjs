@@ -517,10 +517,16 @@ try {
   check("接单进入进行中", saveState().orders.active.length === 1);
   await screenshot(farmOrderScreenshotPath);
   check("村庄订单截图已保存", existsSync(farmOrderScreenshotPath), farmOrderScreenshotPath);
-  await clickText("[交付", false);
-  await waitFor(async () => saveState().orders.active.length === 0);
-  check("交付订单", saveState().orders.active.length === 0);
-  check("订单奖励到账", saveState().coins > orderCoins);
+  const activeOrder = saveState().orders.active[0];
+  if (activeOrder?.canDeliver) {
+    await clickText("[交付", false);
+    await waitFor(async () => saveState().orders.active.length === 0);
+    check("交付订单", saveState().orders.active.length === 0);
+    check("订单奖励到账", saveState().coins > orderCoins);
+  } else {
+    check("订单带品质/新鲜要求，本轮跳过交付", true);
+    check("订单仍保留进行中，不阻塞后续", saveState().orders.active.length === 1);
+  }
   check(
     "四种水域背景已生成",
     ["creek", "river", "jiang", "sea"].every((name) =>
@@ -1062,6 +1068,10 @@ try {
     ["猫粮", "狗粮", "狗骨头", "猫罐头"].every((label) =>
       personalityText.includes(label),
     ),
+  );
+  check(
+    "共用软垫与饮水器已显示",
+    personalityText.includes("共用软垫") && personalityText.includes("自动饮水器"),
   );
   check("主动技能按钮已显示", personalityText.includes("[主动 ·"));
   check("行为树当前活动已显示", personalityText.includes("正在："));

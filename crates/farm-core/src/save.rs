@@ -1308,6 +1308,19 @@ pub fn migrate_save(mut value: Value) -> Result<Value, SaveError> {
         value["schema"] = json!(58);
     }
 
+    if schema < 59 {
+        let state = value
+            .get_mut("state")
+            .and_then(Value::as_object_mut)
+            .ok_or(SaveError::Unknown(schema))?;
+        if let Some(care) = state.get_mut("petCare").and_then(Value::as_object_mut) {
+            care.entry("softMat").or_insert_with(|| json!(false));
+            care.entry("waterFountain").or_insert_with(|| json!(false));
+        }
+        state.insert("schema".into(), json!(59));
+        value["schema"] = json!(59);
+    }
+
     Ok(value)
 }
 

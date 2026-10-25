@@ -4492,6 +4492,8 @@ impl Game {
             PetSupplyKind::Bowl => self.state.pet_care.bowls >= 3,
             PetSupplyKind::DogToy => self.state.pet_care.dog_toy,
             PetSupplyKind::CatToy => self.state.pet_care.cat_toy,
+            PetSupplyKind::SoftMat => self.state.pet_care.soft_mat,
+            PetSupplyKind::WaterFountain => self.state.pet_care.water_fountain,
             PetSupplyKind::Medicine => false,
         };
         if owned {
@@ -4508,6 +4510,8 @@ impl Game {
             PetSupplyKind::Bowl => self.state.pet_care.bowls += 1,
             PetSupplyKind::DogToy => self.state.pet_care.dog_toy = true,
             PetSupplyKind::CatToy => self.state.pet_care.cat_toy = true,
+            PetSupplyKind::SoftMat => self.state.pet_care.soft_mat = true,
+            PetSupplyKind::WaterFountain => self.state.pet_care.water_fountain = true,
             PetSupplyKind::Medicine => self.state.pet_care.medicine += 1,
         }
         let text = format!("你买了{}，花费 {cost}", kind.label());
@@ -4525,7 +4529,10 @@ impl Game {
             PetSupplyKind::CatBed => self.state.pet_care.cat_bed_broken,
             PetSupplyKind::DogToy => self.state.pet_care.dog_toy_broken,
             PetSupplyKind::CatToy => self.state.pet_care.cat_toy_broken,
-            PetSupplyKind::Bowl | PetSupplyKind::Medicine => false,
+            PetSupplyKind::Bowl
+            | PetSupplyKind::SoftMat
+            | PetSupplyKind::WaterFountain
+            | PetSupplyKind::Medicine => false,
         };
         if !broken {
             return Err(GameError::PetSupplyNotBroken);
@@ -4540,7 +4547,10 @@ impl Game {
             PetSupplyKind::CatBed => self.state.pet_care.cat_bed_broken = false,
             PetSupplyKind::DogToy => self.state.pet_care.dog_toy_broken = false,
             PetSupplyKind::CatToy => self.state.pet_care.cat_toy_broken = false,
-            PetSupplyKind::Bowl | PetSupplyKind::Medicine => unreachable!(),
+            PetSupplyKind::Bowl
+            | PetSupplyKind::SoftMat
+            | PetSupplyKind::WaterFountain
+            | PetSupplyKind::Medicine => unreachable!(),
         }
         let text = format!("你修好了{}，花费 {cost}", kind.label());
         self.push_log(now, text.clone());
@@ -4566,6 +4576,8 @@ impl Game {
     fn pet_tick(&mut self, now: i64, today: &str) -> bool {
         let dog_bed = self.state.pet_care.dog_bed && !self.state.pet_care.dog_bed_broken;
         let cat_bed = self.state.pet_care.cat_bed && !self.state.pet_care.cat_bed_broken;
+        let soft_mat = self.state.pet_care.soft_mat;
+        let water_fountain = self.state.pet_care.water_fountain;
         let mut changed = false;
         let mut sick = Vec::new();
         let mut activity_logs = Vec::new();
@@ -4579,6 +4591,14 @@ impl Game {
             };
             let was_sick = pet.sickness.is_some();
             changed |= pet.tick(now, today, bed);
+            if soft_mat && pet.mood < 100 {
+                pet.mood += 1;
+                changed = true;
+            }
+            if water_fountain && pet.health < 100 {
+                pet.health += 1;
+                changed = true;
+            }
             if !was_sick && pet.sickness.is_some() {
                 let kind = pet
                     .sickness

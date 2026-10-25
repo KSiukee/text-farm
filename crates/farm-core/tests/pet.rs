@@ -1,7 +1,7 @@
 use farm_core::{
     guard_result, guard_result_full, Action, ContentPack, FishCodexEntry, Game, GameError,
     PetBreed, PetFoodKind, PetLocation, PetSickness, PetSicknessKind, PetSpecies, PetState,
-    PetTalent,
+    PetSupplyKind, PetTalent,
 };
 
 fn bait_total(game: &Game) -> u32 {
@@ -591,6 +591,33 @@ fn pet_pond_job_settles_once_per_day_and_levels_up() {
     game.sync(2_000_000, "2026-10-19");
     assert_eq!(game.state().pets[0].pond_job.level, level);
     assert!(game.state().pets[0].milestones.contains("first_pond"));
+}
+
+#[test]
+fn pet_shared_comfort_supplies_apply_daily() {
+    let mut game = game_with_pet(PetSpecies::Cat);
+    game.state_mut().coins = 100_000;
+    game.state_mut().pets[0].mood = 20;
+    game.state_mut().pets[0].health = 50;
+    game.dispatch(
+        Action::BuyPetSupply {
+            kind: PetSupplyKind::SoftMat,
+        },
+        0,
+    )
+    .unwrap();
+    game.dispatch(
+        Action::BuyPetSupply {
+            kind: PetSupplyKind::WaterFountain,
+        },
+        0,
+    )
+    .unwrap();
+    assert!(game.state().pet_care.soft_mat);
+    assert!(game.state().pet_care.water_fountain);
+    game.sync(1_000_000, "2026-10-19");
+    assert!(game.state().pets[0].mood > 20);
+    assert!(game.state().pets[0].health > 50);
 }
 
 #[test]
