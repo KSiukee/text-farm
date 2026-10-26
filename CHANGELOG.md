@@ -6,6 +6,10 @@
 
 ---
 
+## 0.138.0 · 2026-10-26
+
+- 钓鱼全屏横屏 + 手游键位（A168/#197）—— 新增 app/src/android.rs：Rust 用 Webview::with_webview→JniHandle.exec 调 Activity.setRequestedOrientation(LANDSCAPE) + WindowInsetsController.hide(systemBars)，进小游戏自动横屏全屏、退出恢复竖屏（桌面空实现）；前端右下角 88px 大圆键（抛竿/收线/收竿按阶段换，触屏才显示、横屏 96px），摇杆横屏移到左下 150px。实测 390×845→845×390、状态栏全隐。
+
 ## 0.137.0 · 2026-10-26
 
 - 钓鱼小游戏手机适配（A167/#195+#196）—— 真机反馈三个问题：鱼相对框占 70%（桌面 42%）→ 改 clamp(32,8.4%,64)+aspect-ratio，竖屏 32px 占 52%；摇杆 94→132px（旋钮 54）；框保持正方形。新增横屏专注布局（orientation: landscape + max-height 560）：隐藏手感块、pond 高度驱动 676×294、摇杆浮右下角 150px、开打自动滚到池塘顶。桌面零改动。详见 docs/钓鱼-手机适配-20261026.md。

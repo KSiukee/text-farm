@@ -22,3 +22,7 @@ serde_json = { workspace = true }
 chrono = { version = "0.4", features = ["clock"] }
 parking_lot = "0.12"
 base64 = "0.22"
+
+# Android 专属：全屏横屏要用 JNI 调 Activity（见 src/android.rs）
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.21"

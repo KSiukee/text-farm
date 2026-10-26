@@ -23,6 +23,8 @@ export const sync = () => invoke<DispatchReply>("sync");
 export const advanceTime = (hours: number) =>
   invoke<DispatchReply>("advance_time", { hours });
 export const saveNow = () => invoke<void>("save_now");
+/// 手机壳：进钓鱼小游戏时全屏横屏，退出恢复（桌面是空实现，不会报错）。
+export const gameMode = (enable: boolean) => invoke<void>("game_mode", { enable });
 export const exportSave = (path: string) => invoke<void>("export_save", { path });
 export const importSave = (path: string) =>
   invoke<ImportReply>("import_save", { path });

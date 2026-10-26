@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { gameMode } from "./api";
 import type { FishingSessionView } from "./types";
 
 const props = defineProps<{ session: FishingSessionView | null; active: boolean }>();
@@ -810,6 +811,14 @@ function goIdle() {
 
 watch(phase, () => {
   void nextTick(watchPond);
+  // 手机壳：小游戏一开就全屏横屏（桌面是空实现）
+  void gameMode(phase.value !== "idle");
+  // 横屏后页面还停在钓点/鱼饵那一屏，等旋转落定再把池塘顶到视野里
+  if (phase.value !== "idle" && typeof matchMedia === "function" && matchMedia("(orientation: landscape)").matches) {
+    window.setTimeout(() => {
+      pond.value?.scrollIntoView({ block: "start", behavior: "smooth" });
+    }, 450);
+  }
 });
 
 watch(
@@ -841,6 +850,8 @@ onUnmounted(() => {
   window.removeEventListener("contextmenu", onContextMenu, true);
   window.removeEventListener("focus", onWindowFocus);
   onStickUp();
+  // 离开小游戏时把手机壳恢复成竖屏、状态栏回来
+  void gameMode(false);
 });
 </script>
 
@@ -1041,6 +1052,22 @@ onUnmounted(() => {
         <div class="fg-stick-knob" :style="stickKnobStyle"></div>
       </div>
       <span class="muted">拖轮盘移动鱼框</span>
+    </div>
+
+    <!-- 手游键位（#197）：触屏时右下角浮一个大圆键，按阶段换内容 -->
+    <div v-if="phase === 'bite' || phase === 'playing'" class="fg-pad">
+      <button
+        v-if="phase === 'bite'"
+        class="fg-pad-btn primary"
+        type="button"
+        :disabled="done"
+        @click="startGame"
+      >
+        收线
+      </button>
+      <button v-else class="fg-pad-btn ghost" type="button" :disabled="done" @click="fail">
+        收竿
+      </button>
     </div>
   </div>
 </template>

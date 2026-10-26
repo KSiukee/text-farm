@@ -155,8 +155,8 @@ body {
 
   .fishing-game .fg-stick-wrap {
     position: fixed;
-    right: 16px;
-    bottom: 16px;
+    left: 20px; /* 摇杆左下、主键右下，两只拇指各管一边 */
+    bottom: 20px;
     z-index: 30;
     margin: 0;
     padding: 8px;
@@ -173,5 +173,78 @@ body {
 
   .fishing-game .fg-stick-wrap .muted {
     display: none;
+  }
+
+  /* 横屏键位也放大一号 */
+  .fg-pad-btn {
+    width: 96px;
+    height: 96px;
+    font-size: 19px;
+  }
+}
+
+/* 键位默认藏起来（桌面用键盘），下面 (hover: none) 里再放出来。
+   注意：这条必须写在媒体查询**前面**——同一优先级下，后面的规则会赢。 */
+.fg-pad,
+.fg-pad-cast {
+  display: none;
+}
+
+/* ---- 手游键位（#197）----
+   只在触屏出现（桌面用键盘），右下角大圆键，按阶段换内容：抛竿 / 收线 / 收竿。 */
+@media (hover: none) {
+  .fg-pad {
+    display: flex;
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 40;
+    gap: 12px;
+  }
+
+  .fg-pad-cast {
+    display: grid;
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 40;
+  }
+
+  .fg-pad-btn {
+    display: grid;
+    place-items: center;
+    width: 88px;
+    height: 88px;
+    border: 2px solid var(--pond-border);
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 50% 34%, var(--surface-sheen), transparent 58%),
+      radial-gradient(circle, var(--pond-stick-1), var(--pond-stick-2) 74%);
+    color: var(--ink);
+    font: inherit;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    box-shadow:
+      inset 0 0 0 5px var(--pond-stick-ring),
+      0 6px 18px var(--pond-stick-shadow);
+    touch-action: manipulation;
+  }
+
+  .fg-pad-btn:active {
+    transform: scale(0.94);
+  }
+
+  .fg-pad-btn.primary {
+    border-color: var(--fg-progress-color, var(--pond-frame));
+    color: var(--accent-text);
+  }
+
+  .fg-pad-btn.ghost {
+    opacity: 0.86;
+  }
+
+  .fg-pad-btn:disabled {
+    opacity: 0.45;
   }
 }

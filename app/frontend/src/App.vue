@@ -5127,6 +5127,16 @@ onUnmounted(() => {
             >
               [抛竿 (F)]
             </button>
+            <!-- 手游键位（#197）：触屏时右下角浮一个大圆键 -->
+            <button
+              v-if="!fishing.session"
+              class="fg-pad-btn primary fg-pad-cast"
+              type="button"
+              :disabled="acting || !currentSpot?.unlocked || (activeBaitInfo?.count ?? 0) === 0"
+              @click="castLine"
+            >
+              抛竿
+            </button>
             <span v-if="(activeBaitInfo?.count ?? 0) === 0" class="muted">这款鱼饵没了，先买一点</span>
             <span v-else-if="currentSpot && !currentSpot.unlocked" class="muted">
               需要钓鱼等级 {{ currentSpot.level }} 级
