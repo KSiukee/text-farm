@@ -6,6 +6,10 @@
 
 ---
 
+## 0.137.0 · 2026-10-26
+
+- 钓鱼小游戏手机适配（A167/#195+#196）—— 真机反馈三个问题：鱼相对框占 70%（桌面 42%）→ 改 clamp(32,8.4%,64)+aspect-ratio，竖屏 32px 占 52%；摇杆 94→132px（旋钮 54）；框保持正方形。新增横屏专注布局（orientation: landscape + max-height 560）：隐藏手感块、pond 高度驱动 676×294、摇杆浮右下角 150px、开打自动滚到池塘顶。桌面零改动。详见 docs/钓鱼-手机适配-20261026.md。
+
 ## 0.136.0 · 2026-10-26
 
 - Android 发布（A166/#194）—— release 打包打通：R8 混淆下正常跑（22.7MB APK / 16.4MB AAB），keystore 放项目外 `D:\deepseek-files\_keys`，APK 用 apksigner、AAB 用 jarsigner，签名已验；`scripts/android-build.ps1 -Release [-Aab]` 一条命令出包。实测：0.135.0 → 0.136.0 覆盖安装存档不丢（金币 195/种子 ×2）；系统深色跟随（`data-theme=dark`）；字体 1.3/1.5 倍无横向溢出；APK 权限只有 INTERNET + FileProvider。已知：深色模式下状态栏图标仍是深色（对比度低）、真机未验。详见 docs/android-发布-20261026.md。

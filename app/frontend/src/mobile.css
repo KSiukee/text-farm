@@ -97,4 +97,81 @@ body {
     gap: 6px;
     min-height: 40px;
   }
+
+  /* ---- 钓鱼小游戏（#195，真机反馈）---- */
+
+  /* 摇杆：桌面 94px 在手机上太细，放大到 132，拇指能压住 */
+  .fg-stick {
+    width: 132px;
+    height: 132px;
+  }
+
+  .fg-stick-knob {
+    width: 54px;
+    height: 54px;
+    margin: -27px 0 0 -27px;
+  }
+
+  /* 鱼：原来 clamp(50px, 14%, 64px)，手机 pond 只有 390 宽时算出约 54.6px，
+     相对 78px 的框占 70%（桌面 64/152 = 42%）—— 看起来就是「鱼变大了」。
+     改成跟 pond 宽等比：8.4% × 390 ≈ 33px，比例回到 42%。
+     高度用 aspect-ratio 跟宽度绑定（百分比高是相对 pond 高度，宽高比会失真）。 */
+  .fg-fish {
+    width: clamp(32px, 8.4%, 64px);
+    height: auto;
+    aspect-ratio: 1;
+  }
+
+  .fg-fish-shadow {
+    width: clamp(26px, 6.6%, 44px);
+    height: clamp(7px, 1.8%, 12px);
+  }
+}
+
+/* ---- 手机横屏：钓鱼进入「专注」布局（#196）----
+   横屏时高度最紧（约 390dp），把钓鱼页里跟打架无关的块收掉，
+   pond 按视口高度算（23:10，与桌面同比例），摇杆浮到右下角不占纵向空间。 */
+@media (orientation: landscape) and (max-height: 560px) {
+  .fishing-game .fg-head,
+  .fishing-game .fg-feel {
+    display: none;
+  }
+
+  .fishing-game .fg-pond {
+    width: auto;
+    height: calc(100dvh - 96px);
+    aspect-ratio: 23 / 10;
+    max-width: calc(100vw - 24px);
+    margin: 0 auto;
+    scroll-margin-top: 8px;
+  }
+
+  /* 横屏 pond 宽 676 时，14% 会顶到 64px 上限；这里换成跟宽等比，和竖屏同一口径 */
+  .fishing-game .fg-fish {
+    width: clamp(32px, 8.4%, 64px);
+    height: auto;
+    aspect-ratio: 1;
+  }
+
+  .fishing-game .fg-stick-wrap {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 30;
+    margin: 0;
+    padding: 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--panel) 82%, transparent);
+    box-shadow: 0 6px 20px var(--shadow-soft);
+  }
+
+  /* 横屏下摇杆可以再大一号：它不再占纵向空间 */
+  .fishing-game .fg-stick {
+    width: 150px;
+    height: 150px;
+  }
+
+  .fishing-game .fg-stick-wrap .muted {
+    display: none;
+  }
 }

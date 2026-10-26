@@ -275,6 +275,10 @@ function startGame() {
   message.value = "WASD / 方向键 / 下方轮盘移动框，把鱼圈住";
   last = 0;
   raf = requestAnimationFrame(tick);
+  // 横屏（#196）时页面上方还压着钓点/鱼饵等块，开打后把池塘顶到视野上方
+  if (typeof matchMedia === "function" && matchMedia("(orientation: landscape)").matches) {
+    pond.value?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
 }
 
 function setFeel(mode: FeelMode) {
