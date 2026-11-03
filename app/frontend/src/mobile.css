@@ -208,8 +208,8 @@ body {
 
 /* ---- 手游键位----
    只在触屏出现（桌面用键盘），右下角大圆键，按阶段换内容：抛竿 / 收线 / 收竿。 */
-@media (hover: none) {
-  .fg-pad {
+
+  html.touch .fg-pad {
     display: flex;
     position: fixed;
     right: 20px;
@@ -218,7 +218,7 @@ body {
     gap: 12px;
   }
 
-  .fg-pad-cast {
+  html.touch .fg-pad-cast {
     display: grid;
     position: fixed;
     right: 20px;
@@ -226,7 +226,7 @@ body {
     z-index: 40;
   }
 
-  .fg-pad-btn {
+  html.touch .fg-pad-btn {
     display: grid;
     place-items: center;
     width: 88px;
@@ -247,20 +247,20 @@ body {
     touch-action: manipulation;
   }
 
-  .fg-pad-btn:active {
+  html.touch .fg-pad-btn:active {
     transform: scale(0.94);
   }
 
-  .fg-pad-btn.primary {
+  html.touch .fg-pad-btn.primary {
     border-color: var(--fg-progress-color, var(--pond-frame));
     color: var(--accent-text);
   }
 
-  .fg-pad-btn.ghost {
+  html.touch .fg-pad-btn.ghost {
     opacity: 0.86;
   }
 
-  .fg-pad-btn:disabled {
+  html.touch .fg-pad-btn:disabled {
     opacity: 0.45;
   }
-}
+

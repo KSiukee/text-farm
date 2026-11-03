@@ -4,6 +4,12 @@ import App from "./App.vue";
 import "./theme.css";
 import "./style.css";
 import "./mobile.css";
+
+// 有的 WebView 冷启动时 (hover: none) 还没生效，悬浮摇杆/大圆键会一整个不出现，
+// 摸几下屏幕才"卡出来"。这里直接按触摸能力打一个类，CSS 用它兜底。
+if (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0) {
+  document.documentElement.classList.add("touch");
+}
 import { applyBackgroundPrefs, readBackgroundPrefs } from "./background";
 import { applyFontPrefs, readFontPrefs } from "./font";
 import { applyStylePack, readStylePack } from "./style-pack";

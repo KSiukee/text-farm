@@ -54,6 +54,53 @@ const inZone = ref(false);
 const graceLeft = ref(0);
 const biteLeft = ref(0);
 const feel = ref<FeelMode>(readFeel());
+
+// 重力感应：手机横竖无所谓，用 gamma（左右）/ beta（前后）映射成框的速度。
+// 打开时记一次基准角，之后只吃相对变化，玩家不用把手机摆得跟水平仪一样。
+const TILT_KEY = "farm.ui.fishingTilt";
+const tiltOn = ref(false);
+const tiltX = ref(0);
+const tiltY = ref(0);
+let tiltBase: { beta: number; gamma: number } | null = null;
+const TILT_DEAD_DEG = 2.5;
+const TILT_RANGE_DEG = 22;
+
+function readTilt(): boolean {
+  try {
+    return window.localStorage.getItem(TILT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function onTilt(event: DeviceOrientationEvent) {
+  if (!tiltOn.value) return;
+  const beta = event.beta ?? 0;
+  const gamma = event.gamma ?? 0;
+  if (!tiltBase) tiltBase = { beta, gamma };
+  const dx = (gamma - tiltBase.gamma) / TILT_RANGE_DEG;
+  const dy = (beta - tiltBase.beta) / TILT_RANGE_DEG;
+  const dead = TILT_DEAD_DEG / TILT_RANGE_DEG;
+  tiltX.value = Math.abs(dx) < dead ? 0 : Math.max(-1, Math.min(1, dx));
+  tiltY.value = Math.abs(dy) < dead ? 0 : Math.max(-1, Math.min(1, dy));
+}
+
+function setTilt(on: boolean) {
+  tiltOn.value = on;
+  tiltBase = null;
+  tiltX.value = 0;
+  tiltY.value = 0;
+  try {
+    window.localStorage.setItem(TILT_KEY, on ? "1" : "0");
+  } catch {
+    // 存不了就只影响这一次
+  }
+  if (on) {
+    window.addEventListener("deviceorientation", onTilt);
+  } else {
+    window.removeEventListener("deviceorientation", onTilt);
+  }
+}
 const fightMode = ref<FightMode>(readFight());
 // D2/D3 都只拉长打架：活泼/凶猛/鱼王；金色变异跟随鱼王。
 const fightMultiplier = computed(() => {
@@ -396,6 +443,10 @@ function onStickUp() {
 function axis(): { x: number; y: number } {
   let x = touchX.value;
   let y = touchY.value;
+  if (tiltOn.value && !stickActive.value) {
+    x += tiltX.value;
+    y += tiltY.value;
+  }
   for (const key of keys) {
     if (key === "a" || key === "arrowleft") x -= 1;
     if (key === "d" || key === "arrowright") x += 1;
@@ -862,6 +913,7 @@ watch(
 );
 
 onMounted(() => {
+  if (readTilt()) setTilt(true);
   window.addEventListener("keydown", onKey);
   window.addEventListener("keyup", onKeyUp);
   window.addEventListener("contextmenu", onContextMenu, true);
@@ -876,6 +928,7 @@ onUnmounted(() => {
   clearBiteWindow();
   pondObserver?.disconnect();
   pondObserver = null;
+  window.removeEventListener("deviceorientation", onTilt);
   window.removeEventListener("keydown", onKey);
   window.removeEventListener("keyup", onKeyUp);
   window.removeEventListener("contextmenu", onContextMenu, true);
@@ -918,6 +971,14 @@ onUnmounted(() => {
         @click="setFeel('bad')"
       >
         [2 追鱼（默认）]
+      </button>
+      <button
+        class="link"
+        :class="{ active: tiltOn }"
+        type="button"
+        @click="setTilt(!tiltOn)"
+      >
+        [重力感应]
       </button>
       <span v-if="feel === 'current'" class="muted">旧手感（保留）</span>
       <span v-else-if="session" class="muted">
