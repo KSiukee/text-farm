@@ -1,6 +1,10 @@
 # 🌾 文字农场
 
 [![测试](https://github.com/ksiukee/text-farm/actions/workflows/test.yml/badge.svg)](https://github.com/ksiukee/text-farm/actions/workflows/test.yml)
+[![release](https://img.shields.io/github/v/release/KSiukee/text-farm?label=release&color=blue)](../../releases)
+[![downloads](https://img.shields.io/github/downloads/KSiukee/text-farm/total?label=downloads&color=blue)](../../releases)
+[![license](https://img.shields.io/github/license/KSiukee/text-farm?label=license&color=blue)](LICENSE)
+![platform](https://img.shields.io/badge/platform-Windows%20%7C%20Android%20%7C%20Web-blue)
 
 纯文字、点链接、按真实时间生长的单机农场。无联网、无充值、无排行榜；作物和农场的名字都由你自己起。
 
