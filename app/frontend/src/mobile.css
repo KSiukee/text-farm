@@ -135,16 +135,22 @@ body {
    横屏时高度最紧（约 390dp），把钓鱼页里跟打架无关的块收掉，
    pond 按视口高度算（23:10，与桌面同比例），摇杆浮到右下角不占纵向空间。 */
 @media (orientation: landscape) and (max-height: 560px) {
-  .fishing-game .fg-head,
-  .fishing-game .fg-feel {
+  /* 只藏鱼竿/鱼饵那行；手感切换要留着——不然横屏里改不了手感，只能转回竖屏 */
+  .fishing-game .fg-head {
     display: none;
+  }
+
+  .fishing-game .fg-feel {
+    margin-bottom: 4px;
+    font-size: 11px;
+    gap: 6px;
   }
 
   .fishing-game .fg-pond {
     width: auto;
     /* 原来 -96 只够池塘自己，底下的状态行和按钮行会被切掉；
        -132 留出两行的高度。 */
-    height: calc(100dvh - 132px);
+    height: calc(100dvh - 170px);
     aspect-ratio: 23 / 10;
     max-width: calc(100vw - 24px);
     margin: 0 auto;
