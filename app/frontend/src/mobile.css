@@ -209,7 +209,13 @@ body {
 /* ---- 手游键位----
    只在触屏出现（桌面用键盘），右下角大圆键，按阶段换内容：抛竿 / 收线 / 收竿。 */
 
-  html.touch .fg-pad {
+  /* 摇杆和键位是同一个毛病：横屏时 (hover: none) 没生效就整个不出现。
+   用 JS 打的 html.touch 兜底（竖屏本来就靠 max-width: 720 生效，所以只在横屏暴露）。 */
+html.touch .fg-stick-wrap {
+  display: flex;
+}
+
+html.touch .fg-pad {
     display: flex;
     position: fixed;
     right: 20px;

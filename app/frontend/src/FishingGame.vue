@@ -61,7 +61,7 @@ const TILT_KEY = "farm.ui.fishingTilt";
 const tiltOn = ref(false);
 const tiltX = ref(0);
 const tiltY = ref(0);
-let tiltBase: { beta: number; gamma: number } | null = null;
+let tiltBase: { x: number; y: number } | null = null;
 const TILT_DEAD_DEG = 2.5;
 const TILT_RANGE_DEG = 22;
 
@@ -73,13 +73,41 @@ function readTilt(): boolean {
   }
 }
 
+/// 按屏幕方向把 beta/gamma 换算成「屏幕上的左右/上下」。
+/// 横屏时手机是侧着的，gamma 变成了俯仰，直接用会把框甩到角落。
+function tiltAxes(beta: number, gamma: number): { x: number; y: number } {
+  const angle = ((screen.orientation?.angle ?? 0) % 360 + 360) % 360;
+  if (angle === 90) return { x: beta, y: -gamma };
+  if (angle === 180) return { x: -gamma, y: -beta };
+  if (angle === 270) return { x: -beta, y: gamma };
+  return { x: gamma, y: beta };
+}
+
 function onTilt(event: DeviceOrientationEvent) {
   if (!tiltOn.value) return;
-  const beta = event.beta ?? 0;
-  const gamma = event.gamma ?? 0;
-  if (!tiltBase) tiltBase = { beta, gamma };
-  const dx = (gamma - tiltBase.gamma) / TILT_RANGE_DEG;
-  const dy = (beta - tiltBase.beta) / TILT_RANGE_DEG;
+  const beta = event.beta;
+  const gamma = event.gamma;
+  // 有的设备头几次事件是 null / 异常值，拿它当基准就会把框按在角落
+  if (beta === null || gamma === null) return;
+  if (!Number.isFinite(beta) || !Number.isFinite(gamma)) return;
+  if (Math.abs(beta) > 120 || Math.abs(gamma) > 120) return;
+
+  const axes = tiltAxes(beta, gamma);
+  if (!tiltBase) {
+    tiltBase = { x: axes.x, y: axes.y };
+    return;
+  }
+  const rawX = axes.x - tiltBase.x;
+  const rawY = axes.y - tiltBase.y;
+  // 基准之后手机被大幅挪动（换握姿/转屏），重新取基准，别硬顶
+  if (Math.abs(rawX) > 45 || Math.abs(rawY) > 45) {
+    tiltBase = { x: axes.x, y: axes.y };
+    tiltX.value = 0;
+    tiltY.value = 0;
+    return;
+  }
+  const dx = rawX / TILT_RANGE_DEG;
+  const dy = rawY / TILT_RANGE_DEG;
   const dead = TILT_DEAD_DEG / TILT_RANGE_DEG;
   tiltX.value = Math.abs(dx) < dead ? 0 : Math.max(-1, Math.min(1, dx));
   tiltY.value = Math.abs(dy) < dead ? 0 : Math.max(-1, Math.min(1, dy));
