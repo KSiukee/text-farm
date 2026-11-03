@@ -2502,6 +2502,23 @@ async function doSave() {
   }
 }
 
+// 网页版第一次打开：把「存档只在浏览器里」说到明处，可勾选不再提示
+const WEB_SAVE_HINT_KEY = "farm.ui.webSaveHintDone";
+const webSaveHint = ref(false);
+const webSaveHintMute = ref(false);
+
+function closeWebSaveHint() {
+  webSaveHint.value = false;
+  if (webSaveHintMute.value) {
+    window.localStorage.setItem(WEB_SAVE_HINT_KEY, "1");
+  }
+}
+
+async function exportSaveAndCloseHint() {
+  await exportSaveFile();
+  closeWebSaveHint();
+}
+
 onMounted(() => {
   window.addEventListener("keydown", onFishingShortcut);
   document.addEventListener("visibilitychange", onVisibilityChange);
@@ -2563,6 +2580,11 @@ onMounted(() => {
   syncTimer = window.setInterval(() => {
     void syncFarm();
   }, 30000);
+  if (isWeb && !window.localStorage.getItem(WEB_SAVE_HINT_KEY)) {
+    window.setTimeout(() => {
+      webSaveHint.value = true;
+    }, 1200);
+  }
 });
 
 onUnmounted(() => {
@@ -6745,6 +6767,33 @@ onUnmounted(() => {
           >
             {{ confirmDialog.okText }}
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 网页版首次打开：先说清楚存档存在浏览器里，别白玩 -->
+    <div
+      v-if="webSaveHint"
+      class="confirm-overlay"
+      role="dialog"
+      aria-modal="true"
+      @click.self="closeWebSaveHint"
+    >
+      <div class="confirm-card wide">
+        <div class="confirm-title">先看一眼，免得白玩</div>
+        <p class="confirm-body">
+          这个网页版把存档存在<b>你用的这个浏览器</b>里，不上传任何服务器。
+          <span class="confirm-line">· 清浏览器数据、换设备、换浏览器，档就没了</span>
+          <span class="confirm-line">· iPhone 的 Safari 超过 7 天没打开也会清掉</span>
+          <span class="confirm-line">隔三差五点一次「下载存档」，把文件存到网盘或微信里。</span>
+        </p>
+        <label class="confirm-check">
+          <input v-model="webSaveHintMute" type="checkbox" />
+          以后不再提示
+        </label>
+        <div class="confirm-actions">
+          <button class="link" type="button" @click="exportSaveAndCloseHint">[下载存档]</button>
+          <button class="link confirm-ok" type="button" @click="closeWebSaveHint">[知道了]</button>
         </div>
       </div>
     </div>

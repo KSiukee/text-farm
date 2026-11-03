@@ -5408,6 +5408,30 @@ footer {
   font-weight: 700;
 }
 
+.confirm-line {
+  display: block;
+}
+
+.confirm-card.wide {
+  width: min(92vw, 440px);
+}
+
+.confirm-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 0.9em;
+  cursor: pointer;
+  user-select: none;
+}
+
+.confirm-check input {
+  width: auto;
+  margin: 0;
+}
+
 .confirm-actions .confirm-ok.danger {
   color: var(--danger-strong);
 }
