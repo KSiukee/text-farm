@@ -24,10 +24,22 @@ param(
     [switch]$Release,
     [string]$KeyDir = "D:\deepseek-files\_keys",
     # 同时出 AAB（用 jarsigner 签，Google Play 上传那种）
-    [switch]$Aab
+    [switch]$Aab,
+    # 跳过发布前闸门（只该在确认过闸门结果的情况下用）
+    [switch]$SkipGate
 )
 
 $ErrorActionPreference = "Stop"
+
+# ---- 发布棘轮：release 包先过闸门 ----
+# 正式包是给人装的，不能凭记性。debug 包不拦（测试用）。
+if ($Release -and -not $SkipGate) {
+    Write-Host "== release 包：先跑发布前闸门 ==" -ForegroundColor Cyan
+    python scripts\release-check.py
+    if ($LASTEXITCODE -ne 0) {
+        throw "发布前闸门没过，拒绝打 release 包。测试请用 debug（去掉 -Release）。"
+    }
+}
 $root = Split-Path -Parent $PSScriptRoot
 $appDir = Join-Path $root "app"
 $genAndroid = Join-Path $appDir "gen\android"

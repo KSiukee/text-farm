@@ -31,6 +31,43 @@ cd app/frontend && npm run test && npm run typecheck
 - 注释用中文，写「为什么」，不写「做了什么」。
 - 一个 PR 只做一件事。
 
+## 发版（机器管，不靠记性）
+
+正式包只在打 tag 时产出，而且要先过**发布前闸门**：
+
+```bash
+python scripts/release-check.py     # 手动跑
+# 或者直接 push tag，pre-push hook 会替你先跑一遍
+git tag vX.Y.Z && git push origin vX.Y.Z
+```
+
+闸门不过，tag 推不出去（本地 hook）+ 出了包也没产物（CI 的 `gate` job 卡在构建前面）。
+
+检查项：
+
+| 项 | 为什么 |
+|---|---|
+| 工作树干净 | 正式包必须来自已提交的状态 |
+| 版本号四处一致 | Cargo / tauri.conf / package.json / README 写岔过 |
+| 版本号不低于上个 tag | 防止把旧版本号再发一次 |
+| CHANGELOG 与内部日志一致 | 手改公开的 CHANGELOG 会漂 |
+| 公开内容脱敏 0 命中 | 内部路径/项目名不进公开仓库 |
+| 内部资料、构建产物没被跟踪 | `.exe`/`.apk`/内部文档不该进库 |
+
+装 hook（每台机器一次）：
+
+```powershell
+.\scripts\install-hooks.ps1
+```
+
+安卓正式包同样过闸门：
+
+```powershell
+.\scripts\android-build.ps1 -Arch aarch64 -Release    # 会先跑 release-check
+```
+
+只想要测试包就别带 `-Release`，debug 包不受闸门约束。
+
 ## 许可
 
 提交即表示你同意以 **GPL-3.0-or-later** 授权你的贡献（inbound = outbound，不需要签 CLA）。

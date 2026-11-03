@@ -17,7 +17,17 @@ permissions:
   contents: write
 
 jobs:
+  # 发布闸门：tag 推上来先过机器检查，不过就一个产物都不出。
+  # （本地 .githooks/pre-push 是第一道；这里是不依赖本机配置的第二道。）
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 发布前闸门
+        run: python3 scripts/release-check.py --ci
+
   windows:
+    needs: gate
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -76,6 +86,7 @@ jobs:
             存档三端通用，设置里可以导出/导入。有问题请开 Issue。
 
   macos:
+    needs: gate
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
