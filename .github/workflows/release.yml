@@ -50,12 +50,22 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force out | Out-Null
-          Copy-Item "target/release/text-farm.exe" "out/文字农场.exe"
-          Get-Item "out/文字农场.exe" | Select-Object Name, Length
+          $ver = (Get-Content "app/tauri.conf.json" -Raw | ConvertFrom-Json).version
+          # 文件名用 ASCII：中文文件名在 release 附件里会被处理成 default.exe
+          Copy-Item "target/release/text-farm.exe" "out/text-farm-$ver-win64.exe"
+          Get-Item "out/text-farm-$ver-win64.exe" | Select-Object Name, Length
 
       - name: 挂到 Release
         uses: softprops/action-gh-release@v2
         with:
-          files: out/文字农场.exe
+          name: 文字农场 ${{ github.ref_name }}
+          files: out/*.exe
           draft: true
-          generate_release_notes: true
+          body: |
+            **Windows 免安装版**：下载下面的 `text-farm-*-win64.exe`，双击就能跑。
+            首次运行 Windows 会提示「已保护你的电脑」——exe 没买代码签名证书，
+            点「更多信息 → 仍要运行」就行。
+
+            **网页版**（不用下载）：https://ksiukee.github.io/text-farm/
+
+            存档三端通用，设置里可以导出/导入。有问题请开 Issue。
