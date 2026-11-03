@@ -1309,6 +1309,31 @@ textarea {
   border-bottom: 2px solid var(--line);
 }
 
+/* 网页版：页签右侧的快捷存档（桌面版不渲染，见 App.vue 的 v-if="isWeb"） */
+.tab-quick {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.tab-quick-hint {
+  color: var(--muted);
+  font-size: 0.86em;
+}
+
+@media (max-width: 560px) {
+  .tab-quick {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .tab-quick-hint {
+    display: none;
+  }
+}
+
 .tab {
   padding: 0;
   border: 0;

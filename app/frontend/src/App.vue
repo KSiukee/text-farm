@@ -2621,6 +2621,11 @@ onUnmounted(() => {
       >
         {{ tab }}
       </button>
+      <div v-if="isWeb" class="tab-quick">
+        <span class="tab-quick-hint">存档只在这台浏览器</span>
+        <button class="link" type="button" @click="exportSaveFile">导出存档</button>
+        <button class="link" type="button" @click="importSaveFile">导入存档</button>
+      </div>
     </nav>
     <nav v-else-if="activeTab === '畜牧场'" class="tabs ranch-tabs">
       <button class="tab active" type="button" disabled>畜牧场</button>
@@ -2628,6 +2633,11 @@ onUnmounted(() => {
       <button class="tab" type="button" @click="selectTab('制造屋')">制造屋</button>
       <button class="tab" type="button" @click="selectTab('鱼塘')">鱼塘</button>
       <button class="tab" type="button" @click="selectTab('宠物')">宠物</button>
+      <div v-if="isWeb" class="tab-quick">
+        <span class="tab-quick-hint">存档只在这台浏览器</span>
+        <button class="link" type="button" @click="exportSaveFile">导出存档</button>
+        <button class="link" type="button" @click="importSaveFile">导入存档</button>
+      </div>
     </nav>
     <nav v-else class="tabs ranch-tabs">
       <button class="tab active" type="button" disabled>制造屋</button>
@@ -2635,6 +2645,11 @@ onUnmounted(() => {
       <button class="tab" type="button" @click="selectTab('畜牧场')">畜牧场</button>
       <button class="tab" type="button" @click="selectTab('鱼塘')">鱼塘</button>
       <button class="tab" type="button" @click="selectTab('宠物')">宠物</button>
+      <div v-if="isWeb" class="tab-quick">
+        <span class="tab-quick-hint">存档只在这台浏览器</span>
+        <button class="link" type="button" @click="exportSaveFile">导出存档</button>
+        <button class="link" type="button" @click="importSaveFile">导入存档</button>
+      </div>
     </nav>
 
     <p v-if="error" class="banner error">{{ error }}</p>
