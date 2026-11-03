@@ -1,5 +1,5 @@
 /**
- * 背景图存储（#76）：浏览器里压到最长边 1920，再存 IndexedDB。
+ * 背景图存储：浏览器里压到最长边 1920，再存 IndexedDB。
  * 不写存档、不碰文件路径；App 只拿 data URL。
  */
 import { uiDatabase, UI_STORE_NAME } from "./ui-store";

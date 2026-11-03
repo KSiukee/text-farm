@@ -1,11 +1,11 @@
 [workspace]
 resolver = "2"
-members = ["crates/farm-core", "crates/farm-cli", "app"]
+members = ["crates/farm-core", "crates/farm-cli", "crates/farm-wasm", "app"]
 
 [workspace.package]
 version = "0.138.0"
 edition = "2021"
-license = "MIT"
+license = "GPL-3.0-or-later"
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }

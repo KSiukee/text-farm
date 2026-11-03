@@ -1,0 +1,61 @@
+# 桌面版：打 Windows exe，挂到 GitHub Release
+#
+# 用法：git tag v0.139.0 && git push --tags
+# 产物：Release 里的「文字农场.exe」（免安装，双击就跑）
+#
+# 注意：exe 没有代码签名证书，首次运行 Windows 会提示「已保护你的电脑」，
+# 玩家需要点「更多信息 → 仍要运行」。README 里已写明。
+
+name: 桌面版
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/frontend/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: desktop-windows
+
+      - name: 装前端依赖
+        working-directory: app/frontend
+        run: npm ci
+
+      - name: 装 tauri cli
+        uses: taiki-e/install-action@v2
+        with:
+          tool: tauri-cli@2
+
+      - name: 构建 exe
+        run: cargo tauri build --no-bundle
+
+      - name: 改名
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force out | Out-Null
+          Copy-Item "target/release/text-farm.exe" "out/文字农场.exe"
+          Get-Item "out/文字农场.exe" | Select-Object Name, Length
+
+      - name: 挂到 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/文字农场.exe
+          draft: true
+          generate_release_notes: true

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { PALETTES } from "./theme";
 
 /**
- * 对比度抽查（#77）：直接读 theme.css 的 token 块，避免测试里再抄一份颜色。
+ * 对比度抽查：直接读 theme.css 的 token 块，避免测试里再抄一份颜色。
  * 阈值：正文/次要/语义色 ≥ 4.5；弱提示 ≥ 2.2；禁用 ≥ 1.9（禁用本来就该淡）。
  */
 

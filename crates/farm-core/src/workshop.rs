@@ -15,7 +15,7 @@ pub const WORKSHOP_LEVEL: u32 = 8;
 pub const WORKSHOP_SLOT_COSTS: [u64; 2] = [30_000, 80_000];
 pub const WORKSHOP_SLOT_LEVELS: [u32; 2] = [18, 24];
 
-/// 制造屋调平目标（#125）：每个加工槽每小时净赚 100 金币。
+/// 制造屋调平目标：每个加工槽每小时净赚 100 金币。
 /// 手工台/设备配方按「原料价值 + 工时边距」定价，礼盒按原料价值的 20% 封顶。
 pub const WORKSHOP_PROFIT_PER_HOUR: u64 = 100;
 

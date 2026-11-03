@@ -848,6 +848,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "farm-wasm"
+version = "0.138.0"
+dependencies = [
+ "farm-core",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "fastrand"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

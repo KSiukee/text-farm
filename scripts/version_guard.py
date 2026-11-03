@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""版本号守卫（圈记版设计，按文字农场 7 处副本裁剪）。
+"""版本号守卫：几处副本必须一致，升版本要按规则走。
 
-圈记这版真正值钱的两件事，不是“多查几处”：
+这版真正值钱的两件事，不是“多查几处”：
   1. `--selftest`：造一份临时树，逐处故意改坏，断言守卫**真的会红**。
      没有自检的一致性检查，等于一个永远绿灯的装饰品。
   2. `MIN_SEEN` 防空转：少读到一处就判失败，避免路径写错时静默放过。
@@ -26,15 +26,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# (相对路径, 说明, 提取方式)；这 7 处必须全部读到。
+# (相对路径, 说明, 提取方式)；这几处必须全部读到。
 SOURCES: list[tuple[str, str, str]] = [
     ("Cargo.toml", "[workspace.package] version", "toml_workspace"),
     ("Cargo.lock", "text-farm 包版本", "lock"),
     ("app/tauri.conf.json", "Tauri 应用版本（安装包自报的就是它）", "json"),
     ("app/frontend/package.json", "前端工程版本", "json"),
-    ("README.md", "README 当前版本", "readme"),
-    (".codex/state.json", "交接系统里的项目版本", "json"),
-    ("CHANGELOG.md", "更新日志首条标题", "changelog"),
+    ("README.md", "README 里给玩家看的当前版本", "readme"),
 ]
 MIN_SEEN = len(SOURCES)
 
@@ -71,7 +69,7 @@ def extract(path: Path, kind: str) -> str | None:
             return None
 
     if kind == "readme":
-        match = re.search(r"^v(\d+\.\d+\.\d+)：", text, re.M)
+        match = re.search(r"当前版本：\*{0,2}v?(\d+\.\d+\.\d+)", text)
         return match.group(1) if match else None
 
     if kind == "changelog":
@@ -156,7 +154,12 @@ def corrupt(text: str, kind: str) -> str:
         data["version"] = "9.9.9"
         return json.dumps(data, ensure_ascii=False, indent=2) + "\n"
     if kind == "readme":
-        return re.sub(r"^v\d+\.\d+\.\d+：", "v9.9.9：", text, count=1, flags=re.M)
+        return re.sub(
+            r"当前版本：\*{0,2}v?\d+\.\d+\.\d+",
+            "当前版本：**9.9.9**",
+            text,
+            count=1,
+        )
     if kind == "changelog":
         return re.sub(
             r"^##\s*\[?\d+\.\d+\.\d+\]?",

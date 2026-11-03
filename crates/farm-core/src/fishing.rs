@@ -577,7 +577,7 @@ impl FishRarity {
     }
 }
 
-/// 鱼种行为（#62）：只影响小游戏里的游动偏好，不改价格/重量/概率。
+/// 鱼种行为：只影响小游戏里的游动偏好，不改价格/重量/概率。
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum FishBehavior {
@@ -1020,7 +1020,7 @@ pub const FISH: [FishDef; 35] = [
     },
 ];
 
-/// 钓鱼条件（#61）：只改权重，不禁用任何鱼。
+/// 钓鱼条件：只改权重，不禁用任何鱼。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FishingCondition {
     pub season: Season,

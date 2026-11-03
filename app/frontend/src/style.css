@@ -22,7 +22,7 @@ body {
   font-size: 16px;
 }
 
-/* 背景层（#76）：固定在最底，内容在 .page 里压一层 */
+/* 背景层：固定在最底，内容在 .page 里压一层 */
 .app-bg {
   position: fixed;
   inset: 0;
@@ -5049,7 +5049,7 @@ footer {
   background: var(--accent);
 }
 
-/* 外观设置（#75）：明暗 + 5 色板 + 恢复默认 */
+/* 外观设置：明暗 + 5 色板 + 恢复默认 */
 .swatch {
   display: inline-flex;
   align-items: center;
@@ -5149,7 +5149,7 @@ footer {
   font-size: 13px;
 }
 
-/* 经典布局（#78）：钓鱼页平铺、无卡片、紧凑；颜色仍走 theme.css。
+/* 经典布局：钓鱼页平铺、无卡片、紧凑；颜色仍走 theme.css。
    经典版默认复古蓝链接与更白的纸面，但两者都是 token，明暗/主题仍生效。 */
 [data-layout="classic"] .fishing-page {
   --link: var(--classic-link);
@@ -5323,7 +5323,7 @@ footer {
   margin-top: 0;
 }
 
-/* ---- 应用内确认弹层（#192）----
+/* ---- 应用内确认弹层----
    替掉 window.confirm：Android WebView 里它可能不弹、也可能直接返回 false。
    卡片封顶 360px、按钮靠右；上下 padding 让出状态栏/手势条，手机上不会把按钮挤出屏幕。 */
 .confirm-overlay {

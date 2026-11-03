@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { asset } from "./assets";
 import { open as openFileDialog, save as saveFileDialog } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
@@ -24,6 +25,7 @@ import {
   saveNow,
   sync as syncGame,
 } from "./api";
+import { downloadText, isWeb, pickTextFile } from "./web-backend";
 import { formatGrowMinutes, formatRemain, formatStamp } from "./format";
 import type {
   Action,
@@ -203,7 +205,7 @@ let timer: number | undefined;
 let refreshTimer: number | undefined;
 let syncTimer: number | undefined;
 
-/// 应用内确认弹层（#192）：Android WebView 里 window.confirm 不可靠（可能不弹、也可能直接被拒），
+/// 应用内确认弹层：Android WebView 里 window.confirm 不可靠（可能不弹、也可能直接被拒），
 /// 放生宠物、删除作物这两处不可撤销的操作改成自家弹层；桌面也走同一条路。
 type ConfirmRequest = { title: string; body: string; okText: string; danger: boolean };
 const confirmDialog = ref<ConfirmRequest | null>(null);
@@ -656,19 +658,19 @@ const adoptBoard = ref(false);
 const petName = ref("豆豆");
 const petBreed = ref<PetBreed>("corgi");
 const BREEDS: { id: PetBreed; label: string; species: "dog" | "cat"; image: string }[] = [
-  { id: "corgi", label: "柯基", species: "dog", image: "/pets/dog.png" },
-  { id: "german_shepherd", label: "德国牧羊犬", species: "dog", image: "/pets/german_shepherd.png" },
-  { id: "golden_retriever", label: "金毛", species: "dog", image: "/pets/golden_retriever.png" },
-  { id: "border_collie", label: "边牧", species: "dog", image: "/pets/border_collie.png" },
-  { id: "shiba", label: "柴犬", species: "dog", image: "/pets/shiba.png" },
-  { id: "rural_dog", label: "田园犬", species: "dog", image: "/pets/rural_dog.png" },
-  { id: "bichon", label: "比熊", species: "dog", image: "/pets/bichon.png" },
-  { id: "domestic_cat", label: "田园猫", species: "cat", image: "/pets/cat.png" },
-  { id: "ragdoll", label: "布偶猫", species: "cat", image: "/pets/ragdoll.png" },
-  { id: "golden_shaded", label: "金渐层", species: "cat", image: "/pets/golden_shaded.png" },
-  { id: "silver_shaded", label: "银渐层", species: "cat", image: "/pets/silver_shaded.png" },
-  { id: "blue_cat", label: "蓝猫", species: "cat", image: "/pets/blue_cat.png" },
-  { id: "coffee_cat", label: "咖啡猫", species: "cat", image: "/pets/coffee_cat.png" },
+  { id: "corgi", label: "柯基", species: "dog", image: asset("/pets/dog.png") },
+  { id: "german_shepherd", label: "德国牧羊犬", species: "dog", image: asset("/pets/german_shepherd.png") },
+  { id: "golden_retriever", label: "金毛", species: "dog", image: asset("/pets/golden_retriever.png") },
+  { id: "border_collie", label: "边牧", species: "dog", image: asset("/pets/border_collie.png") },
+  { id: "shiba", label: "柴犬", species: "dog", image: asset("/pets/shiba.png") },
+  { id: "rural_dog", label: "田园犬", species: "dog", image: asset("/pets/rural_dog.png") },
+  { id: "bichon", label: "比熊", species: "dog", image: asset("/pets/bichon.png") },
+  { id: "domestic_cat", label: "田园猫", species: "cat", image: asset("/pets/cat.png") },
+  { id: "ragdoll", label: "布偶猫", species: "cat", image: asset("/pets/ragdoll.png") },
+  { id: "golden_shaded", label: "金渐层", species: "cat", image: asset("/pets/golden_shaded.png") },
+  { id: "silver_shaded", label: "银渐层", species: "cat", image: asset("/pets/silver_shaded.png") },
+  { id: "blue_cat", label: "蓝猫", species: "cat", image: asset("/pets/blue_cat.png") },
+  { id: "coffee_cat", label: "咖啡猫", species: "cat", image: asset("/pets/coffee_cat.png") },
 ];
 const petSpecies = computed(
   () => BREEDS.find((breed) => breed.id === petBreed.value)?.species ?? "dog",
@@ -1898,6 +1900,12 @@ function isContentUri(path: string): boolean {
 
 async function exportSaveFile() {
   try {
+    if (isWeb) {
+      downloadText(`文字农场-存档-${fileStamp()}.json`, await exportSaveText());
+      notice.value =
+        "存档已下载。请自己收好——网页版的档只存在这个浏览器里，清数据就没了。";
+      return;
+    }
     const path = await saveFileDialog({
       defaultPath: `文字农场-存档-${fileStamp()}.json`,
       filters: [{ name: "JSON", extensions: ["json"] }],
@@ -1917,6 +1925,15 @@ async function exportSaveFile() {
 
 async function importSaveFile() {
   try {
+    if (isWeb) {
+      const text = await pickTextFile();
+      if (text === null) return;
+      const reply = await importSaveText(text);
+      snapshot.value = reply.snapshot;
+      content.value = reply.content;
+      notice.value = reply.warning ? `存档已导入：${reply.warning}` : "存档已导入。";
+      return;
+    }
     const picked = await openFileDialog({
       multiple: false,
       directory: false,
@@ -1936,6 +1953,11 @@ async function importSaveFile() {
 
 async function exportContentFile() {
   try {
+    if (isWeb) {
+      downloadText(`文字农场-内容包-${fileStamp()}.json`, await exportContentText());
+      notice.value = "内容包已下载。";
+      return;
+    }
     const path = await saveFileDialog({
       defaultPath: `文字农场-内容包-${fileStamp()}.json`,
       filters: [{ name: "JSON", extensions: ["json"] }],
@@ -1955,6 +1977,16 @@ async function exportContentFile() {
 
 async function importContentFile() {
   try {
+    if (isWeb) {
+      const text = await pickTextFile();
+      if (text === null) return;
+      const reply = await importContentText(text);
+      snapshot.value = reply.snapshot;
+      content.value = reply.content;
+      resetEditor();
+      notice.value = "内容包已导入。";
+      return;
+    }
     const picked = await openFileDialog({
       multiple: false,
       directory: false,
@@ -3923,7 +3955,7 @@ onUnmounted(() => {
               <span class="muted">缸里：</span>
               <template v-if="selectedAquarium.fish.length">
                 <span v-for="(fish, index) in selectedAquarium.fish" :key="`${fish}-${index}`" class="tank-fish">
-                  <img :src="`/fish/${fish}.png`" alt="" />
+                  <img :src="asset(`/fish/${fish}.png`)" alt="" />
                   {{ fishName(fish) }}
                   <button class="link" type="button" @click="removeFishFromTank(fish)">[取出]</button>
                 </span>
@@ -3934,7 +3966,7 @@ onUnmounted(() => {
               <span class="muted">仓库里的鱼：</span>
               <template v-if="fishInventory.length">
                 <span v-for="item in fishInventory" :key="item.key" class="tank-fish">
-                  <img :src="`/fish/${item.key.slice(5)}.png`" alt="" />
+                  <img :src="asset(`/fish/${item.key.slice(5)}.png`)" alt="" />
                   {{ item.name }}×{{ item.qty }}
                   <button
                     class="link"
@@ -5127,7 +5159,7 @@ onUnmounted(() => {
             >
               [抛竿 (F)]
             </button>
-            <!-- 手游键位（#197）：触屏时右下角浮一个大圆键 -->
+            <!-- 手游键位：触屏时右下角浮一个大圆键 -->
             <button
               v-if="!fishing.session"
               class="fg-pad-btn primary fg-pad-cast"
@@ -5457,7 +5489,7 @@ onUnmounted(() => {
               :class="{ caught: item.caught, king: item.rarity === 'king', golden: item.golden }"
               @click="selectedFish = item"
             >
-              <img :src="`/fish/${item.id}.png`" :alt="item.name" />
+              <img :src="asset(`/fish/${item.id}.png`)" :alt="item.name" />
               <span>{{ item.caught ? item.name : "???" }}</span>
               <span class="muted">{{ item.rarityLabel }} · {{ item.price }}</span>
               <span v-if="item.conditionHint" class="muted">{{ item.conditionHint }}</span>
@@ -6363,7 +6395,7 @@ onUnmounted(() => {
         <img
           class="fish-modal-img"
           :class="{ unknown: !selectedFish.caught }"
-          :src="`/fish/${selectedFish.id}.png`"
+          :src="asset(`/fish/${selectedFish.id}.png`)"
           :alt="selectedFish.name"
         />
         <div class="fish-modal-name">{{ selectedFish.caught ? selectedFish.name : "???" }}</div>
@@ -6650,7 +6682,7 @@ onUnmounted(() => {
         </div>
         <img
           class="catch-fish"
-          :src="`/fish/${catchResult.fishId}.png`"
+          :src="asset(`/fish/${catchResult.fishId}.png`)"
           :alt="catchResult.name"
         />
         <div class="catch-name">{{ catchResult.name }}</div>
@@ -6671,7 +6703,7 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- 应用内确认弹层（#192）：替掉 window.confirm（Android WebView 里不可靠） -->
+    <!-- 应用内确认弹层：替掉 window.confirm（Android WebView 里不可靠） -->
     <div
       v-if="confirmDialog"
       class="confirm-overlay"

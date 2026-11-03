@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { isWeb, webCall } from "./web-backend";
 import type {
   Action,
   AppInfo,
@@ -12,42 +13,48 @@ import type {
   Snapshot,
 } from "./types";
 
-export const getSnapshot = () => invoke<Snapshot>("get_snapshot");
-export const getContent = () => invoke<ContentPack>("get_content");
-export const getAppInfo = () => invoke<AppInfo>("app_info");
+/// 同一套前端跑两个壳：桌面/安卓走 Tauri 命令，浏览器走 wasm。
+function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  if (isWeb) return webCall<T>(cmd, args);
+  return invoke<T>(cmd, args);
+}
+
+export const getSnapshot = () => call<Snapshot>("get_snapshot");
+export const getContent = () => call<ContentPack>("get_content");
+export const getAppInfo = () => call<AppInfo>("app_info");
 export const previewRanchBreeding = (a: number, b: number) =>
-  invoke<RanchBreedPreview>("preview_ranch_breeding", { a, b });
+  call<RanchBreedPreview>("preview_ranch_breeding", { a, b });
 export const dispatch = (action: Action) =>
-  invoke<DispatchReply>("dispatch", { action });
-export const sync = () => invoke<DispatchReply>("sync");
+  call<DispatchReply>("dispatch", { action });
+export const sync = () => call<DispatchReply>("sync");
 export const advanceTime = (hours: number) =>
-  invoke<DispatchReply>("advance_time", { hours });
-export const saveNow = () => invoke<void>("save_now");
+  call<DispatchReply>("advance_time", { hours });
+export const saveNow = () => call<void>("save_now");
 /// 手机壳：进钓鱼小游戏时全屏横屏，退出恢复（桌面是空实现，不会报错）。
-export const gameMode = (enable: boolean) => invoke<void>("game_mode", { enable });
-export const exportSave = (path: string) => invoke<void>("export_save", { path });
+export const gameMode = (enable: boolean) => call<void>("game_mode", { enable });
+export const exportSave = (path: string) => call<void>("export_save", { path });
 export const importSave = (path: string) =>
-  invoke<ImportReply>("import_save", { path });
+  call<ImportReply>("import_save", { path });
 // Android 上 dialog 选出来的是 content:// URI，std::fs 写不进去：
 // 所以多一对「文本版」命令，文件读写交给 fs 插件（它支持 content URI）。
-export const exportSaveText = () => invoke<string>("export_save_text");
+export const exportSaveText = () => call<string>("export_save_text");
 export const importSaveText = (text: string) =>
-  invoke<ImportReply>("import_save_text", { text });
+  call<ImportReply>("import_save_text", { text });
 export const exportContent = (path: string) =>
-  invoke<void>("export_content", { path });
+  call<void>("export_content", { path });
 export const importContent = (path: string) =>
-  invoke<ImportReply>("import_content", { path });
-export const exportContentText = () => invoke<string>("export_content_text");
+  call<ImportReply>("import_content", { path });
+export const exportContentText = () => call<string>("export_content_text");
 export const importContentText = (text: string) =>
-  invoke<ImportReply>("import_content_text", { text });
+  call<ImportReply>("import_content_text", { text });
 export const applyContent = (pack: ContentPack) =>
-  invoke<ImportReply>("apply_content", { pack });
+  call<ImportReply>("apply_content", { pack });
 export const previewContent = (pack: ContentPack) =>
-  invoke<ContentPreview>("preview_content", { pack });
+  call<ContentPreview>("preview_content", { pack });
 export const generateSeeds = (count: number, seed: number) =>
-  invoke<CropDef[]>("generate_content_seeds", { count, seed });
+  call<CropDef[]>("generate_content_seeds", { count, seed });
 export const reviewSeeds = (count: number, seed: number) =>
-  invoke<SeedReview[]>("review_content_seeds", { count, seed });
+  call<SeedReview[]>("review_content_seeds", { count, seed });
 
 export function errorText(error: unknown): string {
   if (typeof error === "string") return error;

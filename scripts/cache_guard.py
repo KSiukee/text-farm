@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""构建缓存体积门卫（搬自夜航 tools/cache_guard.py，阈值按文字农场调整）。
+"""构建缓存体积门卫：只量体积，上限按本仓库规模定。
 
 只量、不删：`--check` 超上限返回 1；`--clean` 才是显式清理。
-清理口径与夜航/圈记一致：留下能双击跑的 exe/dll 与 bundle，
+清理口径：留下能双击跑的 exe/dll 与 bundle，
 删掉 deps/build/incremental/examples/.fingerprint、调试符号/链接中间物。
 
     python scripts/cache_guard.py --check
@@ -21,7 +21,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# 文字农场的 workspace 比夜航大（40+ test 二进制），debug+release 全量约 11 GB，
+# 本仓库的 workspace 很大（40+ test 二进制），debug+release 全量约 11 GB，
 # 开发几轮后 incremental 会长到 16 GB+；上限 24 GB，超过 12 GB 只提示。
 LIMIT_GB = 24.0
 NOTICE_GB = 12.0

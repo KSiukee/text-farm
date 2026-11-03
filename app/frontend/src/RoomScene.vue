@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { asset } from "./assets";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type {
   PetView,
@@ -40,9 +41,9 @@ const CAMERA_MAX = 2.2;
 const camera = ref({ zoom: 1.05, panX: 0, panY: 0 });
 const windowBackdrop = ref<HTMLImageElement | null>(null);
 const windowBackdropPath = computed(() => {
-  if (props.room.roomId === "extra_1") return "/windows/extra.png";
-  if (props.room.roomId === "living") return "/windows/living.png";
-  return "/windows/garden.png";
+  if (props.room.roomId === "extra_1") return asset("/windows/extra.png");
+  if (props.room.roomId === "living") return asset("/windows/living.png");
+  return asset("/windows/garden.png");
 });
 
 function loadWindowBackdrop() {
@@ -507,9 +508,9 @@ function removeSurfaceItem() {
 
 function surfaceSpritePath(sprite: string, rotations: number, rot: number): string {
   if (rotations > 1) {
-    return `/sprites/${sprite}_${String(((rot % rotations) + rotations) % rotations).padStart(2, "0")}.png`;
+    return asset(`/sprites/${sprite}_${String(((rot % rotations) + rotations) % rotations).padStart(2, "0")}.png`);
   }
-  return `/sprites/${sprite}.png`;
+  return asset(`/sprites/${sprite}.png`);
 }
 
 function drawSurfaceItems(ctx: CanvasRenderingContext2D) {
@@ -972,9 +973,9 @@ function spritePath(def: RoomFurnitureDefView, rot: number): string | null {
   if (!def.sprite) return null;
   if (def.spriteRotations > 1) {
     const index = ((rot % def.spriteRotations) + def.spriteRotations) % def.spriteRotations;
-    return `/sprites/${def.sprite}_${String(index).padStart(2, "0")}.png`;
+    return asset(`/sprites/${def.sprite}_${String(index).padStart(2, "0")}.png`);
   }
-  return `/sprites/${def.sprite}.png`;
+  return asset(`/sprites/${def.sprite}.png`);
 }
 
 function preloadSprites() {
@@ -1007,7 +1008,7 @@ function preloadSprites() {
 }
 
 function petImage(pet: PetView): string {
-  return pet.image || `/pets/${pet.breed}.png`;
+  return pet.image || asset(`/pets/${pet.breed}.png`);
 }
 
 function petFootPoint(path: string, img: HTMLImageElement): { x: number; y: number; width: number } {
@@ -1076,7 +1077,7 @@ function preloadPetImages() {
 function preloadFishImages() {
   for (const item of draft.value.furniture) {
     for (const fish of item.fish ?? []) {
-      const path = `/fish/${fish}.png`;
+      const path = asset(`/fish/${fish}.png`);
       if (fishCache.has(path)) continue;
       const img = new Image();
       img.onload = () => draw();
@@ -1113,7 +1114,7 @@ function drawAquariumFish(
   const now = performance.now() / 1000;
   const fishSize = Math.max(10, Math.round(height * 0.14));
   (item.fish ?? []).forEach((fish, index) => {
-    const img = fishCache.get(`/fish/${fish}.png`);
+    const img = fishCache.get(asset(`/fish/${fish}.png`));
     if (!img || !img.complete || img.naturalWidth === 0) return;
     const phase = now * 0.8 + index * 1.9;
     const x = left + padX + waterW * (0.5 + 0.38 * Math.sin(phase));

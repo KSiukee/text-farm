@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { asset } from "./assets";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { gameMode } from "./api";
 import type { FishingSessionView } from "./types";
@@ -276,7 +277,7 @@ function startGame() {
   message.value = "WASD / 方向键 / 下方轮盘移动框，把鱼圈住";
   last = 0;
   raf = requestAnimationFrame(tick);
-  // 横屏（#196）时页面上方还压着钓点/鱼饵等块，开打后把池塘顶到视野上方
+  // 横屏时页面上方还压着钓点/鱼饵等块，开打后把池塘顶到视野上方
   if (typeof matchMedia === "function" && matchMedia("(orientation: landscape)").matches) {
     pond.value?.scrollIntoView({ block: "start", behavior: "smooth" });
   }
@@ -1002,7 +1003,7 @@ onUnmounted(() => {
         <img
           v-for="(point, index) in trail"
           :key="index"
-          :src="session ? `/fish/${session.fishId}.png` : ''"
+          :src="session ? asset(`/fish/${session.fishId}.png`) : ''"
           :style="trailStyle(point, index)"
           alt=""
         />
@@ -1017,7 +1018,7 @@ onUnmounted(() => {
       <div class="fg-fish-shadow" :style="fishStyle"></div>
       <img
         class="fg-fish"
-        :src="session ? `/fish/${session.fishId}.png` : ''"
+        :src="session ? asset(`/fish/${session.fishId}.png`) : ''"
         :style="fishStyle"
         alt=""
       />
@@ -1054,7 +1055,7 @@ onUnmounted(() => {
       <span class="muted">拖轮盘移动鱼框</span>
     </div>
 
-    <!-- 手游键位（#197）：触屏时右下角浮一个大圆键，按阶段换内容 -->
+    <!-- 手游键位：触屏时右下角浮一个大圆键，按阶段换内容 -->
     <div v-if="phase === 'bite' || phase === 'playing'" class="fg-pad">
       <button
         v-if="phase === 'bite'"

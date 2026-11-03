@@ -1,12 +1,12 @@
 /**
- * 样式包（#78）：把「布局 / 密度 / 装饰」从主题色里分出来。
+ * 样式包：把「布局 / 密度 / 装饰」从主题色里分出来。
  *
  * v1 只有两个内置包：
  * - harbor：当前 hero + 卡片 + 折叠（默认）
  * - classic：钓鱼页/制造屋平铺、无卡片、紧凑
  *
  * 约定：
- * - 颜色不在这里定义；配色永远走 theme.css 的 token（#75 的单出口）。
+ * - 颜色不在这里定义；配色永远走 theme.css 的 token。
  * - `tokens` / `css` 是给以后用户样式包留的接口；v1 内置包不填、也不执行 css。
  * - 落 <html>：data-style（包 id）+ data-layout / data-density / data-decoration。
  */

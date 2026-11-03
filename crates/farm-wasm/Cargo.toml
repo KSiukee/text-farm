@@ -1,0 +1,13 @@
+[package]
+name = "farm-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+farm-core = { path = "../farm-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }

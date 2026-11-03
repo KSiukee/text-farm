@@ -1,5 +1,5 @@
 /**
- * 自定义字体文件存储（#79）：只存本机 IndexedDB，不写存档、不碰路径。
+ * 自定义字体文件存储：只存本机 IndexedDB，不写存档、不碰路径。
  * 上限 30MB；只接受 .ttf/.otf/.woff/.woff2。
  */
 import { uiDatabase, UI_STORE_NAME } from "./ui-store";

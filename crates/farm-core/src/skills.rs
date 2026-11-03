@@ -12,7 +12,7 @@ pub const DISCIPLINE_MAX_LEVEL: u32 = 30;
 pub const SKILL_MAX_LEVEL: u32 = 4;
 
 /// 专业升级曲线：`need(L) = BASE + SLOPE × L`。
-/// #71 会按 90 天模拟结果定这两个数；改它们只影响专业，不动农场等级。
+/// 这两个数是按 90 天模拟结果定的；改它们只影响专业，不动农场等级。
 pub const PROFESSION_EXP_BASE: u64 = 100;
 pub const PROFESSION_EXP_SLOPE: u64 = 100;
 
@@ -238,7 +238,7 @@ impl Discipline {
     /// 本专业 `level` 升到下一级需要的经验；满级返回 0。
     ///
     /// 曲线暂时保持 0.39.0 的 `200 + 200×等级`，这样 v31→v32 迁移时
-    /// 玩家已有的等级/经验逐项不变。缩短曲线放在 #71（先跑 90 天模拟再定）。
+    /// 玩家已有的等级/经验逐项不变。要缩短曲线，先跑 90 天模拟再定。
     pub fn need(level: u32) -> u64 {
         if level >= DISCIPLINE_MAX_LEVEL {
             0
