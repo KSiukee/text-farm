@@ -21,6 +21,10 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+# Windows 控制台默认 GBK，直接 print ✓/✗ 会崩（和脱敏扫描器同一个坑）
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 results: list[tuple[str, bool, str]] = []
 
 
