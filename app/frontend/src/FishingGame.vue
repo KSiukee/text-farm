@@ -942,6 +942,18 @@ watch(
 
 onMounted(() => {
   if (readTilt()) setTilt(true);
+  // 开发模式：用 window.__tfTilt(beta, gamma) 灌一个假的设备姿态，
+  // 这样在桌面浏览器里就能验重力感应，不用上真机/模拟器。
+  if (import.meta.env.DEV) {
+    (window as { __tfTilt?: (beta: number, gamma: number) => void }).__tfTilt = (
+      beta: number,
+      gamma: number,
+    ) => {
+      window.dispatchEvent(
+        new DeviceOrientationEvent("deviceorientation", { alpha: 0, beta, gamma, absolute: false }),
+      );
+    };
+  }
   window.addEventListener("keydown", onKey);
   window.addEventListener("keyup", onKeyUp);
   window.addEventListener("contextmenu", onContextMenu, true);
