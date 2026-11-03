@@ -1,5 +1,7 @@
 # 🌾 文字农场
 
+[![测试](https://github.com/ksiukee/text-farm/actions/workflows/test.yml/badge.svg)](https://github.com/ksiukee/text-farm/actions/workflows/test.yml)
+
 纯文字、点链接、按真实时间生长的单机农场。无联网、无充值、无排行榜；作物和农场的名字都由你自己起。
 
 **[▶ 点开就玩（网页版）](https://ksiukee.github.io/text-farm/)** ｜ **[⬇ 下载 Windows 桌面版](../../releases/latest)** ｜ **📱 安卓版：准备中**

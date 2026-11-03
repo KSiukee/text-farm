@@ -1,0 +1,38 @@
+# 每次 push / PR 跑测试。
+# 桌面壳（text-farm）不在这里测：它依赖 Tauri 的系统库，Linux runner 上没有
+# webkit2gtk；壳里的逻辑本来就薄，真正的规则都在 farm-core 里。
+
+name: 测试
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo test
+        run: cargo test --workspace --exclude text-farm
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/frontend/package-lock.json
+      - run: npm ci
+      - run: npm run test
+      - run: npm run typecheck
