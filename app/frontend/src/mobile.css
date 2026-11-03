@@ -116,8 +116,11 @@ body {
      相对 78px 的框占 70%（桌面 64/152 = 42%）—— 看起来就是「鱼变大了」。
      改成跟 pond 宽等比：8.4% × 390 ≈ 33px，比例回到 42%。
      高度用 aspect-ratio 跟宽度绑定（百分比高是相对 pond 高度，宽高比会失真）。 */
+  /* 下限从 32 降到 24：竖屏池塘只有 ~314 宽，8.4% 算出 26px，
+     原来被 32 的下限顶上去，鱼相对框就变成 52%（桌面是 42%）。
+     这里让百分比说了算，比例才和桌面一致。 */
   .fg-fish {
-    width: clamp(32px, 8.4%, 64px);
+    width: clamp(24px, 8.4%, 64px);
     height: auto;
     aspect-ratio: 1;
   }
@@ -148,7 +151,7 @@ body {
 
   /* 横屏 pond 宽 676 时，14% 会顶到 64px 上限；这里换成跟宽等比，和竖屏同一口径 */
   .fishing-game .fg-fish {
-    width: clamp(32px, 8.4%, 64px);
+    width: clamp(24px, 8.4%, 64px);
     height: auto;
     aspect-ratio: 1;
   }
