@@ -108,7 +108,7 @@ pub fn run() {
             commands::apply_content,
             commands::app_info,
             commands::save_now,
-            android::game_mode,
+            android::set_immersive,
             custom::custom_assets_dir,
             custom::save_custom_asset,
             custom::read_custom_asset,

@@ -30,8 +30,8 @@ export const sync = () => call<DispatchReply>("sync");
 export const advanceTime = (hours: number) =>
   call<DispatchReply>("advance_time", { hours });
 export const saveNow = () => call<void>("save_now");
-/// 手机壳：进钓鱼小游戏时全屏横屏，退出恢复（桌面是空实现，不会报错）。
-export const gameMode = (enable: boolean) => call<void>("game_mode", { enable });
+/// 手机壳：进钓鱼小游戏时藏起系统栏（**不改方向**）。桌面/浏览器是空实现或忽略。
+export const setImmersive = (enable: boolean) => call<void>("set_immersive", { enable });
 export const exportSave = (path: string) => call<void>("export_save", { path });
 export const importSave = (path: string) =>
   call<ImportReply>("import_save", { path });

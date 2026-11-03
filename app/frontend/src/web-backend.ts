@@ -190,6 +190,7 @@ export async function webCall<T>(cmd: string, args?: Record<string, unknown>): P
       return undefined as T;
 
     case "game_mode":
+    case "set_immersive":
       return undefined as T;
 
     case "export_save_text":

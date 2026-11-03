@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { setImmersive } from "./api";
 import { asset } from "./assets";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import type { FishingSessionView } from "./types";
@@ -841,8 +842,8 @@ function goIdle() {
 
 watch(phase, () => {
   void nextTick(watchPond);
-  // 不再强制横屏：系统有旋转锁定，硬转会让玩家很难受（点抛竿被扳过去、钓完又扳回来）。
-  // 想横玩自己转，CSS 的 landscape 布局会自动接管。api.gameMode 先留着，以后要做开关再接。
+  // 只藏系统栏，不动方向：想横玩自己转，CSS 的 landscape 布局会自动接管。
+  void setImmersive(phase.value !== "idle");
   // 横屏后页面还停在钓点/鱼饵那一屏，等旋转落定再把池塘顶到视野里
   if (phase.value !== "idle" && typeof matchMedia === "function" && matchMedia("(orientation: landscape)").matches) {
     window.setTimeout(() => {
@@ -880,6 +881,8 @@ onUnmounted(() => {
   window.removeEventListener("contextmenu", onContextMenu, true);
   window.removeEventListener("focus", onWindowFocus);
   onStickUp();
+  // 离开小游戏：系统栏还回来
+  void setImmersive(false);
 });
 </script>
 
