@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { asset } from "./assets";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import { gameMode } from "./api";
 import type { FishingSessionView } from "./types";
 
 const props = defineProps<{ session: FishingSessionView | null; active: boolean }>();
@@ -144,7 +143,18 @@ function depthBias(): number {
   }
 }
 
-const frameSize = computed(() => props.session?.params.framePct ?? 20);
+/// 触屏设备（手机/平板）手指精度天生比鼠标差，框给大 15% 补偿。
+/// 用 pointer: coarse 判断，触屏笔记本接了鼠标时仍是 fine，不会被误伤。
+const COARSE_POINTER =
+  typeof window !== "undefined" &&
+  typeof window.matchMedia === "function" &&
+  window.matchMedia("(pointer: coarse)").matches;
+const TOUCH_FRAME_BONUS = 1.15;
+
+const frameSize = computed(() => {
+  const base = props.session?.params.framePct ?? 20;
+  return COARSE_POINTER ? base * TOUCH_FRAME_BONUS : base;
+});
 const frameW = computed(() => frameSize.value);
 // 窗口是宽屏，框本身保持正方形：高度百分比按池塘宽高比换算。
 const frameH = computed(() => Math.min(100, frameSize.value * pondAspect.value));
@@ -831,8 +841,8 @@ function goIdle() {
 
 watch(phase, () => {
   void nextTick(watchPond);
-  // 手机壳：小游戏一开就全屏横屏（桌面是空实现）
-  void gameMode(phase.value !== "idle");
+  // 不再强制横屏：系统有旋转锁定，硬转会让玩家很难受（点抛竿被扳过去、钓完又扳回来）。
+  // 想横玩自己转，CSS 的 landscape 布局会自动接管。api.gameMode 先留着，以后要做开关再接。
   // 横屏后页面还停在钓点/鱼饵那一屏，等旋转落定再把池塘顶到视野里
   if (phase.value !== "idle" && typeof matchMedia === "function" && matchMedia("(orientation: landscape)").matches) {
     window.setTimeout(() => {
@@ -870,8 +880,6 @@ onUnmounted(() => {
   window.removeEventListener("contextmenu", onContextMenu, true);
   window.removeEventListener("focus", onWindowFocus);
   onStickUp();
-  // 离开小游戏时把手机壳恢复成竖屏、状态栏回来
-  void gameMode(false);
 });
 </script>
 
