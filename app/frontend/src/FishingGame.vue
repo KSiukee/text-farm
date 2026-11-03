@@ -12,11 +12,12 @@ const FEEL_KEY = "farm.ui.fishingFeel";
 type FightMode = "d2" | "d3";
 const FIGHT_KEY = "farm.ui.fishingFight";
 
+/// 默认用 2（追鱼那套）。1 是老手感，只有玩家手动选过才回去。
 function readFeel(): FeelMode {
   try {
-    return window.localStorage.getItem(FEEL_KEY) === "bad" ? "bad" : "current";
+    return window.localStorage.getItem(FEEL_KEY) === "current" ? "current" : "bad";
   } catch {
-    return "current";
+    return "bad";
   }
 }
 
@@ -879,7 +880,7 @@ onUnmounted(() => {
         type="button"
         @click="setFeel('current')"
       >
-        [1 当前]
+        [1 旧]
       </button>
       <button
         class="link"
@@ -887,9 +888,9 @@ onUnmounted(() => {
         type="button"
         @click="setFeel('bad')"
       >
-        [2 坏杆 + 追鱼]
+        [2 追鱼（默认）]
       </button>
-      <span v-if="feel === 'current'" class="muted">默认手感（保留）</span>
+      <span v-if="feel === 'current'" class="muted">旧手感（保留）</span>
       <span v-else-if="session" class="muted">
         {{ isWornRod ? "坏杆：长按加速，换向大漂移" : "正常杆：短按跟手，长按小漂移" }}
       </span>

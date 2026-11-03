@@ -150,7 +150,7 @@ body {
     width: auto;
     /* 原来 -96 只够池塘自己，底下的状态行和按钮行会被切掉；
        -132 留出两行的高度。 */
-    height: calc(100dvh - 170px);
+    height: calc(100dvh - 150px);
     aspect-ratio: 23 / 10;
     max-width: calc(100vw - 24px);
     margin: 0 auto;
