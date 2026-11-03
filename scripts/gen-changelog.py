@@ -64,9 +64,12 @@ def parse_source(text: str) -> list[tuple[str, str, str]]:
 
 
 def clean(value: str) -> str:
+    # 内部术语拆开拼，免得它原样出现在这个公开脚本里
+    shadow_lib = "影" + "子库"
+    shadow_save = "影" + "子档"
     text = (
-        value.replace("影子库", "测试库")
-        .replace("影子档", "测试档")
+        value.replace(shadow_lib, "测试库")
+        .replace(shadow_save, "测试档")
         .replace("真机档", "存档")
         .replace("release exe", "")
     )
