@@ -1,5 +1,9 @@
 # 网页版：编 wasm 内核 → 构建前端 → 发布到 GitHub Pages
 #
+# ★ 只在打 tag 时部署：push 到 main **不会**动正式站。
+#   理由：正式站有真人在玩，随手 push 一个还没测透的改动，他们一刷新就撞上。
+#   平时改完先本地 `npm run preview -- --host` 用手机验，验过了再打 tag。
+#
 # 前置：仓库 Settings → Pages → Source 选「GitHub Actions」。
 # 没开的话 build 能过、deploy 这一步会 404。
 # 站点地址：https://<用户名>.github.io/<仓库名>/
@@ -9,13 +13,7 @@ name: 网页版
 
 on:
   push:
-    branches: [main]
-    paths:
-      - "crates/**"
-      - "app/frontend/**"
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - ".github/workflows/pages.yml"
+    tags: ["v*"]
   workflow_dispatch:
 
 permissions:

@@ -8,7 +8,8 @@
     "build": "vue-tsc --noEmit -p tsconfig.app.json && vite build",
     "typecheck": "vue-tsc --noEmit -p tsconfig.app.json",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "preview:lan": "vite preview --host --port 4173 --strictPort"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
