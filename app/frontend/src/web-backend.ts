@@ -4,8 +4,8 @@
 //! - 存档：IndexedDB（`text-farm-web` / `kv`），另留一份 `save:prev` 当上一次的档
 //! - 时间：`Date.now()` 注入；时区偏移 `getTimezoneOffset()` 注入，内核不碰日历库
 
-const DB_NAME = "text-farm-web";
-const STORE = "kv";
+import { idbGet, idbSet } from "./web-storage";
+
 const SAVE_KEY = "save";
 const PREV_KEY = "save:prev";
 
@@ -23,39 +23,6 @@ let bootWarning: string | null = null;
 let saveTimer: number | null = null;
 
 export const isWeb = typeof window !== "undefined" && !("__TAURI_INTERNALS__" in window);
-
-// ------------------------------------------------------------------ IndexedDB
-
-function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1);
-    request.onupgradeneeded = () => {
-      request.result.createObjectStore(STORE);
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error("打不开 IndexedDB"));
-  });
-}
-
-async function idbGet(key: string): Promise<string | null> {
-  const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, "readonly");
-    const req = tx.objectStore(STORE).get(key);
-    req.onsuccess = () => resolve(typeof req.result === "string" ? req.result : null);
-    req.onerror = () => reject(req.error ?? new Error("读 IndexedDB 失败"));
-  });
-}
-
-async function idbSet(key: string, value: string): Promise<void> {
-  const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).put(value, key);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error ?? new Error("写 IndexedDB 失败"));
-  });
-}
 
 // ------------------------------------------------------------------ wasm 加载
 

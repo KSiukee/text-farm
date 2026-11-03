@@ -26,6 +26,9 @@ import {
   sync as syncGame,
 } from "./api";
 import { downloadText, isWeb, pickTextFile } from "./web-backend";
+
+/// 网页版右上角「桌面版」跳这里（以后发版只改 Releases，不用动代码）
+const RELEASES_URL = "https://github.com/KSiukee/text-farm/releases/latest";
 import { formatGrowMinutes, formatRemain, formatStamp } from "./format";
 import type {
   Action,
@@ -920,7 +923,7 @@ async function onAvatarFile(event: Event) {
     await saveCustomAsset("avatars", "avatar.png", data);
     await persistAvatar("file:avatar.png");
     playerAvatarImage.value = data;
-    notice.value = "头像已存进自定义资源文件夹";
+    notice.value = isWeb ? "头像已保存（只在这台浏览器）" : "头像已存进自定义资源文件夹";
   } catch (error) {
     notice.value = `头像没存上：${errorText(error)}`;
   }
@@ -2622,9 +2625,10 @@ onUnmounted(() => {
         {{ tab }}
       </button>
       <div v-if="isWeb" class="tab-quick">
-        <span class="tab-quick-hint">存档只在这台浏览器</span>
-        <button class="link" type="button" @click="exportSaveFile">导出存档</button>
+        <span class="tab-quick-hint">存档只在本机</span>
+        <button class="link" type="button" @click="exportSaveFile">下载存档</button>
         <button class="link" type="button" @click="importSaveFile">导入存档</button>
+        <a class="tab-quick-link" :href="RELEASES_URL" target="_blank" rel="noopener">桌面版 ↗</a>
       </div>
     </nav>
     <nav v-else-if="activeTab === '畜牧场'" class="tabs ranch-tabs">
@@ -2634,9 +2638,10 @@ onUnmounted(() => {
       <button class="tab" type="button" @click="selectTab('鱼塘')">鱼塘</button>
       <button class="tab" type="button" @click="selectTab('宠物')">宠物</button>
       <div v-if="isWeb" class="tab-quick">
-        <span class="tab-quick-hint">存档只在这台浏览器</span>
-        <button class="link" type="button" @click="exportSaveFile">导出存档</button>
+        <span class="tab-quick-hint">存档只在本机</span>
+        <button class="link" type="button" @click="exportSaveFile">下载存档</button>
         <button class="link" type="button" @click="importSaveFile">导入存档</button>
+        <a class="tab-quick-link" :href="RELEASES_URL" target="_blank" rel="noopener">桌面版 ↗</a>
       </div>
     </nav>
     <nav v-else class="tabs ranch-tabs">
@@ -2646,9 +2651,10 @@ onUnmounted(() => {
       <button class="tab" type="button" @click="selectTab('鱼塘')">鱼塘</button>
       <button class="tab" type="button" @click="selectTab('宠物')">宠物</button>
       <div v-if="isWeb" class="tab-quick">
-        <span class="tab-quick-hint">存档只在这台浏览器</span>
-        <button class="link" type="button" @click="exportSaveFile">导出存档</button>
+        <span class="tab-quick-hint">存档只在本机</span>
+        <button class="link" type="button" @click="exportSaveFile">下载存档</button>
         <button class="link" type="button" @click="importSaveFile">导入存档</button>
+        <a class="tab-quick-link" :href="RELEASES_URL" target="_blank" rel="noopener">桌面版 ↗</a>
       </div>
     </nav>
 
@@ -3695,7 +3701,7 @@ onUnmounted(() => {
       <section class="panel player-section player-save">
         <div class="panel-title">存档与内容包</div>
         <div class="file-actions">
-          <button type="button" @click="exportSaveFile">导出存档</button>
+          <button type="button" @click="exportSaveFile">{{ isWeb ? "下载存档" : "导出存档" }}</button>
           <button type="button" @click="importSaveFile">导入存档</button>
           <button type="button" @click="exportContentFile">导出内容包</button>
           <button type="button" @click="importContentFile">导入内容包</button>

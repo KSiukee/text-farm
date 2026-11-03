@@ -1322,6 +1322,17 @@ textarea {
   font-size: 0.86em;
 }
 
+.tab-quick-link {
+  color: var(--link);
+  font-size: 0.86em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.tab-quick-link:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 560px) {
   .tab-quick {
     margin-left: 0;
