@@ -2580,6 +2580,27 @@ onMounted(() => {
   syncTimer = window.setInterval(() => {
     void syncFarm();
   }, 30000);
+  // 安卓返回键：先问这一层。返回 "handled" = 我关掉了某个页面；返回 "exit" = 交给系统退出。
+  // 目前只管钓鱼页和牧村小屋（以及弹层），别的地方按返回还是直接退。
+  (window as { __tfBack?: () => string }).__tfBack = () => {
+    if (confirmDialog.value) {
+      answerConfirm(false);
+      return "handled";
+    }
+    if (helpVisible.value) {
+      helpVisible.value = false;
+      return "handled";
+    }
+    if (playerMode.value) {
+      closePlayer();
+      return "handled";
+    }
+    if (activeTab.value === "钓鱼" || activeTab.value === "牧村") {
+      selectTab("我的农场");
+      return "handled";
+    }
+    return "exit";
+  };
   if (isWeb && !window.localStorage.getItem(WEB_SAVE_HINT_KEY)) {
     window.setTimeout(() => {
       webSaveHint.value = true;

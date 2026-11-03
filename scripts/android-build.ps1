@@ -142,6 +142,63 @@ if ($pluginNames) {
     }
 }
 
+# ---- 返回键：先问网页，再决定退不退 ----
+# MainActivity 是 tauri android init 的生成物（gen/ 不进库、重新 init 会被覆盖），
+# 所以每次构建都补一遍；已经补过就跳过。
+$activity = Join-Path $genAndroid "app\src\main\java\app\textfarm\desktop\MainActivity.kt"
+if ((Test-Path $activity) -and ((Get-Content $activity -Raw) -notmatch "__tfBack")) {
+$kotlin = @'
+package app.textfarm.desktop
+
+import android.os.Bundle
+import android.view.View
+import android.view.ViewGroup
+import android.webkit.WebView
+import androidx.activity.enableEdgeToEdge
+
+class MainActivity : TauriActivity() {
+  override fun onCreate(savedInstanceState: Bundle?) {
+    enableEdgeToEdge()
+    super.onCreate(savedInstanceState)
+  }
+
+  /**
+   * 返回键先问网页：window.__tfBack() 返回 "handled" 就由网页关掉当前页面，
+   * 返回其它（或者根本没有这个函数）才真的退出。
+   */
+  override fun onBackPressed() {
+    val webView = findWebView(window.decorView)
+    if (webView == null) {
+      super.onBackPressed()
+      return
+    }
+    webView.evaluateJavascript("(window.__tfBack ? window.__tfBack() : 'exit')") { result ->
+      if (result == null || !result.contains("handled")) {
+        runOnUiThread { exitFromBack() }
+      }
+    }
+  }
+
+  private fun exitFromBack() {
+    super.onBackPressed()
+  }
+
+  private fun findWebView(view: View): WebView? {
+    if (view is WebView) return view
+    if (view is ViewGroup) {
+      for (index in 0 until view.childCount) {
+        val found = findWebView(view.getChildAt(index))
+        if (found != null) return found
+      }
+    }
+    return null
+  }
+}
+'@
+    [IO.File]::WriteAllText($activity, $kotlin, [Text.UTF8Encoding]::new($false))
+    Write-Host "== 返回键：已给 MainActivity 补 onBackPressed ==" -ForegroundColor Cyan
+}
+
 # AGP 默认拒绝非 ASCII 项目路径；本机实测可用，补开关（gen/ 是生成物，重新 init 会丢，所以每次都补）
 $gradleProps = Join-Path $genAndroid "gradle.properties"
 if ((Get-Content $gradleProps -Raw) -notmatch "android.overridePathCheck") {
