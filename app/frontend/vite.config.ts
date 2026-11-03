@@ -8,6 +8,11 @@ export default defineConfig({
   base: (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env
     ?.PAGES_BASE ?? "/",
   clearScreen: false,
+  // 只是为了用隧道把本地预览给手机看：Vite 默认会拦未知 Host（防 DNS rebinding）。
+  // 只放行内网穿透常用的域名，别的一律不认。
+  preview: {
+    allowedHosts: [".lhr.life", ".loca.lt", ".ngrok-free.app", ".trycloudflare.com"],
+  },
   server: {
     port: 1420,
     strictPort: true,

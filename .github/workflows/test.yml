@@ -1,6 +1,8 @@
 # 每次 push / PR 跑测试。
-# 桌面壳（text-farm）不在这里测：它依赖 Tauri 的系统库，Linux runner 上没有
-# webkit2gtk；壳里的逻辑本来就薄，真正的规则都在 farm-core 里。
+#
+# 桌面壳（text-farm）在 Linux 上编不了：Tauri 要 webkit2gtk，runner 没装。
+# 但 macOS runner 自带那套框架，所以壳里的存档/备份/导出导入测试
+# 单独放到 macos job 里跑——这是唯一能在真 macOS 上验证文件语义的地方。
 
 name: 测试
 
@@ -21,6 +23,31 @@ jobs:
       - name: cargo test
         run: cargo test --workspace --exclude text-farm
 
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/frontend/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: test-macos
+
+      - name: 前端构建（tauri-build 编译期会读 frontend/dist）
+        working-directory: app/frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: cargo test -p text-farm（存档 / .bak / 轮转 / 导出导入）
+        run: cargo test -p text-farm -- --nocapture
+
   frontend:
     runs-on: ubuntu-latest
     defaults:
@@ -36,3 +63,54 @@ jobs:
       - run: npm ci
       - run: npm run test
       - run: npm run typecheck
+
+  # WebKit 冒烟：macOS 的 WKWebView 用的就是它。
+  # 覆盖「换引擎最容易坏」的几样：头像、字体、存档导出导入、内容包。
+  webkit:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: app/frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/frontend/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: webkit-wasm
+
+      - name: 编 wasm 内核
+        working-directory: .
+        run: |
+          cargo build -p farm-wasm --target wasm32-unknown-unknown --release
+          mkdir -p app/frontend/public
+          cp target/wasm32-unknown-unknown/release/farm_wasm.wasm app/frontend/public/farm_wasm.wasm
+
+      - name: 装依赖 + 构建
+        run: |
+          npm ci
+          npm run build
+
+      - name: 装 WebKit 内核
+        run: npx playwright install webkit
+
+      - name: 起预览服务
+        run: |
+          npx vite preview --port 4173 --strictPort > /tmp/preview.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:4173/ > /dev/null && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:4173/ > /dev/null || { cat /tmp/preview.log; exit 1; }
+
+      - name: WebKit 冒烟
+        run: node scripts/webkit-smoke.mjs http://127.0.0.1:4173/

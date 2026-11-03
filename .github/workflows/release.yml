@@ -66,6 +66,72 @@ jobs:
             首次运行 Windows 会提示「已保护你的电脑」——exe 没买代码签名证书，
             点「更多信息 → 仍要运行」就行。
 
+            **macOS**：下载 `text-farm-*-macos-universal.dmg`（Intel / Apple 芯片通用）。
+            没买 Apple 开发者账号、没做公证，首次打开会被拦：
+            右键 →「打开」，或者终端跑一句
+            `xattr -dr com.apple.quarantine /Applications/文字农场.app`。
+
+            **网页版**（不用下载）：https://ksiukee.github.io/text-farm/
+
+            存档三端通用，设置里可以导出/导入。有问题请开 Issue。
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/frontend/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          # 通用二进制：Intel + Apple 芯片一个包
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: desktop-macos
+
+      - name: 装前端依赖
+        working-directory: app/frontend
+        run: npm ci
+
+      - name: 装 tauri cli
+        uses: taiki-e/install-action@v2
+        with:
+          tool: tauri-cli@2
+
+      - name: 构建 dmg
+        # tauri.conf 里的 bundle.targets 是 ["nsis"]（Windows 专用），
+        # macOS 必须用 --bundles 覆盖，否则出不了包。
+        run: cargo tauri build --target universal-apple-darwin --bundles app,dmg
+
+      - name: 改名
+        run: |
+          mkdir -p out
+          ver=$(node -p "require('./app/tauri.conf.json').version")
+          cp target/universal-apple-darwin/release/bundle/dmg/*.dmg "out/text-farm-$ver-macos-universal.dmg"
+          ls -lh out
+
+      - name: 挂到 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: 文字农场 ${{ github.ref_name }}
+          files: out/*.dmg
+          draft: true
+          body: |
+            **Windows 免安装版**：下载下面的 `text-farm-*-win64.exe`，双击就能跑。
+            首次运行 Windows 会提示「已保护你的电脑」——exe 没买代码签名证书，
+            点「更多信息 → 仍要运行」就行。
+
+            **macOS**：下载 `text-farm-*-macos-universal.dmg`（Intel / Apple 芯片通用）。
+            没买 Apple 开发者账号、没做公证，首次打开会被拦：
+            右键 →「打开」，或者终端跑一句
+            `xattr -dr com.apple.quarantine /Applications/文字农场.app`。
+
             **网页版**（不用下载）：https://ksiukee.github.io/text-farm/
 
             存档三端通用，设置里可以导出/导入。有问题请开 Issue。
