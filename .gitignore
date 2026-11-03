@@ -14,9 +14,6 @@ forbidden.txt
 # 网页版构建产物（scripts/web-build.ps1 生成，不入库）
 app/frontend/public/farm_wasm.wasm
 
-# 内部开发日志：任务号与内部语境太多，不公开；更新内容看 Releases
-CHANGELOG.md
-
 # 3D 源文件（11.8MB 的 PSD/blend + 5.8MB 压缩包），只留成品图
 assets/beanbag_source/
 assets/beanbag_source.zip
