@@ -142,7 +142,9 @@ body {
 
   .fishing-game .fg-pond {
     width: auto;
-    height: calc(100dvh - 96px);
+    /* 原来 -96 只够池塘自己，底下的状态行和按钮行会被切掉；
+       -132 留出两行的高度。 */
+    height: calc(100dvh - 132px);
     aspect-ratio: 23 / 10;
     max-width: calc(100vw - 24px);
     margin: 0 auto;
@@ -175,6 +177,11 @@ body {
   }
 
   .fishing-game .fg-stick-wrap .muted {
+    display: none;
+  }
+
+  /* 横屏只留按钮，长的操作提示收掉（玩家已经在打了） */
+  .fishing-game .row .muted {
     display: none;
   }
 
