@@ -329,6 +329,10 @@ function watchPond() {
   measurePond();
 }
 
+/// 摇杆死区：半径的 20%。手指搭在旋钮上一定会抖几像素，
+/// 键盘松手就是 0，触屏没有"松手"这回事——不留死区，框就会一直微动。
+const STICK_DEAD = 0.2;
+
 function updateStick(event: PointerEvent) {
   const el = event.currentTarget as HTMLElement;
   const rect = el.getBoundingClientRect();
@@ -339,10 +343,24 @@ function updateStick(event: PointerEvent) {
     dx /= len;
     dy /= len;
   }
-  touchX.value = dx;
-  touchY.value = dy;
-  stickKnobX.value = dx * 30;
-  stickKnobY.value = dy * 30;
+
+  const mag = Math.min(1, Math.hypot(dx, dy));
+  if (mag <= STICK_DEAD) {
+    // 死区内：当没动，旋钮也回中，让手能感觉到"这里不算"
+    touchX.value = 0;
+    touchY.value = 0;
+    stickKnobX.value = 0;
+    stickKnobY.value = 0;
+    return;
+  }
+
+  // 死区外重新映射到 0..1，推到边缘仍然是满速
+  const scaled = (mag - STICK_DEAD) / (1 - STICK_DEAD);
+  const k = scaled / mag;
+  touchX.value = dx * k;
+  touchY.value = dy * k;
+  stickKnobX.value = dx * k * 30;
+  stickKnobY.value = dy * k * 30;
 }
 
 function onStickDown(event: PointerEvent) {
