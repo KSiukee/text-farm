@@ -8,26 +8,14 @@ const props = defineProps<{ session: FishingSessionView | null; active: boolean 
 const emit = defineEmits<{ resolve: [success: boolean]; notice: [text: string] }>();
 
 type FeelMode = "current" | "bad";
+// 调参开关：手感、打架时长、重力感应的入口先藏起来。
+// 手感固定 2（追鱼）、时长固定 D2；重力感应手感还没调好，不可用，等调完再放出来。
+const SHOW_TUNING = false;
+const SHOW_TILT = false;
+
 const FEEL_KEY = "farm.ui.fishingFeel";
 type FightMode = "d2" | "d3";
 const FIGHT_KEY = "farm.ui.fishingFight";
-
-/// 默认用 2（追鱼那套）。1 是老手感，只有玩家手动选过才回去。
-function readFeel(): FeelMode {
-  try {
-    return window.localStorage.getItem(FEEL_KEY) === "current" ? "current" : "bad";
-  } catch {
-    return "bad";
-  }
-}
-
-function readFight(): FightMode {
-  try {
-    return window.localStorage.getItem(FIGHT_KEY) === "d3" ? "d3" : "d2";
-  } catch {
-    return "d2";
-  }
-}
 
 const phase = ref<"idle" | "waiting" | "bite" | "playing">(
   props.session ? "waiting" : "idle",
@@ -53,7 +41,7 @@ const message = ref(props.session ? "浮标落水了，等鱼咬钩……" : "�
 const inZone = ref(false);
 const graceLeft = ref(0);
 const biteLeft = ref(0);
-const feel = ref<FeelMode>(readFeel());
+const feel = ref<FeelMode>("bad"); // 2 = 追鱼
 
 // 重力感应：手机横竖无所谓，用 gamma（左右）/ beta（前后）映射成框的速度。
 // 打开时记一次基准角，之后只吃相对变化，玩家不用把手机摆得跟水平仪一样。
@@ -129,7 +117,7 @@ function setTilt(on: boolean) {
     window.removeEventListener("deviceorientation", onTilt);
   }
 }
-const fightMode = ref<FightMode>(readFight());
+const fightMode = ref<FightMode>("d2"); // D2 = 中
 // D2/D3 都只拉长打架：活泼/凶猛/鱼王；金色变异跟随鱼王。
 const fightMultiplier = computed(() => {
   const session = props.session;
@@ -939,7 +927,7 @@ watch(
 );
 
 onMounted(() => {
-  if (readTilt()) setTilt(true);
+  if (SHOW_TILT && readTilt()) setTilt(true);
   // 开发模式：用 window.__tfTilt(beta, gamma) 灌一个假的设备姿态，
   // 这样在桌面浏览器里就能验重力感应，不用上真机/模拟器。
   if (import.meta.env.DEV) {
@@ -992,7 +980,7 @@ onUnmounted(() => {
         <template v-if="kingPhaseLabel"> · {{ kingPhaseLabel }}</template>
       </span>
     </div>
-    <div class="fg-feel">
+    <div v-if="SHOW_TUNING" class="fg-feel">
       <span class="muted">手感</span>
       <button
         class="link"
@@ -1011,7 +999,7 @@ onUnmounted(() => {
         [2 追鱼（默认）]
       </button>
       <button
-        v-if="TOUCH_UI"
+        v-if="TOUCH_UI && SHOW_TILT"
         class="link"
         :class="{ active: tiltOn }"
         type="button"
@@ -1025,7 +1013,7 @@ onUnmounted(() => {
       </span>
       <span v-else class="muted">正常杆短按跟手；坏杆长按大漂移</span>
     </div>
-    <div class="fg-feel">
+    <div v-if="SHOW_TUNING" class="fg-feel">
       <span class="muted">打架</span>
       <button
         class="link"
