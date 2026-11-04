@@ -1738,15 +1738,61 @@ if (import.meta.env.DEV) {
   (window as { __roomCamera?: typeof camera; __roomDraft?: typeof draft }).__roomDraft = draft;
   (window as { __roomFurnitureScreen?: typeof debugFurnitureScreen }).__roomFurnitureScreen =
     debugFurnitureScreen;
+  (window as { __roomTouchDebug?: () => unknown }).__roomTouchDebug = () => ({
+    pointers: touchPointers.size,
+    pinch: !!pinch,
+    touchMode: touch?.mode ?? null,
+  });
+}
+
+// 双指缩放：两根手指的距离变化映射到 camera.zoom，
+// 同时把「两指中点下面的那块地」钉在原地，缩放才不会跑偏。
+const touchPointers = new Map<number, P>();
+let pinch: {
+  startDist: number;
+  startZoom: number;
+  worldX: number;
+  worldY: number;
+} | null = null;
+
+function pinchPair(): [P, P] | null {
+  const values = [...touchPointers.values()];
+  return values.length >= 2 ? [values[0], values[1]] : null;
+}
+
+function startPinch() {
+  const pair = pinchPair();
+  if (!pair) return;
+  const [a, b] = pair;
+  const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  const world = screenToWorld(mid);
+  pinch = {
+    startDist: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+    startZoom: camera.value.zoom,
+    worldX: world.x,
+    worldY: world.y,
+  };
 }
 
 function onTouchDown(event: PointerEvent) {
   if (!canvas.value) return;
-  if (touch) return; // 已经有一根手指在操作，第二根先忽略
   const raw = rawPoint(event);
-  const world = screenToWorld(raw);
+  touchPointers.set(event.pointerId, raw);
   canvas.value.setPointerCapture?.(event.pointerId);
 
+  // 第二根手指落下：进入缩放，放弃单指的待定/长按
+  if (touchPointers.size === 2) {
+    if (touch) {
+      window.clearTimeout(touch.timer);
+      touch = null;
+    }
+    startPinch();
+    draw();
+    return;
+  }
+  if (touchPointers.size > 2 || pinch) return;
+
+  const world = screenToWorld(raw);
   const hit = props.readonly ? null : hitTest(world.x, world.y);
   const canDrag = !props.readonly && editing.value && hit;
   touch = {
@@ -1771,8 +1817,29 @@ function onTouchDown(event: PointerEvent) {
 }
 
 function onTouchMove(event: PointerEvent) {
-  if (!touch || !canvas.value) return;
+  if (!canvas.value) return;
   const raw = rawPoint(event);
+  if (touchPointers.has(event.pointerId)) touchPointers.set(event.pointerId, raw);
+
+  // 缩放优先：两根手指时不做平移/拖动
+  if (pinch) {
+    const pair = pinchPair();
+    if (!pair) return;
+    const [a, b] = pair;
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    const dist = Math.max(1, Math.hypot(a.x - b.x, a.y - b.y));
+    const zoom = Math.max(
+      CAMERA_MIN,
+      Math.min(CAMERA_MAX, (pinch.startZoom * dist) / pinch.startDist),
+    );
+    camera.value.zoom = zoom;
+    camera.value.panX = mid.x - CW / 2 - (pinch.worldX - sceneCenter.value.x) * zoom;
+    camera.value.panY = mid.y - CH / 2 - (pinch.worldY - sceneCenter.value.y) * zoom;
+    draw();
+    return;
+  }
+
+  if (!touch) return;
   const dx = raw.x - touch.startX;
   const dy = raw.y - touch.startY;
 
@@ -1798,10 +1865,39 @@ function onTouchMove(event: PointerEvent) {
   }
 }
 
-function onTouchUp() {
+function onTouchUp(event?: PointerEvent) {
+  if (event) touchPointers.delete(event.pointerId);
+
+  if (pinch) {
+    if (touchPointers.size >= 2) {
+      // 还按着两根，重新起一次基准
+      startPinch();
+      return;
+    }
+    pinch = null;
+    // 剩一根手指：别让视角跳，重新起单指基准
+    const rest = [...touchPointers.values()][0];
+    touch =
+      rest && touchPointers.size === 1
+        ? {
+            mode: "pending",
+            startX: rest.x,
+            startY: rest.y,
+            panStartX: camera.value.panX,
+            panStartY: camera.value.panY,
+            targetId: null,
+            timer: 0,
+          }
+        : null;
+    draw();
+    return;
+  }
+
   if (!touch) return;
   window.clearTimeout(touch.timer);
-  if (touch.mode === "pending") handleTouchTap(touch.startX, touch.startY);
+  if (touch.mode === "pending" && touchPointers.size === 0) {
+    handleTouchTap(touch.startX, touch.startY);
+  }
   touch = null;
   draw();
 }
@@ -1933,7 +2029,7 @@ function onPointerMove(event: PointerEvent) {
 
 function onPointerUp(event?: PointerEvent) {
   if (event && isTouchPointer(event)) {
-    onTouchUp();
+    onTouchUp(event);
     return;
   }
   panning.value = null;
