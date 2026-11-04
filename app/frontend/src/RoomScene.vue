@@ -1837,6 +1837,12 @@ function snapTo(unit: number, value: number): number {
   return Math.round(value / unit) * unit;
 }
 
+/// 吸附粒度：界面上写的是「1/8 格吸附」，所以是 grid/8，不是整格。
+/// 之前用整格吸附，手机上对不齐、也贴不到墙边。
+function snapUnit(): number {
+  return Math.max(1, props.room.grid / 8);
+}
+
 /// 触摸落点选中什么：门 > 窗 > 家具，命中都带 14 CSS 像素容差
 function pickTouchTarget(world: P, tolerance: number): TouchTarget | null {
   const door = draft.value.door;
@@ -1868,8 +1874,9 @@ function dragTargetTo(target: TouchTarget, world: P) {
     if (!item || !b) return;
     const maxX = props.room.width * g - b.w * g;
     const maxY = props.room.height * g - b.d * g;
-    item.x = Math.max(0, Math.min(maxX, snapTo(g, room.x * g + target.ox)));
-    item.y = Math.max(0, Math.min(maxY, snapTo(g, room.y * g + target.oy)));
+    const unit = snapUnit();
+    item.x = Math.max(0, Math.min(maxX, snapTo(unit, room.x * g + target.ox)));
+    item.y = Math.max(0, Math.min(maxY, snapTo(unit, room.y * g + target.oy)));
     return;
   }
   if (target.kind === "window") {
@@ -1878,14 +1885,18 @@ function dragTargetTo(target: TouchTarget, world: P) {
     const local = windowPointer(win.wall, world.x, world.y);
     const maxX = wallLength(win.wall) - win.w;
     const maxY = WALL_HEIGHT_UNITS - win.h;
-    win.x = Math.max(0, Math.min(maxX, snapTo(g, local.x + target.ox)));
-    win.y = Math.max(0, Math.min(maxY, snapTo(g, local.y + target.oy)));
+    const unit = snapUnit();
+    win.x = Math.max(0, Math.min(maxX, snapTo(unit, local.x + target.ox)));
+    win.y = Math.max(0, Math.min(maxY, snapTo(unit, local.y + target.oy)));
     return;
   }
   const door = draft.value.door;
   if (!door || door.id !== target.id) return;
   const local = doorPointer(door.wall, world.x, world.y);
-  door.x = Math.max(0, Math.min(wallLength(door.wall) - door.w, snapTo(g, local.x + target.ox)));
+  door.x = Math.max(
+    0,
+    Math.min(wallLength(door.wall) - door.w, snapTo(snapUnit(), local.x + target.ox)),
+  );
 }
 
 function hud(text: string) {
