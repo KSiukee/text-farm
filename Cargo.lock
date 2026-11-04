@@ -831,7 +831,7 @@ dependencies = [
 
 [[package]]
 name = "farm-cli"
-version = "0.139.0"
+version = "0.140.0"
 dependencies = [
  "clap",
  "farm-core",
@@ -840,7 +840,7 @@ dependencies = [
 
 [[package]]
 name = "farm-core"
-version = "0.139.0"
+version = "0.140.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -849,7 +849,7 @@ dependencies = [
 
 [[package]]
 name = "farm-wasm"
-version = "0.139.0"
+version = "0.140.0"
 dependencies = [
  "farm-core",
  "serde",
@@ -3479,7 +3479,7 @@ dependencies = [
 
 [[package]]
 name = "text-farm"
-version = "0.139.0"
+version = "0.140.0"
 dependencies = [
  "base64 0.22.1",
  "chrono",

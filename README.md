@@ -86,7 +86,7 @@ exe 没买代码签名证书。点「更多信息 → 仍要运行」。介意�
 
 ## 版本
 
-当前版本：**0.139.0**（完整历史见 [CHANGELOG](CHANGELOG.md)，每个版本的详细说明见 [Releases](../../releases)）
+当前版本：**0.140.0**（完整历史见 [CHANGELOG](CHANGELOG.md)，每个版本的详细说明见 [Releases](../../releases)）
 
 ## 反馈与支持
 

@@ -1645,7 +1645,172 @@ function windowPointer(wall: "left" | "right", px: number, py: number): P {
   return { x: u * props.room.grid, y: v * props.room.grid };
 }
 
+// ---- 触屏手势（手机）----
+// 鼠标那边是「左键拖家具、中/右键平移、滚轮缩放」，手机上三样都没有：
+// 没有中键、没有滚轮、手指一按就把目标挡住。这里补一套触屏语义：
+//   单指拖空白 = 平移视口
+//   长按家具   = 拿起（抬到手指上方，别被手指挡住）
+//   点一下     = 选中 / 进里屋
+// 双指缩放先不做（页面上已有 +/- 按钮）
+const TOUCH_SLOP = 8; // 画布像素：超过这个距离算拖动，不算点击
+const TOUCH_LONG_PRESS_MS = 220;
+const TOUCH_LIFT_PX = 52; // 拿起后把家具抬到手指上方多少 CSS 像素
+
+type TouchMode = "pending" | "pan" | "drag";
+let touch: {
+  mode: TouchMode;
+  startX: number;
+  startY: number;
+  panStartX: number;
+  panStartY: number;
+  targetId: string | null;
+  timer: number;
+} | null = null;
+
+function isTouchPointer(event: PointerEvent): boolean {
+  return event.pointerType === "touch" || event.pointerType === "pen";
+}
+
+/// 把家具吸附到网格（触屏不追求像素级，落点对齐格子反而更稳）
+function snapFurnitureTo(id: string, worldX: number, worldY: number) {
+  const item = draft.value.furniture.find((entry) => entry.id === id);
+  if (!item) return;
+  const b = itemBox(item);
+  if (!b) return;
+  const g = props.room.grid;
+  const maxX = props.room.width * g - b.w * g;
+  const maxY = props.room.height * g - b.d * g;
+  item.x = Math.max(0, Math.min(maxX, Math.round(worldX / g) * g));
+  item.y = Math.max(0, Math.min(maxY, Math.round(worldY / g) * g));
+}
+
+/// 触屏的「点一下」：和鼠标按下时的选择语义保持一致
+function handleTouchTap(x: number, y: number) {
+  const world = screenToWorld({ x, y });
+  const door = hitDoor(world.x, world.y);
+  if (door) {
+    if (props.extraUnlocked) emit("travel");
+    else emit("notice", `先点「解锁里屋」花 ${props.extraCost} 金币`);
+    return;
+  }
+  if (editing.value) {
+    const win = hitWindow(world.x, world.y);
+    if (win) {
+      selectedWindowId.value = win.id;
+      selectedId.value = null;
+      selectedDoorId.value = null;
+      return;
+    }
+  }
+  const hit = hitTest(world.x, world.y);
+  selectedId.value = hit?.id ?? null;
+  if (!editing.value) {
+    if (hit && hit.def.startsWith("aquarium")) emit("aquarium", hit.id);
+    return;
+  }
+  if (!hit) {
+    selectedWindowId.value = null;
+    return;
+  }
+  selectedWindowId.value = null;
+  selectedDoorId.value = null;
+}
+
+// 开发期调试钩子：算出某件家具在屏幕上的位置（自动测试用）
+function debugFurnitureScreen(index = 0) {
+  const item = draft.value.furniture[index];
+  if (!item || !canvas.value) return null;
+  const g = props.room.grid;
+  const world = iso(item.x / g + 0.5, item.y / g + 0.5);
+  const sx = (world.x - sceneCenter.value.x) * camera.value.zoom + CW / 2 + camera.value.panX;
+  const sy = (world.y - sceneCenter.value.y) * camera.value.zoom + CH / 2 + camera.value.panY;
+  const rect = canvas.value.getBoundingClientRect();
+  return {
+    x: (sx * rect.width) / CW + rect.left,
+    y: (sy * rect.height) / CH + rect.top,
+    item: { id: item.id, x: item.x, y: item.y },
+  };
+}
+
+// 开发期调试钩子：桌面浏览器里用假触摸验手势，别的地方看不到相机
+if (import.meta.env.DEV) {
+  (window as { __roomCamera?: typeof camera; __roomDraft?: typeof draft }).__roomCamera = camera;
+  (window as { __roomCamera?: typeof camera; __roomDraft?: typeof draft }).__roomDraft = draft;
+  (window as { __roomFurnitureScreen?: typeof debugFurnitureScreen }).__roomFurnitureScreen =
+    debugFurnitureScreen;
+}
+
+function onTouchDown(event: PointerEvent) {
+  if (!canvas.value) return;
+  if (touch) return; // 已经有一根手指在操作，第二根先忽略
+  const raw = rawPoint(event);
+  const world = screenToWorld(raw);
+  canvas.value.setPointerCapture?.(event.pointerId);
+
+  const hit = props.readonly ? null : hitTest(world.x, world.y);
+  const canDrag = !props.readonly && editing.value && hit;
+  touch = {
+    mode: "pending",
+    startX: raw.x,
+    startY: raw.y,
+    panStartX: camera.value.panX,
+    panStartY: camera.value.panY,
+    targetId: canDrag ? hit!.id : null,
+    timer: 0,
+  };
+  if (canDrag) {
+    touch.timer = window.setTimeout(() => {
+      if (!touch || touch.mode !== "pending" || !touch.targetId) return;
+      touch.mode = "drag";
+      pushUndo();
+      selectedId.value = touch.targetId;
+      selectedWindowId.value = null;
+      selectedDoorId.value = null;
+    }, TOUCH_LONG_PRESS_MS);
+  }
+}
+
+function onTouchMove(event: PointerEvent) {
+  if (!touch || !canvas.value) return;
+  const raw = rawPoint(event);
+  const dx = raw.x - touch.startX;
+  const dy = raw.y - touch.startY;
+
+  if (touch.mode === "pending" && Math.hypot(dx, dy) > TOUCH_SLOP) {
+    window.clearTimeout(touch.timer);
+    touch.mode = "pan";
+  }
+
+  if (touch.mode === "pan") {
+    camera.value.panX = touch.panStartX + dx;
+    camera.value.panY = touch.panStartY + dy;
+    draw();
+    return;
+  }
+
+  if (touch.mode === "drag" && touch.targetId) {
+    // 抬到手指上方，否则目标永远被手指盖住
+    const rect = canvas.value.getBoundingClientRect();
+    const lift = TOUCH_LIFT_PX * (CH / rect.height);
+    const world = screenToWorld({ x: raw.x, y: raw.y - lift });
+    snapFurnitureTo(touch.targetId, world.x, world.y);
+    draw();
+  }
+}
+
+function onTouchUp() {
+  if (!touch) return;
+  window.clearTimeout(touch.timer);
+  if (touch.mode === "pending") handleTouchTap(touch.startX, touch.startY);
+  touch = null;
+  draw();
+}
+
 function onPointerDown(event: PointerEvent) {
+  if (isTouchPointer(event)) {
+    onTouchDown(event);
+    return;
+  }
   if (event.button === 1 || event.button === 2) {
     event.preventDefault();
     const p = rawPoint(event);
@@ -1722,6 +1887,10 @@ function onPointerDown(event: PointerEvent) {
 }
 
 function onPointerMove(event: PointerEvent) {
+  if (isTouchPointer(event)) {
+    onTouchMove(event);
+    return;
+  }
   if (panning.value) {
     const p = rawPoint(event);
     camera.value.panX = panning.value.panX + (p.x - panning.value.x);
@@ -1762,7 +1931,11 @@ function onPointerMove(event: PointerEvent) {
   item.y = Math.max(0, Math.min(maxY, Math.round(room.y * g + (drag.value?.oy ?? 0))));
 }
 
-function onPointerUp() {
+function onPointerUp(event?: PointerEvent) {
+  if (event && isTouchPointer(event)) {
+    onTouchUp();
+    return;
+  }
   panning.value = null;
   drag.value = null;
   dragWindow.value = null;
@@ -1891,6 +2064,7 @@ onBeforeUnmount(stopPetLoop);
         :width="CW * CANVAS_SCALE"
         :height="CH * CANVAS_SCALE"
         class="room-canvas"
+        style="touch-action: none"
         @pointerdown="onPointerDown"
         @pointermove="onPointerMove"
         @pointerup="onPointerUp"
