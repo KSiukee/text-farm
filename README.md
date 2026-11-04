@@ -4,31 +4,37 @@
 [![release](https://img.shields.io/github/v/release/KSiukee/text-farm?label=release&color=blue)](../../releases)
 [![downloads](https://img.shields.io/github/downloads/KSiukee/text-farm/total?label=downloads&color=blue)](../../releases)
 [![license](https://img.shields.io/github/license/KSiukee/text-farm?label=license&color=blue)](LICENSE)
-![platform](https://img.shields.io/badge/platform-Windows%20%7C%20Android%20%7C%20Web-blue)
+![platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Android%20%7C%20Web-blue)
 
 纯文字、点链接、按真实时间生长的单机农场。无联网、无充值、无排行榜；作物和农场的名字都由你自己起。
 
-**[▶ 点开就玩（网页版）](https://ksiukee.github.io/text-farm/)** ｜ **[⬇ 下载 Windows 桌面版](../../releases/latest)** ｜ **📱 安卓版：准备中**
+**[▶ 点开就玩（网页版）](https://ksiukee.github.io/text-farm/)** ｜ **[⬇ Windows 桌面版](../../releases/latest)** ｜ **[⬇ macOS 版](../../releases/latest)** ｜ **[⬇ 安卓版 APK](../../releases/latest)**
 
 > 网页版点开就能玩、不用安装，但存档放在你的浏览器里，**会丢**。
 > 想长期玩，建议下桌面版——存档是本地文件，自带备份。
+>
+> **macOS 和安卓版还在适配优化，可能有 bug。** 遇到问题欢迎开 Issue，你的一句话比我自己测十遍有用。
 
 <img src="screenshots/desktop.png" alt="桌面版截图" width="760">
 
 <sub>手机浏览器同样能玩（[手机截图](screenshots/mobile.png)），触屏会自己出摇杆和大按键。</sub>
 
 
-## 三个版本怎么选
+## 四个版本怎么选
 
-|  | 网页版 | Windows 桌面版 | 安卓版 |
-|---|---|---|---|
-| 安装 | 不用，点开就玩 | 下载 exe，双击运行 | 下载 APK（准备中） |
-| 存档在哪 | 你浏览器的 IndexedDB | 本机文件 | 本机文件 |
-| 换设备 | 手动导出 / 导入 | 手动导出 / 导入 | 手动导出 / 导入 |
-| 会丢档吗 | **会**，见下一节 | 很少（自带 `.bak` + 10 份轮转备份） | 同左 |
-| 适合 | 试玩、随手点两下 | 长期玩 | 手机上长期玩 |
+|  | 网页版 | Windows | macOS | 安卓 |
+|---|---|---|---|---|
+| 安装 | 不用，点开就玩 | 下载 exe，双击运行 | 下载 dmg，拖进应用文件夹 | 下载 APK 安装 |
+| 存档在哪 | 你浏览器的 IndexedDB | 本机文件 | 本机文件 | 本机文件 |
+| 换设备 | 手动导出 / 导入 | 手动导出 / 导入 | 手动导出 / 导入 | 手动导出 / 导入 |
+| 会丢档吗 | **会**，见下一节 | 很少（自带 `.bak` + 10 份轮转备份） | 同左 | 同左 |
+| 成熟度 | 稳 | 稳 | **适配中，可能有 bug** | **适配中，可能有 bug** |
+| 适合 | 试玩、随手点两下 | 长期玩 | 长期玩 | 手机上长期玩 |
 
 **存档格式三端完全一样**：都是同一份 JSON，带 schema 版本和自动迁移。网页版导出的档可以直接导进桌面版，反过来也行。
+
+> **macOS 第一次打开**：没买 Apple 开发者账号（$99/年），系统会提示「无法验证开发者」。
+> 右键点图标 →「打开」→ 再点一次「打开」，只需要做一次。
 
 ## ⚠️ 网页版会丢档，请当它随时会没
 
