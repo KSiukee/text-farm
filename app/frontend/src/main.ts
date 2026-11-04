@@ -6,8 +6,17 @@ import "./style.css";
 import "./mobile.css";
 
 // 有的 WebView 冷启动时 (hover: none) 还没生效，悬浮摇杆/大圆键会一整个不出现，
-// 摸几下屏幕才"卡出来"。这里直接按触摸能力打一个类，CSS 用它兜底。
-if (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0) {
+// 摸几下屏幕才"卡出来"。这里直接判一次、打个类，CSS 用它兜底。
+//
+// 不能只看 maxTouchPoints：带触摸屏的 Windows 笔记本也是 > 0，
+// 结果桌面上会冒出摇杆和收竿大圆键。判「手机/平板系统」或「指针是粗的」。
+const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
+const mobileOS = /Android|iPhone|iPad|iPod/i.test(ua);
+const coarsePointer =
+  typeof window !== "undefined" &&
+  typeof window.matchMedia === "function" &&
+  window.matchMedia("(pointer: coarse)").matches;
+if (mobileOS || coarsePointer) {
   document.documentElement.classList.add("touch");
 }
 import { applyBackgroundPrefs, readBackgroundPrefs } from "./background";

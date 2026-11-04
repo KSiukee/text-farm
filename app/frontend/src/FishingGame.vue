@@ -219,17 +219,15 @@ function depthBias(): number {
   }
 }
 
-/// 触屏设备（手机/平板）手指精度天生比鼠标差，框给大 15% 补偿。
-/// 用 pointer: coarse 判断，触屏笔记本接了鼠标时仍是 fine，不会被误伤。
-const COARSE_POINTER =
-  typeof window !== "undefined" &&
-  typeof window.matchMedia === "function" &&
-  window.matchMedia("(pointer: coarse)").matches;
+/// 触屏 UI（判定在 main.ts 里，统一一处）：手机/平板才算，
+/// 带触摸屏的 Windows 笔记本不算，免得桌面上弹出摇杆和补偿。
+const TOUCH_UI =
+  typeof document !== "undefined" && document.documentElement.classList.contains("touch");
 const TOUCH_FRAME_BONUS = 1.15;
 
 const frameSize = computed(() => {
   const base = props.session?.params.framePct ?? 20;
-  return COARSE_POINTER ? base * TOUCH_FRAME_BONUS : base;
+  return TOUCH_UI ? base * TOUCH_FRAME_BONUS : base;
 });
 const frameW = computed(() => frameSize.value);
 // 窗口是宽屏，框本身保持正方形：高度百分比按池塘宽高比换算。
@@ -1013,6 +1011,7 @@ onUnmounted(() => {
         [2 追鱼（默认）]
       </button>
       <button
+        v-if="TOUCH_UI"
         class="link"
         :class="{ active: tiltOn }"
         type="button"
