@@ -1933,33 +1933,40 @@ function onTouchDown(event: PointerEvent) {
   const rect = canvas.value.getBoundingClientRect();
   const scale = CW / rect.width;
   const world = screenToWorld(raw);
-  const target = props.readonly || !editing.value ? null : pickTouchTarget(world, TOUCH_HIT_TOLERANCE_CSS * scale);
+  const hit = props.readonly || !editing.value ? null : pickTouchTarget(world, TOUCH_HIT_TOLERANCE_CSS * scale);
+  const hitKey = hit ? `${hit.kind}:${hit.id}` : "";
+  const selectedKey = selectedId.value
+    ? `furniture:${selectedId.value}`
+    : selectedWindowId.value
+      ? `window:${selectedWindowId.value}`
+      : selectedDoorId.value
+        ? `door:${selectedDoorId.value}`
+        : "";
+  // 只有「已经选中的那件」才能直接拖。
+  // 否则手指按在 A 旁边、命中容差抓到 B，就会把没选中的 B 拖走——手机上很容易误触。
+  const canDragSelected = !!hit && hitKey === selectedKey;
   hud(
-    `down ed=${editing.value ? 1 : 0} ro=${props.readonly ? 1 : 0} tgt=${target ? target.kind : "null"}`,
+    `down ed=${editing.value ? 1 : 0} hit=${hitKey || "null"} sel=${selectedKey || "null"} drag=${canDragSelected ? 1 : 0}`,
   );
 
   touch = {
-    mode: target ? "drag" : "pending",
+    mode: canDragSelected ? "drag" : "pending",
     startX: raw.x,
     startY: raw.y,
     lastX: raw.x,
     lastY: raw.y,
     panStartX: camera.value.panX,
     panStartY: camera.value.panY,
-    target,
+    target: canDragSelected ? hit : null,
     moved: false,
     timer: 0,
   };
 
-  // 摸到东西就直接拿着走（不等长按）。
-  // 安卓 WebView 的长按会触发系统手势并发 pointercancel，长按拿起在真机上靠不住；
-  // 而且「按下即拿起」跟 Canva/Figma 手机端一致，更跟手。
-  // 先只选中、不挪位置——免得点一下就把家具吸到手指底下。
-  if (target) {
-    pushUndo();
-    selectedId.value = target.kind === "furniture" ? target.id : null;
-    selectedWindowId.value = target.kind === "window" ? target.id : null;
-    selectedDoorId.value = target.kind === "door" ? target.id : null;
+  // 按在别的家具上：只切换选中，不拖；想移动它，松手再按一次
+  if (hit && !canDragSelected) {
+    selectedId.value = hit.kind === "furniture" ? hit.id : null;
+    selectedWindowId.value = hit.kind === "window" ? hit.id : null;
+    selectedDoorId.value = hit.kind === "door" ? hit.id : null;
     draw();
   }
 }
@@ -2018,6 +2025,7 @@ function onTouchMove(event: PointerEvent) {
       // 手指还没移出“点击”范围：别把家具拽走，用户可能只是想选中
       if (Math.hypot(dx, dy) < TOUCH_SLOP_CSS * scale) return;
       touch.moved = true;
+      pushUndo();
     }
     const lift = TOUCH_LIFT_PX * (CH / rect.height);
     dragTargetTo(touch.target, screenToWorld({ x: raw.x, y: raw.y - lift }));
