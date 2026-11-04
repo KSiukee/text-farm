@@ -1607,6 +1607,33 @@ function hitTest(px: number, py: number): RoomFurniture | null {
   return null;
 }
 
+/// 触屏用的宽松命中：手指按不准，精确命中不到就在容差内找最近的一件。
+/// 只在触屏路径用，鼠标照样要求点准。
+function hitTestLoose(px: number, py: number, tolerance: number): RoomFurniture | null {
+  const exact = hitTest(px, py);
+  if (exact) return exact;
+  let best: { item: RoomFurniture; dist: number } | null = null;
+  for (const item of [...sorted.value].reverse()) {
+    const b = itemBox(item);
+    if (!b) continue;
+    const poly = [
+      iso(b.x, b.y),
+      iso(b.x + b.w, b.y),
+      iso(b.x + b.w, b.y + b.d),
+      iso(b.x, b.y + b.d),
+    ];
+    const cx = (poly[0].x + poly[2].x) / 2;
+    const cy = (poly[0].y + poly[2].y) / 2;
+    const radius = Math.max(1, Math.hypot(poly[0].x - cx, poly[0].y - cy));
+    const grow = 1 + tolerance / radius;
+    const grown = poly.map((point) => ({ x: cx + (point.x - cx) * grow, y: cy + (point.y - cy) * grow }));
+    if (!pointInPoly(px, py, grown)) continue;
+    const dist = Math.hypot(px - cx, py - cy);
+    if (!best || dist < best.dist) best = { item, dist };
+  }
+  return best?.item ?? null;
+}
+
 function canvasPoint(event: PointerEvent): P {
   return screenToWorld(rawPoint(event));
 }
@@ -1652,7 +1679,9 @@ function windowPointer(wall: "left" | "right", px: number, py: number): P {
 //   长按家具   = 拿起（抬到手指上方，别被手指挡住）
 //   点一下     = 选中 / 进里屋
 // 双指缩放先不做（页面上已有 +/- 按钮）
-const TOUCH_SLOP = 8; // 画布像素：超过这个距离算拖动，不算点击
+const TOUCH_SLOP_CSS = 10; // CSS 像素：超过这个距离算拖动，不算点击
+const TOUCH_PICK_SLOP_CSS = 24; // 按在家具上时更宽容：超过这个距离才放弃拿起、改成平移
+const TOUCH_HIT_TOLERANCE_CSS = 14; // 点选容差：家具小的时候手指按不准
 const TOUCH_LONG_PRESS_MS = 220;
 const TOUCH_LIFT_PX = 52; // 拿起后把家具抬到手指上方多少 CSS 像素
 
@@ -1661,6 +1690,8 @@ let touch: {
   mode: TouchMode;
   startX: number;
   startY: number;
+  lastX: number;
+  lastY: number;
   panStartX: number;
   panStartY: number;
   targetId: string | null;
@@ -1702,7 +1733,9 @@ function handleTouchTap(x: number, y: number) {
       return;
     }
   }
-  const hit = hitTest(world.x, world.y);
+  const rect = canvas.value?.getBoundingClientRect();
+  const tolerance = rect ? TOUCH_HIT_TOLERANCE_CSS * (CW / rect.width) : 0;
+  const hit = hitTestLoose(world.x, world.y, tolerance);
   selectedId.value = hit?.id ?? null;
   if (!editing.value) {
     if (hit && hit.def.startsWith("aquarium")) emit("aquarium", hit.id);
@@ -1742,6 +1775,8 @@ if (import.meta.env.DEV) {
     pointers: touchPointers.size,
     pinch: !!pinch,
     touchMode: touch?.mode ?? null,
+    selected: selectedId.value,
+    editing: editing.value,
   });
 }
 
@@ -1793,12 +1828,16 @@ function onTouchDown(event: PointerEvent) {
   if (touchPointers.size > 2 || pinch) return;
 
   const world = screenToWorld(raw);
-  const hit = props.readonly ? null : hitTest(world.x, world.y);
+  const rect = canvas.value.getBoundingClientRect();
+  const tolerance = TOUCH_HIT_TOLERANCE_CSS * (CW / rect.width);
+  const hit = props.readonly ? null : hitTestLoose(world.x, world.y, tolerance);
   const canDrag = !props.readonly && editing.value && hit;
   touch = {
     mode: "pending",
     startX: raw.x,
     startY: raw.y,
+    lastX: raw.x,
+    lastY: raw.y,
     panStartX: camera.value.panX,
     panStartY: camera.value.panY,
     targetId: canDrag ? hit!.id : null,
@@ -1812,6 +1851,11 @@ function onTouchDown(event: PointerEvent) {
       selectedId.value = touch.targetId;
       selectedWindowId.value = null;
       selectedDoorId.value = null;
+      // 一拿起就贴到手指上方，别等下一次 move 才动
+      const lift = TOUCH_LIFT_PX * (CH / (canvas.value?.getBoundingClientRect().height ?? CH));
+      const lifted = screenToWorld({ x: touch.lastX, y: touch.lastY - lift });
+      snapFurnitureTo(touch.targetId, lifted.x, lifted.y);
+      draw();
     }, TOUCH_LONG_PRESS_MS);
   }
 }
@@ -1842,10 +1886,17 @@ function onTouchMove(event: PointerEvent) {
   if (!touch) return;
   const dx = raw.x - touch.startX;
   const dy = raw.y - touch.startY;
+  touch.lastX = raw.x;
+  touch.lastY = raw.y;
 
-  if (touch.mode === "pending" && Math.hypot(dx, dy) > TOUCH_SLOP) {
-    window.clearTimeout(touch.timer);
-    touch.mode = "pan";
+  if (touch.mode === "pending") {
+    const scale = canvas.value ? CW / canvas.value.getBoundingClientRect().width : 1;
+    // 按在家具上时更宽容：手指抖一抖不算“要平移”
+    const limit = (touch.targetId ? TOUCH_PICK_SLOP_CSS : TOUCH_SLOP_CSS) * scale;
+    if (Math.hypot(dx, dy) > limit) {
+      window.clearTimeout(touch.timer);
+      touch.mode = "pan";
+    }
   }
 
   if (touch.mode === "pan") {
@@ -1883,6 +1934,8 @@ function onTouchUp(event?: PointerEvent) {
             mode: "pending",
             startX: rest.x,
             startY: rest.y,
+            lastX: rest.x,
+            lastY: rest.y,
             panStartX: camera.value.panX,
             panStartY: camera.value.panY,
             targetId: null,
