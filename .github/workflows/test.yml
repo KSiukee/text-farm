@@ -105,12 +105,14 @@ jobs:
 
       - name: 起预览服务
         run: |
-          npx vite preview --port 4173 --strictPort > /tmp/preview.log 2>&1 &
-          for i in $(seq 1 30); do
+          # macOS 上 localhost 常解析到 ::1，vite 默认也只绑 localhost，
+          # 结果 curl 127.0.0.1 直接连不上——显式绑 IPv4。
+          npx vite preview --host 127.0.0.1 --port 4173 --strictPort > /tmp/preview.log 2>&1 &
+          for i in $(seq 1 40); do
             curl -sf http://127.0.0.1:4173/ > /dev/null && break
             sleep 1
           done
-          curl -sf http://127.0.0.1:4173/ > /dev/null || { cat /tmp/preview.log; exit 1; }
+          curl -sf http://127.0.0.1:4173/ > /dev/null || { echo "预览没起来："; cat /tmp/preview.log; exit 1; }
 
       - name: WebKit 冒烟
         run: node scripts/webkit-smoke.mjs http://127.0.0.1:4173/
