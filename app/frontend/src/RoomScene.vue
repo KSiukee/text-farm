@@ -59,6 +59,8 @@ function loadWindowBackdrop() {
   img.src = path;
 }
 const panning = ref<{ x: number; y: number; panX: number; panY: number } | null>(null);
+// 真机排障用的一行 HUD：装修模式下显示最近一次触摸事件走到了哪一步
+const touchHud = ref("");
 const zoomPct = computed(() => Math.round(camera.value.zoom * 100));
 const sceneCenter = computed(() => {
   const floorW = ((props.room.width + props.room.height) * TW) / 2;
@@ -1886,6 +1888,10 @@ function dragTargetTo(target: TouchTarget, world: P) {
   door.x = Math.max(0, Math.min(wallLength(door.wall) - door.w, snapTo(g, local.x + target.ox)));
 }
 
+function hud(text: string) {
+  touchHud.value = text;
+}
+
 function pinchPair(): [P, P] | null {
   const values = [...touchPointers.values()];
   return values.length >= 2 ? [values[0], values[1]] : null;
@@ -1908,6 +1914,7 @@ function startPinch() {
 function onTouchDown(event: PointerEvent) {
   if (!canvas.value) return;
   const raw = rawPoint(event);
+  hud(`down ${event.pointerType}`);
   touchPointers.set(event.pointerId, raw);
   canvas.value.setPointerCapture?.(event.pointerId);
 
@@ -1927,6 +1934,9 @@ function onTouchDown(event: PointerEvent) {
   const scale = CW / rect.width;
   const world = screenToWorld(raw);
   const target = props.readonly || !editing.value ? null : pickTouchTarget(world, TOUCH_HIT_TOLERANCE_CSS * scale);
+  hud(
+    `down ed=${editing.value ? 1 : 0} ro=${props.readonly ? 1 : 0} tgt=${target ? target.kind : "null"}`,
+  );
 
   touch = {
     mode: target ? "drag" : "pending",
@@ -1982,6 +1992,7 @@ function onTouchMove(event: PointerEvent) {
   const dy = raw.y - touch.startY;
   touch.lastX = raw.x;
   touch.lastY = raw.y;
+  hud(`mv m=${touch.mode} dx=${Math.round(dx)} dy=${Math.round(dy)}`);
 
   if (touch.mode === "pending") {
     const scale = CW / canvas.value.getBoundingClientRect().width;
@@ -2045,6 +2056,7 @@ function onTouchUp(event?: PointerEvent) {
 
   if (!touch) return;
   window.clearTimeout(touch.timer);
+  hud(`up m=${touch.mode} pts=${touchPointers.size}`);
   if (touch.mode === "pending" && touchPointers.size === 0) {
     handleTouchTap(touch.startX, touch.startY);
   }
@@ -2053,6 +2065,15 @@ function onTouchUp(event?: PointerEvent) {
 }
 
 function onPointerDown(event: PointerEvent) {
+  try {
+    handlePointerDown(event);
+  } catch (error) {
+    hud(`ERR down: ${(error as Error).message}`);
+    throw error;
+  }
+}
+
+function handlePointerDown(event: PointerEvent) {
   if (isTouchPointer(event)) {
     onTouchDown(event);
     return;
@@ -2133,6 +2154,14 @@ function onPointerDown(event: PointerEvent) {
 }
 
 function onPointerMove(event: PointerEvent) {
+  try {
+    handlePointerMove(event);
+  } catch (error) {
+    hud(`ERR move: ${(error as Error).message}`);
+  }
+}
+
+function handlePointerMove(event: PointerEvent) {
   if (isTouchPointer(event)) {
     onTouchMove(event);
     return;
@@ -2178,6 +2207,14 @@ function onPointerMove(event: PointerEvent) {
 }
 
 function onPointerUp(event?: PointerEvent) {
+  try {
+    handlePointerUp(event);
+  } catch (error) {
+    hud(`ERR up: ${(error as Error).message}`);
+  }
+}
+
+function handlePointerUp(event?: PointerEvent) {
   if (event && isTouchPointer(event)) {
     onTouchUp(event);
     return;
@@ -2305,6 +2342,7 @@ onBeforeUnmount(stopPetLoop);
     </div>
 
     <div class="room-canvas-wrap" @contextmenu.prevent @selectstart.prevent>
+      <div v-if="editing" class="room-hud">{{ touchHud || "hud: 等你按一下" }}</div>
       <canvas
         ref="canvas"
         :width="CW * CANVAS_SCALE"
@@ -2449,6 +2487,18 @@ onBeforeUnmount(stopPetLoop);
 .camera-hint {
   margin-top: 2px;
 }
+.room-hud {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin-bottom: 4px;
+  padding: 2px 6px;
+  font: 12px/1.4 ui-monospace, monospace;
+  color: #fff;
+  background: rgb(0 0 0 / 65%);
+  border-radius: 4px;
+}
+
 .room-canvas-wrap {
   width: 100%;
   overflow: hidden;
