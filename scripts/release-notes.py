@@ -36,6 +36,16 @@ def read_version() -> str:
     return match.group(1) if match else "0.0.0"
 
 
+def hand_written(version: str) -> str | None:
+    """release-notes/<版本>.md：玩家向的更新内容，优先用它。
+    这里只写「玩家该知道的」，不写代码细节。"""
+    path = ROOT / "release-notes" / f"{version}.md"
+    if path.is_file():
+        text = path.read_text(encoding="utf-8").strip()
+        return text or None
+    return None
+
+
 def changelog_line(version: str) -> str | None:
     path = ROOT / "CHANGELOG.md"
     if not path.is_file():
@@ -68,6 +78,7 @@ def commits_since_last_tag(version: str) -> list[str]:
 
 
 def build(version: str) -> str:
+    written = hand_written(version)
     line = changelog_line(version)
     body = [
         f"**Windows 免安装版**：下载 `text-farm-{version}-win64.exe`，双击就能跑。",
@@ -83,12 +94,15 @@ def build(version: str) -> str:
         "",
         "---",
         "",
-        "### 本次更新",
-        "",
     ]
-    if line:
+    if written:
+        body.append(written)
+        body.append("")
+    elif line:
+        body.extend(["### 本次更新", ""])
         body.append(f"- {line}")
     else:
+        body.extend(["### 本次更新", ""])
         picked = commits_since_last_tag(version)
         if picked:
             body.extend(f"- {item}" for item in picked)
