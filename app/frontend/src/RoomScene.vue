@@ -1694,7 +1694,8 @@ let touch: {
   lastY: number;
   panStartX: number;
   panStartY: number;
-  targetId: string | null;
+  target: TouchTarget | null;
+  moved: boolean;
   timer: number;
 } | null = null;
 
@@ -1749,6 +1750,23 @@ function handleTouchTap(x: number, y: number) {
   selectedDoorId.value = null;
 }
 
+// 开发期调试钩子：窗在屏幕上的位置（自动测试用）
+function debugWindowScreen(index = 0) {
+  const win = draft.value.windows[index];
+  if (!win || !canvas.value) return null;
+  const points = windowPoints(win);
+  const wx = points.reduce((sum, point) => sum + point.x, 0) / points.length;
+  const wy = points.reduce((sum, point) => sum + point.y, 0) / points.length;
+  const sx = (wx - sceneCenter.value.x) * camera.value.zoom + CW / 2 + camera.value.panX;
+  const sy = (wy - sceneCenter.value.y) * camera.value.zoom + CH / 2 + camera.value.panY;
+  const rect = canvas.value.getBoundingClientRect();
+  return {
+    x: (sx * rect.width) / CW + rect.left,
+    y: (sy * rect.height) / CH + rect.top,
+    item: { id: win.id, x: win.x, y: win.y },
+  };
+}
+
 // 开发期调试钩子：算出某件家具在屏幕上的位置（自动测试用）
 function debugFurnitureScreen(index = 0) {
   const item = draft.value.furniture[index];
@@ -1771,11 +1789,16 @@ if (import.meta.env.DEV) {
   (window as { __roomCamera?: typeof camera; __roomDraft?: typeof draft }).__roomDraft = draft;
   (window as { __roomFurnitureScreen?: typeof debugFurnitureScreen }).__roomFurnitureScreen =
     debugFurnitureScreen;
+  (window as { __roomWindowScreen?: typeof debugWindowScreen }).__roomWindowScreen =
+    debugWindowScreen;
   (window as { __roomTouchDebug?: () => unknown }).__roomTouchDebug = () => ({
     pointers: touchPointers.size,
     pinch: !!pinch,
     touchMode: touch?.mode ?? null,
     selected: selectedId.value,
+    window: selectedWindowId.value,
+    door: selectedDoorId.value,
+    targetKind: touch?.target?.kind ?? null,
     editing: editing.value,
   });
 }
@@ -1789,6 +1812,79 @@ let pinch: {
   worldX: number;
   worldY: number;
 } | null = null;
+
+/// 长按能抓起的东西：家具、墙上的窗、门。
+/// 之前只认家具，按在窗/门上就落到「平移」分支，看起来就像整个屋子被拖走。
+type TouchTarget =
+  | { kind: "furniture"; id: string; ox: number; oy: number }
+  | { kind: "window"; id: string; ox: number; oy: number }
+  | { kind: "door"; id: string; ox: number };
+
+function growPoly(points: P[], tolerance: number): P[] {
+  const cx = points.reduce((sum, point) => sum + point.x, 0) / points.length;
+  const cy = points.reduce((sum, point) => sum + point.y, 0) / points.length;
+  const radius = Math.max(
+    1,
+    ...points.map((point) => Math.hypot(point.x - cx, point.y - cy)),
+  );
+  const grow = 1 + tolerance / radius;
+  return points.map((point) => ({ x: cx + (point.x - cx) * grow, y: cy + (point.y - cy) * grow }));
+}
+
+function snapTo(unit: number, value: number): number {
+  return Math.round(value / unit) * unit;
+}
+
+/// 触摸落点选中什么：门 > 窗 > 家具，命中都带 14 CSS 像素容差
+function pickTouchTarget(world: P, tolerance: number): TouchTarget | null {
+  const door = draft.value.door;
+  if (door && pointInPoly(world.x, world.y, growPoly(doorPoints(door), tolerance))) {
+    const local = doorPointer(door.wall, world.x, world.y);
+    return { kind: "door", id: door.id, ox: door.x - local.x };
+  }
+  for (const win of [...draft.value.windows].reverse()) {
+    if (pointInPoly(world.x, world.y, growPoly(windowPoints(win), tolerance))) {
+      const local = windowPointer(win.wall, world.x, world.y);
+      return { kind: "window", id: win.id, ox: win.x - local.x, oy: win.y - local.y };
+    }
+  }
+  const item = hitTestLoose(world.x, world.y, tolerance);
+  if (item) {
+    const room = toRoom(world.x, world.y);
+    const g = props.room.grid;
+    return { kind: "furniture", id: item.id, ox: item.x - room.x * g, oy: item.y - room.y * g };
+  }
+  return null;
+}
+
+function dragTargetTo(target: TouchTarget, world: P) {
+  const g = props.room.grid;
+  if (target.kind === "furniture") {
+    const room = toRoom(world.x, world.y);
+    const item = draft.value.furniture.find((entry) => entry.id === target.id);
+    const b = item ? itemBox(item) : null;
+    if (!item || !b) return;
+    const maxX = props.room.width * g - b.w * g;
+    const maxY = props.room.height * g - b.d * g;
+    item.x = Math.max(0, Math.min(maxX, snapTo(g, room.x * g + target.ox)));
+    item.y = Math.max(0, Math.min(maxY, snapTo(g, room.y * g + target.oy)));
+    return;
+  }
+  if (target.kind === "window") {
+    const win = draft.value.windows.find((entry) => entry.id === target.id);
+    if (!win) return;
+    const local = windowPointer(win.wall, world.x, world.y);
+    const maxX = wallLength(win.wall) - win.w;
+    const maxY = WALL_HEIGHT_UNITS - win.h;
+    win.x = Math.max(0, Math.min(maxX, snapTo(g, local.x + target.ox)));
+    win.y = Math.max(0, Math.min(maxY, snapTo(g, local.y + target.oy)));
+    return;
+  }
+  const door = draft.value.door;
+  if (!door || door.id !== target.id) return;
+  const local = doorPointer(door.wall, world.x, world.y);
+  door.x = Math.max(0, Math.min(wallLength(door.wall) - door.w, snapTo(g, local.x + target.ox)));
+}
 
 function pinchPair(): [P, P] | null {
   const values = [...touchPointers.values()];
@@ -1827,36 +1923,34 @@ function onTouchDown(event: PointerEvent) {
   }
   if (touchPointers.size > 2 || pinch) return;
 
-  const world = screenToWorld(raw);
   const rect = canvas.value.getBoundingClientRect();
-  const tolerance = TOUCH_HIT_TOLERANCE_CSS * (CW / rect.width);
-  const hit = props.readonly ? null : hitTestLoose(world.x, world.y, tolerance);
-  const canDrag = !props.readonly && editing.value && hit;
+  const scale = CW / rect.width;
+  const world = screenToWorld(raw);
+  const target = props.readonly || !editing.value ? null : pickTouchTarget(world, TOUCH_HIT_TOLERANCE_CSS * scale);
+
   touch = {
-    mode: "pending",
+    mode: target ? "drag" : "pending",
     startX: raw.x,
     startY: raw.y,
     lastX: raw.x,
     lastY: raw.y,
     panStartX: camera.value.panX,
     panStartY: camera.value.panY,
-    targetId: canDrag ? hit!.id : null,
+    target,
+    moved: false,
     timer: 0,
   };
-  if (canDrag) {
-    touch.timer = window.setTimeout(() => {
-      if (!touch || touch.mode !== "pending" || !touch.targetId) return;
-      touch.mode = "drag";
-      pushUndo();
-      selectedId.value = touch.targetId;
-      selectedWindowId.value = null;
-      selectedDoorId.value = null;
-      // 一拿起就贴到手指上方，别等下一次 move 才动
-      const lift = TOUCH_LIFT_PX * (CH / (canvas.value?.getBoundingClientRect().height ?? CH));
-      const lifted = screenToWorld({ x: touch.lastX, y: touch.lastY - lift });
-      snapFurnitureTo(touch.targetId, lifted.x, lifted.y);
-      draw();
-    }, TOUCH_LONG_PRESS_MS);
+
+  // 摸到东西就直接拿着走（不等长按）。
+  // 安卓 WebView 的长按会触发系统手势并发 pointercancel，长按拿起在真机上靠不住；
+  // 而且「按下即拿起」跟 Canva/Figma 手机端一致，更跟手。
+  // 先只选中、不挪位置——免得点一下就把家具吸到手指底下。
+  if (target) {
+    pushUndo();
+    selectedId.value = target.kind === "furniture" ? target.id : null;
+    selectedWindowId.value = target.kind === "window" ? target.id : null;
+    selectedDoorId.value = target.kind === "door" ? target.id : null;
+    draw();
   }
 }
 
@@ -1890,9 +1984,9 @@ function onTouchMove(event: PointerEvent) {
   touch.lastY = raw.y;
 
   if (touch.mode === "pending") {
-    const scale = canvas.value ? CW / canvas.value.getBoundingClientRect().width : 1;
-    // 按在家具上时更宽容：手指抖一抖不算“要平移”
-    const limit = (touch.targetId ? TOUCH_PICK_SLOP_CSS : TOUCH_SLOP_CSS) * scale;
+    const scale = CW / canvas.value.getBoundingClientRect().width;
+    // 抓到了东西就更宽容：手指抖一抖不算「要平移」
+    const limit = (touch.target ? TOUCH_PICK_SLOP_CSS : TOUCH_SLOP_CSS) * scale;
     if (Math.hypot(dx, dy) > limit) {
       window.clearTimeout(touch.timer);
       touch.mode = "pan";
@@ -1906,12 +2000,16 @@ function onTouchMove(event: PointerEvent) {
     return;
   }
 
-  if (touch.mode === "drag" && touch.targetId) {
-    // 抬到手指上方，否则目标永远被手指盖住
+  if (touch.mode === "drag" && touch.target) {
     const rect = canvas.value.getBoundingClientRect();
+    const scale = CW / rect.width;
+    if (!touch.moved) {
+      // 手指还没移出“点击”范围：别把家具拽走，用户可能只是想选中
+      if (Math.hypot(dx, dy) < TOUCH_SLOP_CSS * scale) return;
+      touch.moved = true;
+    }
     const lift = TOUCH_LIFT_PX * (CH / rect.height);
-    const world = screenToWorld({ x: raw.x, y: raw.y - lift });
-    snapFurnitureTo(touch.targetId, world.x, world.y);
+    dragTargetTo(touch.target, screenToWorld({ x: raw.x, y: raw.y - lift }));
     draw();
   }
 }
@@ -1921,12 +2019,10 @@ function onTouchUp(event?: PointerEvent) {
 
   if (pinch) {
     if (touchPointers.size >= 2) {
-      // 还按着两根，重新起一次基准
       startPinch();
       return;
     }
     pinch = null;
-    // 剩一根手指：别让视角跳，重新起单指基准
     const rest = [...touchPointers.values()][0];
     touch =
       rest && touchPointers.size === 1
@@ -1938,7 +2034,8 @@ function onTouchUp(event?: PointerEvent) {
             lastY: rest.y,
             panStartX: camera.value.panX,
             panStartY: camera.value.panY,
-            targetId: null,
+            target: null,
+            moved: false,
             timer: 0,
           }
         : null;
@@ -2207,7 +2304,7 @@ onBeforeUnmount(stopPetLoop);
       </template>
     </div>
 
-    <div class="room-canvas-wrap">
+    <div class="room-canvas-wrap" @contextmenu.prevent @selectstart.prevent>
       <canvas
         ref="canvas"
         :width="CW * CANVAS_SCALE"
@@ -2359,6 +2456,15 @@ onBeforeUnmount(stopPetLoop);
   border-radius: 8px;
   background: #f4efe3;
 }
+.room-canvas-wrap,
+.room-canvas {
+  /* 这个游戏正文是可选的（复制文本），但画布上长按会触发系统的“选中/长按”手势，
+     安卓 WebView 随后发 pointercancel，拖动就断在半路——所以画布区域必须禁掉。 */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
 .room-canvas {
   display: block;
   width: 100%;
