@@ -270,3 +270,31 @@ html.touch .fg-pad {
     opacity: 0.45;
   }
 
+/* ---- 竖屏钓鱼：池塘吃满卡片 + 比例从 16:9 改高 ----
+   原来竖屏池塘只有 314×177，框 72px、纵向能动的范围只剩 106px，
+   手机上就是「框小、憋屈」。这里做两件事：
+   ① 用负边距把卡片内边距吃掉，池塘宽 +24px（不改其它面板的观感）
+   ② 比例改 4:3，高度 177 → ~260，纵向不再挤 */
+@media (orientation: portrait) and (hover: none) {
+  html.touch .fg-pond,
+  html.touch .fg-wait {
+    width: calc(100% + 24px);
+    margin-left: -12px;
+    margin-right: -12px;
+    aspect-ratio: 4 / 3;
+  }
+}
+
+/* 面板本身也松一点（12 → 8），全局只差 4px，看不出来但池塘多 8px 宽 */
+@media (orientation: portrait) and (hover: none) and (max-width: 720px) {
+  html.touch .panel {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+}
+
+/* 手机上没有键盘：把「WASD / 按 F」那一排收掉，右下大圆键已经覆盖所有按钮。
+   收掉之后摇杆也不会压在 [收竿] 文字上了。 */
+html.touch .fishing-game .row {
+  display: none;
+}

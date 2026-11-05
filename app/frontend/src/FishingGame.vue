@@ -347,7 +347,7 @@ function startGame() {
   clearBiteWindow();
   phase.value = "playing";
   graceLeft.value = GRACE_SECONDS;
-  message.value = "WASD / 方向键 / 下方轮盘移动框，把鱼圈住";
+  message.value = TOUCH_UI ? "拖轮盘移动框，把鱼圈住" : "WASD / 方向键 / 下方轮盘移动框，把鱼圈住";
   last = 0;
   raf = requestAnimationFrame(tick);
   // 横屏时页面上方还压着钓点/鱼饵等块，开打后把池塘顶到视野上方
