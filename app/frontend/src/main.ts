@@ -5,6 +5,16 @@ import "./theme.css";
 import "./style.css";
 import "./mobile.css";
 
+// 网页版装成「主屏幕 App」：注册 Service Worker（Tauri 壳里不需要，也不该有）
+if (import.meta.env.PROD && "serviceWorker" in navigator && !("__TAURI_INTERNALS__" in window)) {
+  window.addEventListener("load", () => {
+    const url = `${import.meta.env.BASE_URL}sw.js`;
+    navigator.serviceWorker.register(url).catch(() => {
+      // 注册失败不影响玩，只是不能离线
+    });
+  });
+}
+
 // 有的 WebView 冷启动时 (hover: none) 还没生效，悬浮摇杆/大圆键会一整个不出现，
 // 摸几下屏幕才"卡出来"。这里直接判一次、打个类，CSS 用它兜底。
 //

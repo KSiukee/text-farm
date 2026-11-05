@@ -63,6 +63,8 @@ const panning = ref<{ x: number; y: number; panX: number; panY: number } | null>
 // 和 main.ts 的判定一致：只有手机/平板才显示触屏操作提示
 const TOUCH_UI =
   typeof document !== "undefined" && document.documentElement.classList.contains("touch");
+// 手机上「添加家具」收进底部抽屉，不然要滚很久才能点到
+const sheetOpen = ref(false);
 const zoomPct = computed(() => Math.round(camera.value.zoom * 100));
 const sceneCenter = computed(() => {
   const floorW = ((props.room.width + props.room.height) * TW) / 2;
@@ -2327,6 +2329,14 @@ onBeforeUnmount(stopPetLoop);
       </template>
     </div>
 
+    <button
+      v-if="TOUCH_UI && editing"
+      class="room-tools-toggle"
+      type="button"
+      @click="sheetOpen = !sheetOpen"
+    >
+      {{ sheetOpen ? "收起" : "＋ 添加家具" }}
+    </button>
     <div class="room-canvas-wrap" @contextmenu.prevent @selectstart.prevent>
       <p v-if="editing && TOUCH_UI" class="muted room-touch-hint">
         点一下选中，再按住拖动；双指缩放，单指拖空白平移。
@@ -2384,6 +2394,12 @@ onBeforeUnmount(stopPetLoop);
       <p v-if="lockedStyles.length" class="muted room-tip">
         未解锁：{{ lockedStyles.map((style) => `${style.name}（${style.unlockHint}）`).join("；") }}
       </p>
+      <div v-if="!TOUCH_UI || sheetOpen" class="room-tools-backdrop" @click="sheetOpen = false" />
+      <div class="room-tools" :class="{ open: TOUCH_UI && sheetOpen }">
+        <div v-if="TOUCH_UI" class="room-tools-head">
+          <span>添加家具 / 窗户</span>
+          <button class="link" type="button" @click="sheetOpen = false">收起</button>
+        </div>
       <div class="room-row room-palette">
         <button
           v-for="def in room.catalog"
@@ -2410,6 +2426,7 @@ onBeforeUnmount(stopPetLoop);
         <button class="link" type="button" @click="addWindow('small')">+小窗</button>
         <button class="link" type="button" @click="addWindow('large')">+大窗</button>
         <button class="link" type="button" @click="addWindow('floor')">+落地窗</button>
+      </div>
       </div>
       <div v-if="selectedDoor" class="room-row">
         <span class="muted">
@@ -2475,6 +2492,70 @@ onBeforeUnmount(stopPetLoop);
 .camera-hint {
   margin-top: 2px;
 }
+.room-tools-backdrop {
+  display: none;
+}
+
+.room-tools-head {
+  display: none;
+}
+
+.room-tools-toggle {
+  display: none;
+}
+
+html.touch .room-tools-toggle {
+  display: block;
+  position: sticky;
+  bottom: 12px;
+  z-index: 20;
+  width: 100%;
+  margin: 8px 0;
+  padding: 10px 12px;
+  font: inherit;
+  font-weight: 700;
+  color: var(--accent-text);
+  background: var(--panel-warm);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+html.touch .room-tools {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  max-height: 46dvh;
+  overflow-y: auto;
+  padding: 10px 12px calc(env(safe-area-inset-bottom, 0px) + 12px);
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -8px 24px rgb(0 0 0 / 45%);
+  transform: translateY(105%);
+  transition: transform 160ms ease-out;
+}
+
+html.touch .room-tools.open {
+  transform: translateY(0);
+}
+
+html.touch .room-tools-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+html.touch .room-tools-backdrop {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  background: rgb(0 0 0 / 45%);
+}
+
 .room-touch-hint {
   margin: 0 0 4px;
   font-size: 13px;
