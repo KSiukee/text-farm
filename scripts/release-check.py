@@ -75,7 +75,7 @@ def semver(value: str) -> tuple[int, int, int] | None:
     return tuple(int(part) for part in match.groups()) if match else None
 
 
-def check_version_forward(ci: bool) -> None:
+def check_version_forward(ci: bool, allow_same: bool) -> None:
     version = current_version()
     if not version:
         add("版本号比上一个 tag 新", False, "读不到 Cargo.toml 版本")
@@ -89,9 +89,21 @@ def check_version_forward(ci: bool) -> None:
         add("版本号比上一个 tag 新", True, f"还没有 tag（{version}）")
         return
     prev = semver(last)
-    # 允许相等：打完 tag 之后再跑一次闸门（比如出安卓正式包）是正常操作
-    ok = bool(now and prev and now >= prev)
-    add("版本号不低于上一个 tag", ok, f"{last} → v{version}")
+    if not (now and prev):
+        add("版本号比上一个 tag 新", False, f"读不懂版本号：{last} / {version}")
+        return
+    if now > prev:
+        add("版本号比上一个 tag 新", True, f"{last} → v{version}")
+        return
+    if now == prev and allow_same:
+        add("版本号比上一个 tag 新", True, f"{last} = v{version}（--allow-same-version 放行）")
+        return
+    reason = "和上一个 tag 一样" if now == prev else "比上一个 tag 还旧"
+    add(
+        "版本号比上一个 tag 新",
+        False,
+        f"{last} → v{version}（{reason}；适配/修复也要升第三位，补包请加 --allow-same-version）",
+    )
 
 
 def check_changelog(ci: bool) -> None:
@@ -151,12 +163,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="发版前闸门")
     parser.add_argument("--ci", action="store_true", help="CI 模式：跳过只有本机才有的检查")
     parser.add_argument("--allow-dirty", action="store_true", help="允许工作树有未提交改动")
+    parser.add_argument(
+        "--allow-same-version",
+        action="store_true",
+        help="允许版本号等于上一个 tag（发布后补打安装包时用，正常发版别加）",
+    )
     args = parser.parse_args()
 
     print("== 发版前闸门 ==\n")
     check_clean(args.allow_dirty)
     check_versions()
-    check_version_forward(args.ci)
+    check_version_forward(args.ci, args.allow_same_version)
     check_changelog(args.ci)
     check_scan(args.ci)
     check_no_internal_tracked()
