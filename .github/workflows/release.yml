@@ -74,16 +74,10 @@ jobs:
           name: 文字农场 ${{ github.ref_name }}
           files: out/*.exe
           body_path: release-notes.md
+          # 先落成草稿：等 Windows / macOS 都传完、安卓包补上，再去 Release 页面点发布。
+          # （0.139/0.140 这里被一段残留正文污染成多行字符串，draft 实际按 false 处理，
+          #   结果一传上去就公开了；别再把正文写回 with 里，正文统一走 release-notes.md。）
           draft: true
-
-            **macOS**：下载 `text-farm-*-macos-universal.dmg`（Intel / Apple 芯片通用）。
-            没买 Apple 开发者账号、没做公证，首次打开会被拦：
-            右键 →「打开」，或者终端跑一句
-            `xattr -dr com.apple.quarantine /Applications/文字农场.app`。
-
-            **网页版**（不用下载）：https://ksiukee.github.io/text-farm/
-
-            存档三端通用，设置里可以导出/导入。有问题请开 Issue。
 
   macos:
     needs: gate
@@ -137,12 +131,3 @@ jobs:
           files: out/*.dmg
           body_path: release-notes.md
           draft: true
-
-            **macOS**：下载 `text-farm-*-macos-universal.dmg`（Intel / Apple 芯片通用）。
-            没买 Apple 开发者账号、没做公证，首次打开会被拦：
-            右键 →「打开」，或者终端跑一句
-            `xattr -dr com.apple.quarantine /Applications/文字农场.app`。
-
-            **网页版**（不用下载）：https://ksiukee.github.io/text-farm/
-
-            存档三端通用，设置里可以导出/导入。有问题请开 Issue。
