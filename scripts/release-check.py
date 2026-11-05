@@ -83,7 +83,10 @@ def check_version_forward(ci: bool, allow_same: bool) -> None:
     if ci:
         add("版本号比上一个 tag 新", True, f"CI 在 tag 上跑，跳过（{version}）")
         return
-    last = git("describe", "--tags", "--abbrev=0")
+    # 从 HEAD^ 找上一个 tag：正常发版是先 git tag 再推送，tag 已经落在 HEAD 上，
+    # 从 HEAD 找只会找到「正要推的这一个」，等于自己跟自己比（0.140.1 首发时踩到）。
+    # HEAD^ 没有 tag 就是第一个版本，按「还没有 tag」放行（不能用 HEAD 兜底，那又绕回自己）。
+    last = git("describe", "--tags", "--abbrev=0", "HEAD^")
     now = semver(version)
     if not last:
         add("版本号比上一个 tag 新", True, f"还没有 tag（{version}）")
