@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -68,6 +69,19 @@ def du(path: Path) -> tuple[int, int]:
 
 def human(size: int) -> str:
     return f"{size / 1024 ** 3:.2f} GiB"
+
+
+def android_target_dir() -> Path | None:
+    """安卓 .so 编在仓外的 ASCII 目录里：优先环境变量，其次读打包脚本里的默认值"""
+    env = os.environ.get("TF_TARGET_DIR")
+    if env and Path(env).is_dir():
+        return Path(env)
+    script = ROOT / "scripts" / "android-build.ps1"
+    if script.is_file():
+        match = re.search(r'\$TargetDir\s*=\s*"([^"]+)"', script.read_text(encoding="utf-8"))
+        if match and Path(match.group(1)).is_dir():
+            return Path(match.group(1))
+    return None
 
 
 def rust_target_roots(extra: list[Path]) -> list[Path]:
@@ -203,9 +217,9 @@ def main() -> int:
         return selftest()
 
     extra = [Path(item) for item in args.extra_root]
-    if not extra and os.environ.get("TF_TARGET_DIR"):
-        android_target = Path(os.environ["TF_TARGET_DIR"])
-        if android_target.is_dir():
+    if not extra:
+        android_target = android_target_dir()
+        if android_target is not None:
             extra = [android_target]
 
     roots = rust_target_roots(extra)
