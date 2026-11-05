@@ -108,16 +108,18 @@ def build(version: str) -> str:
             body.extend(f"- {item}" for item in picked)
         else:
             body.append("- 见 [CHANGELOG](CHANGELOG.md)")
-    body.extend(
-        [
-            "",
-            "### 说明",
-            "",
-            "- 存档三端通用（Windows / macOS / 安卓 / 网页），设置里可以导出导入。",
-            "- 安卓包不在这里，见网盘或仓库的安卓构建说明。",
-            "- 有问题请开 [Issue](https://github.com/KSiukee/text-farm/issues)。",
-        ]
-    )
+    # 手写说明里通常已经写了注意事项，别再重复一遍「说明」
+    if written:
+        body.extend(["- 有问题请开 [Issue](https://github.com/KSiukee/text-farm/issues)。", ""])
+    else:
+        body.extend(
+            [
+                "### 说明",
+                "",
+                "- 存档三端通用（Windows / macOS / 安卓 / 网页），设置里可以导出导入。",
+                "- 有问题请开 [Issue](https://github.com/KSiukee/text-farm/issues)。",
+            ]
+        )
     return "\n".join(body) + "\n"
 
 
